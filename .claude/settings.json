@@ -1,6 +1,7 @@
 {
     "env":{
         "ANTHROPIC_BASE_URL":"",
-        ANTR
+        "ANTHROPIC_AUTH_TOKEN":"",
+        "ANTHROPIC_MODEL":""
     }
 }
