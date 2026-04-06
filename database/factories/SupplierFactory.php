@@ -15,14 +15,15 @@ class SupplierFactory extends Factory
      * @return array<string, mixed>
      */
     public function definition(): array
-    {
-        return [
-            'name' => $this->faker->company(),
-            'contact_person' => $this->faker->name(),
-            'email' => $this->faker->unique()->companyEmail(),
-            'phone' => $this->faker->numerify('7########'),
-            'address' => $this->faker->city() . ', Bolivia',
-            'notes' => $this->faker->optional(0.3)->sentence(),
-        ];
-    }
+{
+    $faker = \Faker\Factory::create('es_ES');
+    return [
+        'name' => $faker->company(),
+        'contact_person' => $faker->name(),
+        'email' => $faker->unique()->companyEmail(),
+        'phone' => $faker->numerify('7########'),
+        'address' => $faker->city() . ', Bolivia',
+        'notes' => $faker->optional(0.3)->sentence(),
+    ];
+}
 }

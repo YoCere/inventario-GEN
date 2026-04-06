@@ -15,13 +15,14 @@ class CustomerFactory extends Factory
      * @return array<string, mixed>
      */
     public function definition(): array
-    {
-        return [
-            'name' => $this->faker->name(),
-            'email' => $this->faker->unique()->safeEmail(),
-            'phone' => $this->faker->numerify('7########'),
-            'address' => $this->faker->city() . ', Bolivia',
-            'notes' => $this->faker->optional(0.3)->sentence(),
-        ];
-    }
+{
+    $faker = \Faker\Factory::create('es_ES'); // español estándar, funciona bien
+    return [
+        'name' => $faker->name(),
+        'email' => $faker->unique()->safeEmail(),
+        'phone' => $faker->numerify('7########'),
+        'address' => $faker->city() . ', Bolivia',
+        'notes' => $faker->optional(0.3)->sentence(),
+    ];
+}
 }
