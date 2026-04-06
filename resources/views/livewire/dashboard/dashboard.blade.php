@@ -3,8 +3,8 @@
         <!-- Filter Section -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-card p-4 rounded-lg border border-border shadow-sm">
         <div>
-            <h2 class="text-lg font-semibold text-foreground">Overview</h2>
-            <p class="text-sm text-muted-foreground">Monitor your business performance at a glance.</p>
+            <h2 class="text-lg font-semibold text-foreground">Resumen</h2>
+            <p class="text-sm text-muted-foreground">Monitorea el rendimiento de tu negocio de un vistazo.</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
             <!-- Period Selector -->
@@ -35,7 +35,7 @@
                      }
                  }"
             >
-                <input x-ref="picker" type="text" class="h-9 w-[240px] rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" placeholder="Select date range...">
+                <input x-ref="picker" type="text" class="h-9 w-[240px] rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" placeholder="Seleccionar rango de fechas...">
             </div>
 
              <!-- Refresh Button -->
@@ -46,41 +46,25 @@
             <!-- Print Button -->
             <button onclick="window.print()" class="print:hidden inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2 gap-2">
                 <x-heroicon-o-printer class="h-4 w-4" />
-                <span class="hidden sm:inline">Print Report</span>
+                <span class="hidden sm:inline">Imprimir reporte</span>
             </button>
         </div>
     </div>
 
     <!-- Stats Grid -->
     <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <!-- Total Sales -->
-        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+        <!-- Total Sales (primary / highlighted) -->
+        <div class="rounded-xl border border-gray-800 bg-gray-900 text-white shadow-sm">
             <div class="p-4 flex flex-row items-center justify-between space-y-0 pb-2">
-                <h3 class="tracking-tight text-sm font-medium">Total Sales</h3>
-                <x-heroicon-o-banknotes class="h-4 w-4 text-muted-foreground" />
+                <h3 class="tracking-tight text-sm font-medium text-gray-300">Ventas totales</h3>
+                <x-heroicon-o-banknotes class="h-4 w-4 text-gray-400" />
             </div>
             <div class="p-4 pt-0">
-                <div class="text-xl sm:text-2xl font-bold">
+                <div class="text-xl sm:text-2xl font-bold text-white">
                     @money($stats['total_sales'] ?? 0)
                 </div>
-                <p class="text-xs text-muted-foreground mt-1">
-                    {{ $stats['sales_count'] ?? 0 }} transactions
-                </p>
-            </div>
-        </div>
-
-        <!-- Gross Profit -->
-        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
-            <div class="p-4 flex flex-row items-center justify-between space-y-0 pb-2">
-                <h3 class="tracking-tight text-sm font-medium">Gross Profit</h3>
-                <x-heroicon-o-arrow-trending-up class="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div class="p-4 pt-0">
-                <div class="text-xl sm:text-2xl font-bold">
-                    @money($stats['gross_profit'] ?? 0)
-                </div>
-                <p class="text-xs text-muted-foreground mt-1">
-                    Estimated based on COGS
+                <p class="text-xs text-gray-400 mt-1">
+                    {{ $stats['sales_count'] ?? 0 }} transacciones
                 </p>
             </div>
         </div>
@@ -88,7 +72,7 @@
         <!-- Net Cash Flow -->
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
             <div class="p-4 flex flex-row items-center justify-between space-y-0 pb-2">
-                <h3 class="tracking-tight text-sm font-medium">Net Cash Flow</h3>
+                <h3 class="tracking-tight text-sm font-medium">Flujo de caja neto</h3>
                  <x-heroicon-o-currency-dollar class="h-4 w-4 text-muted-foreground" />
             </div>
             <div class="p-4 pt-0">
@@ -96,20 +80,36 @@
                     @money($stats['net_cash_flow'] ?? 0)
                 </div>
                 <div class="flex justify-between text-[11px] sm:text-xs text-muted-foreground mt-1">
-                    <span class="text-emerald-600 flex items-center gap-1" title="Total Income">
+                    <span class="text-emerald-600 flex items-center gap-1" title="Ingreso total">
                         <x-heroicon-s-arrow-up class="w-3 h-3" /> @money($stats['income'] ?? 0)
                     </span>
-                    <span class="text-red-600 flex items-center gap-1" title="Total Expense">
+                    <span class="text-red-600 flex items-center gap-1" title="Gasto total">
                         <x-heroicon-s-arrow-down class="w-3 h-3" /> @money($stats['expense'] ?? 0)
                     </span>
                 </div>
             </div>
         </div>
 
+        <!-- Gross Profit -->
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="p-4 flex flex-row items-center justify-between space-y-0 pb-2">
+                <h3 class="tracking-tight text-sm font-medium">Ganancia bruta</h3>
+                <x-heroicon-o-arrow-trending-up class="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div class="p-4 pt-0">
+                <div class="text-xl sm:text-2xl font-bold">
+                    @money($stats['gross_profit'] ?? 0)
+                </div>
+                <p class="text-xs text-muted-foreground mt-1">
+                    Estimado basado en costo de ventas
+                </p>
+            </div>
+        </div>
+
          <!-- Low Stock Alert -->
          <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
             <div class="p-4 flex flex-row items-center justify-between space-y-0 pb-2">
-                <h3 class="tracking-tight text-sm font-medium">Low Stock Alert</h3>
+                <h3 class="tracking-tight text-sm font-medium">Alerta de stock bajo</h3>
                 <x-heroicon-o-exclamation-triangle class="h-4 w-4 text-orange-500" />
             </div>
             <div class="p-4 pt-0">
@@ -117,7 +117,7 @@
                     {{ count($lowStockProducts) }}
                 </div>
                 <p class="text-xs text-muted-foreground mt-1">
-                    Items below min stock
+                    Productos por debajo del mínimo
                 </p>
             </div>
         </div>
@@ -128,19 +128,19 @@
         <!-- Sales Trend -->
         <div class="col-span-1 lg:col-span-2 rounded-xl border bg-card text-card-foreground shadow-sm break-inside-avoid">
             <div class="p-4 flex flex-col space-y-1.5 pb-2">
-                <h3 class="font-semibold leading-none tracking-tight">Sales Trend</h3>
-                <p class="text-xs text-muted-foreground">Daily sales performance.</p>
+                <h3 class="font-semibold leading-none tracking-tight">Ventas por día</h3>
+                <p class="text-xs text-muted-foreground">Resultados de ventas diarias</p>
             </div>
             <div class="p-4 pt-0" wire:ignore>
-                <div id="salesChart" class="w-full h-[250px]"></div>
+                <div id="salesChart" class="w-full h-[300px]"></div>
             </div>
         </div>
 
         <!-- Cash Flow -->
         <div class="col-span-1 rounded-xl border bg-card text-card-foreground shadow-sm break-inside-avoid">
             <div class="p-4 flex flex-col space-y-1.5 pb-2">
-                <h3 class="font-semibold leading-none tracking-tight">Income vs Expense</h3>
-                <p class="text-xs text-muted-foreground">Financial overview.</p>
+                <h3 class="font-semibold leading-none tracking-tight">Ingresos vs Gastos</h3>
+                <p class="text-xs text-muted-foreground">Resumen financiero.</p>
             </div>
             <div class="p-4 pt-0" wire:ignore>
                 <div id="cashFlowChart" class="w-full h-[250px]"></div>
@@ -153,16 +153,16 @@
         <!-- Recent Sales -->
         <div class="col-span-1 lg:col-span-2 rounded-xl border bg-card text-card-foreground shadow-sm break-inside-avoid">
             <div class="p-4 flex flex-col space-y-1.5 border-b">
-                <h3 class="font-semibold leading-none tracking-tight">Recent Sales</h3>
-                <p class="text-xs text-muted-foreground">Latest transactions overview.</p>
+                <h3 class="font-semibold leading-none tracking-tight">Ventas recientes</h3>
+                <p class="text-xs text-muted-foreground">Resumen de últimas transacciones.</p>
             </div>
             <div class="p-0">
                 <div class="relative w-full overflow-auto max-h-[300px]">
                     <table class="w-full caption-bottom text-sm">
                         <thead class="[&_tr]:border-b sticky top-0 bg-card z-10">
                             <tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                                <th class="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Invoice</th>
-                                <th class="h-10 px-4 text-right align-middle font-medium text-muted-foreground">Amount</th>
+                                <th class="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Factura</th>
+                                <th class="h-10 px-4 text-right align-middle font-medium text-muted-foreground">Monto</th>
                             </tr>
                         </thead>
                         <tbody class="[&_tr:last-child]:border-0 bg-transparent">
@@ -170,13 +170,13 @@
                                 <tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
                                     <td class="px-4 py-2 align-middle font-medium">
                                         {{ $sale['invoice_number'] }}
-                                        <div class="text-[11px] text-muted-foreground font-normal">{{ $sale['customer']['name'] ?? 'Guest' }}</div>
+                                        <div class="text-[11px] text-muted-foreground font-normal">{{ $sale['customer']['name'] ?? 'Invitado' }}</div>
                                     </td>
                                     <td class="px-4 py-2 align-middle text-right font-medium text-emerald-600">@money($sale['total'])</td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="2" class="p-4 text-center text-muted-foreground">No recent sales.</td>
+                                    <td colspan="2" class="p-4 text-center text-muted-foreground">Sin ventas recientes.</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -188,8 +188,8 @@
         <!-- Expense Breakdown -->
         <div class="col-span-1 rounded-xl border bg-card text-card-foreground shadow-sm break-inside-avoid">
             <div class="p-4 flex flex-col space-y-1.5 pb-2">
-                <h3 class="font-semibold leading-none tracking-tight">Expense Breakdown</h3>
-                <p class="text-xs text-muted-foreground">Category distribution.</p>
+                <h3 class="font-semibold leading-none tracking-tight">Desglose de gastos</h3>
+                <p class="text-xs text-muted-foreground">Distribución por categoría.</p>
             </div>
             <div class="p-4 pt-0" wire:ignore>
                 <div id="expenseChart" class="w-full h-[250px] flex items-center justify-center"></div>
@@ -201,8 +201,8 @@
         <!-- Top Selling Products -->
         <div class="col-span-1 rounded-xl border bg-card text-card-foreground shadow-sm break-inside-avoid">
             <div class="p-4 flex flex-col space-y-1.5 border-b">
-                <h3 class="font-semibold leading-none tracking-tight">Top Products</h3>
-                <p class="text-xs text-muted-foreground">Best selling items.</p>
+                <h3 class="font-semibold leading-none tracking-tight">Productos destacados</h3>
+                <p class="text-xs text-muted-foreground">Artículos más vendidos.</p>
             </div>
              <div class="p-4 pt-4 max-h-[300px] overflow-auto">
                 <div class="space-y-4">
@@ -213,11 +213,11 @@
                                 <p class="text-[11px] text-muted-foreground">{{ $product['sku'] }}</p>
                             </div>
                             <div class="font-semibold text-sm bg-muted px-2 py-1 rounded-md">
-                                {{ $product['total_sold'] }} <span class="text-xs font-normal text-muted-foreground">sold</span>
+                                {{ $product['total_sold'] }} <span class="text-xs font-normal text-muted-foreground">vendidos</span>
                             </div>
                         </div>
                     @empty
-                         <p class="text-xs text-muted-foreground text-center py-2">No product data.</p>
+                         <p class="text-xs text-muted-foreground text-center py-2">Sin datos de productos.</p>
                     @endforelse
                 </div>
             </div>
@@ -226,8 +226,8 @@
         <!-- Top Customers -->
         <div class="col-span-1 rounded-xl border bg-card text-card-foreground shadow-sm break-inside-avoid">
             <div class="p-4 flex flex-col space-y-1.5 border-b">
-                <h3 class="font-semibold leading-none tracking-tight">Top Customers</h3>
-                <p class="text-xs text-muted-foreground">By highest revenue.</p>
+                <h3 class="font-semibold leading-none tracking-tight">Mejores clientes</h3>
+                <p class="text-xs text-muted-foreground">Por mayor facturación.</p>
             </div>
              <div class="p-4 pt-4 max-h-[300px] overflow-auto">
                 <div class="space-y-4">
@@ -242,7 +242,7 @@
                             </div>
                         </div>
                     @empty
-                         <p class="text-xs text-muted-foreground text-center py-2">No customer data.</p>
+                         <p class="text-xs text-muted-foreground text-center py-2">Sin datos de clientes.</p>
                     @endforelse
                 </div>
             </div>
@@ -280,12 +280,12 @@
             // Sales Chart
             const salesOptions = {
                 series: [{
-                    name: 'Sales',
+                    name: 'Ventas',
                     data: data.sales.data
                 }],
                 chart: {
                     type: 'area',
-                    height: 250,
+                    height: 300,
                     toolbar: { show: false },
                     fontFamily: 'inherit',
                     parentHeightOffset: 0
@@ -334,10 +334,10 @@
             // Cash Flow Chart
             const cashFlowOptions = {
                 series: [{
-                    name: 'Income',
+                    name: 'Ingresos',
                     data: data.cashFlow.income
                 }, {
-                    name: 'Expense',
+                    name: 'Gastos',
                     data: data.cashFlow.expense
                 }],
                 chart: {
@@ -388,7 +388,7 @@
             const hasExpenseData = data.expense.series && data.expense.series.length > 0;
             const expenseOptions = {
                 series: hasExpenseData ? data.expense.series.map(Number) : [1],
-                labels: hasExpenseData ? data.expense.labels : ['No Data'],
+                labels: hasExpenseData ? data.expense.labels : ['Sin datos'],
                 chart: {
                     type: 'donut',
                     height: 250,
