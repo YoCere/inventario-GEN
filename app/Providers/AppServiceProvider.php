@@ -23,5 +23,8 @@ class AppServiceProvider extends ServiceProvider
         Blade::directive('money', function ($expression) {
             return "<?php echo format_money($expression); ?>";
         });
+        if (env('APP_ENV') === 'production') {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
+        }
     }
 }
