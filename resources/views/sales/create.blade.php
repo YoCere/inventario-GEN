@@ -1,12 +1,12 @@
+<!-- TODO: crear ventas -->
 <x-app-layout title="POS">
     <div class="mx-auto sm:px-6 lg:px-8 py-4"
-         x-data="pos()"
-         x-init="init()"
-         @keydown.window.f1.prevent="productTs && productTs.focus()"
-         @keydown.window.f2.prevent="customerTs && customerTs.focus()"
-         @keydown.window.f3.prevent="openConfirmation()"
-         @keydown.window.f4.prevent="openCustomerModal()"
-    >
+        x-data="pos()"
+        x-init="init()"
+        @keydown.window.f1.prevent="productTs && productTs.focus()"
+        @keydown.window.f2.prevent="customerTs && customerTs.focus()"
+        @keydown.window.f3.prevent="openConfirmation()"
+        @keydown.window.f4.prevent="openCustomerModal()">
         <div class="flex flex-col lg:flex-row h-[calc(100vh-100px)] space-y-4 lg:space-y-0 lg:space-x-4 relative">
 
             <!-- Left Side: Transaction Details (70%) -->
@@ -16,8 +16,7 @@
                     <select
                         x-ref="productSelect"
                         placeholder="Search Products (Name or SKU) [F1]..."
-                        autocomplete="off"
-                    ></select>
+                        autocomplete="off"></select>
                 </div>
 
                 <!-- Cart Table -->
@@ -26,7 +25,6 @@
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50 sticky top-0 z-10">
                                 <tr>
-                                    #TODO: CREAR VENTA
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
                                     <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Precio</th>
                                     <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
@@ -58,23 +56,24 @@
                                         <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500" x-text="item.unit"></td>
                                         <td class="px-6 py-4 whitespace-nowrap text-right">
                                             <div class="relative rounded-md shadow-sm w-32 ml-auto">
-                                        <div class="absolute inset-y-0 flex items-center pointer-events-none" :class="window.currencyPosition === 'left' ? 'left-0 pl-2' : 'right-0 pr-2'">
-                                            <span class="text-gray-500 sm:text-xs" x-text="window.currencySymbol"></span>
-                                        </div>
-                                        <input
-                                            type="text"
-                                            :value="formatNumber(item.discount)"
-                                            @input="item.discount = unformatNumber($event.target.value)"
-                                            class="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                                            :class="window.currencyPosition === 'left' ? 'pl-8 pr-2 text-right' : 'pr-8 pl-2 text-left'"
-                                            placeholder="0"
-                                        >
+                                                <div class="absolute inset-y-0 flex items-center pointer-events-none" :class="window.currencyPosition === 'left' ? 'left-0 pl-2' : 'right-0 pr-2'">
+                                                    <span class="text-gray-500 sm:text-xs" x-text="window.currencySymbol"></span>
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    :value="formatNumber(item.discount)"
+                                                    @input="item.discount = unformatNumber($event.target.value)"
+                                                    class="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                                                    :class="window.currencyPosition === 'left' ? 'pl-8 pr-2 text-right' : 'pr-8 pl-2 text-left'"
+                                                    placeholder="0">
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-gray-900" x-text="formatCurrency((item.price - item.discount) * item.quantity)"></td>
                                         <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                                             <button @click="removeFromCart(index)" class="flex items-center justify-center w-8 h-8 rounded-full bg-red-100 text-red-600 hover:bg-red-200 focus:outline-none transition-colors mx-auto">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                </svg>
                                             </button>
                                         </td>
                                     </tr>
@@ -83,9 +82,11 @@
                                     <tr>
                                         <td colspan="7" class="px-6 py-20 text-center text-gray-500">
                                             <div class="flex flex-col items-center justify-center">
-                                                <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                                                <p class="text-base font-medium">Cart is empty</p>
-                                                <p class="text-sm text-gray-400">Search products above to start transaction</p>
+                                                <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                                                </svg>
+                                                <p class="text-base font-medium">El carrito está vacío</p>
+                                                <p class="text-sm text-gray-400">Busque productos arriba para comenzar la transacción.</p>
                                             </div>
                                         </td>
                                     </tr>
@@ -100,16 +101,16 @@
             <div class="w-full lg:w-[30%] flex flex-col bg-white rounded-lg shadow border border-gray-200 h-full">
                 <!-- Header -->
                 <div class="p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
-                    <h2 class="text-xs font-bold text-gray-500 uppercase tracking-wide">Payment Details</h2>
+                    <h2 class="text-xs font-bold text-gray-500 uppercase tracking-wide">Detalles del pago</h2>
                 </div>
 
                 <div class="p-4 space-y-6 flex-1 overflow-y-auto">
                     <!-- Customer Section -->
                     <div class="bg-indigo-50 rounded-lg p-4 border border-indigo-100 relative group">
                         <div class="flex justify-between items-start mb-2">
-                            <span class="text-xs font-bold text-indigo-500 uppercase">Customer</span>
+                            <span class="text-xs font-bold text-indigo-500 uppercase">Cliente</span>
                             <button @click="openCustomerModal()" class="text-[10px] font-semibold text-indigo-600 hover:text-white hover:bg-indigo-600 border border-indigo-200 bg-white px-2 py-1 rounded transition-colors flex items-center">
-                                + New (F4)
+                                + Nuevo (F4)
                             </button>
                         </div>
 
@@ -121,7 +122,9 @@
                                         <p class="text-sm text-gray-600" x-text="selectedCustomer.phone || 'No Phone'"></p>
                                     </div>
                                     <button @click="resetCustomer()" class="text-gray-400 hover:text-red-500">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                        </svg>
                                     </button>
                                 </div>
                             </template>
@@ -129,8 +132,7 @@
                                 <select
                                     x-ref="customerSelect"
                                     placeholder="Search Customer [F2]..."
-                                    autocomplete="off"
-                                ></select>
+                                    autocomplete="off"></select>
                             </div>
                         </div>
                     </div>
@@ -142,8 +144,8 @@
                             <span x-text="formatCurrency(subtotal)"></span>
                         </div>
                         <div class="flex justify-between items-center mt-2">
-                             <span class="text-sm font-medium text-gray-500">Discount (Global)</span>
-                             <div class="relative w-32">
+                            <span class="text-sm font-medium text-gray-500">Descuento (Global)</span>
+                            <div class="relative w-32">
                                 <div class="absolute inset-y-0 flex items-center pointer-events-none" :class="window.currencyPosition === 'left' ? 'left-0 pl-2' : 'right-0 pr-2'">
                                     <span class="text-gray-500 sm:text-xs" x-text="window.currencySymbol"></span>
                                 </div>
@@ -153,12 +155,11 @@
                                     @input="globalDiscount = unformatNumber($event.target.value)"
                                     class="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md py-1"
                                     :class="window.currencyPosition === 'left' ? 'pl-8 pr-2 text-right' : 'pr-8 pl-2 text-left'"
-                                    placeholder="0"
-                                >
-                             </div>
+                                    placeholder="0">
+                            </div>
                         </div>
                         <div class="flex justify-between text-red-500 text-sm" x-show="totalDiscount > 0">
-                            <span>Total Discount</span>
+                            <span>Descuento total</span>
                             <span x-text="'- ' + formatCurrency(totalDiscount)"></span>
                         </div>
                         <div class="flex justify-between items-center pt-4 border-t border-gray-100">
@@ -170,28 +171,26 @@
                     <!-- Payment Input -->
                     <div class="space-y-4 pt-4 border-t border-gray-200">
                         <div>
-                            <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Payment Method</label>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Forma de pago</label>
                             <div class="grid grid-cols-2 gap-2">
                                 <button
                                     @click="payment.method = 'cash'"
                                     class="px-4 py-2 text-sm font-medium rounded-md border"
-                                    :class="payment.method === 'cash' ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'"
-                                >
-                                    CASH
+                                    :class="payment.method === 'cash' ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'">
+                                    EFECTIVO
                                 </button>
                                 <button
                                     @click="payment.method = 'transfer'"
                                     class="px-4 py-2 text-sm font-medium rounded-md border"
-                                    :class="payment.method === 'transfer' ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'"
-                                >
-                                    TRANSFER
+                                    :class="payment.method === 'transfer' ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'">
+                                    TRANSFERENCIA
                                 </button>
                             </div>
                         </div>
 
                         <template x-if="payment.method === 'cash'">
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Cash Received</label>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Efectivo recibido</label>
                                 <div class="relative">
                                     <div class="absolute inset-y-0 flex items-center pointer-events-none" :class="window.currencyPosition === 'left' ? 'left-0 pl-3' : 'right-0 pr-3'">
                                         <span class="text-gray-500 font-bold" x-text="window.currencySymbol"></span>
@@ -202,14 +201,13 @@
                                         @input="payment.cash_received = unformatNumber($event.target.value)"
                                         class="block w-full py-3 text-lg font-bold text-gray-900 border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                                         :class="window.currencyPosition === 'left' ? 'pl-10 pr-3 text-left' : 'pr-10 pl-3 text-right'"
-                                        placeholder="0"
-                                    >
+                                        placeholder="0">
                                 </div>
 
-                                <!-- Quick Cash Buttons -->
+                                <!-- Botones de pago rápido -->
                                 <div class="grid grid-cols-4 gap-2 mt-2">
                                     <button @click="payment.cash_received = total" class="px-2 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-xs font-bold text-gray-700">
-                                        EXACT
+                                        EXACTO
                                     </button>
                                     <button @click="payment.cash_received = (parseInt(payment.cash_received) || 0) + 100000" class="px-2 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-xs font-bold text-gray-700">
                                         +100K
@@ -234,11 +232,11 @@
                                     </button>
                                 </div>
                                 <div class="bg-green-50 p-3 rounded-md border border-green-100 flex justify-between items-center mt-2"
-                                     :class="change < 0 ? 'bg-red-50 border-red-100 text-red-800' : 'bg-green-50 border-green-100 text-green-800'">
-                                    <span class="text-sm font-medium uppercase" x-text="change < 0 ? 'Due' : 'Change'"></span>
+                                    :class="change < 0 ? 'bg-red-50 border-red-100 text-red-800' : 'bg-green-50 border-green-100 text-green-800'">
+                                    <span class="text-sm font-medium uppercase" x-text="change < 0 ? 'Por Pagar' : 'Cambio'"></span>
                                     <span class="text-xl font-bold"
-                                          :class="change < 0 ? 'text-red-700' : 'text-green-700'"
-                                          x-text="formatCurrency(Math.abs(change))"></span>
+                                        :class="change < 0 ? 'text-red-700' : 'text-green-700'"
+                                        x-text="formatCurrency(Math.abs(change))"></span>
                                 </div>
                             </div>
                         </template>
@@ -248,8 +246,7 @@
                                 x-model="payment.notes"
                                 rows="3"
                                 class="block w-full text-sm border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 placeholder-gray-400 py-2"
-                                placeholder="Transaction Notes / Address..."
-                            ></textarea>
+                                placeholder="Notas de la transacción / Dirección..."></textarea>
                         </div>
                     </div>
                 </div>
@@ -258,21 +255,24 @@
                 <div class="p-4 border-t border-gray-200 bg-gray-50 flex gap-3">
                     <button
                         @click="$dispatch('open-modal', { name: 'cancel-modal' })"
-                        class="w-1/3 py-3 text-sm font-bold text-red-600 hover:text-white bg-white border border-red-200 hover:bg-red-600 rounded-lg flex items-center justify-center transition-colors shadow-sm"
-                    >
-                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                        CANCEL
+                        class="w-1/3 py-3 text-sm font-bold text-red-600 hover:text-white bg-white border border-red-200 hover:bg-red-600 rounded-lg flex items-center justify-center transition-colors shadow-sm">
+                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                        CANCELAR
                     </button>
 
                     <button
                         @click="openConfirmation()"
                         :disabled="isSubmitting || cart.length === 0"
-                        class="w-2/3 flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-lg font-bold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
+                        class="w-2/3 flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-lg font-bold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                         <template x-if="isSubmitting">
-                            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
                         </template>
-                        <span x-text="isSubmitting ? 'Processing...' : 'PAY (F3)'"></span>
+                        <span x-text="isSubmitting ? 'Processing...' : 'PAGAR (F3)'"></span>
                     </button>
                 </div>
             </div>
@@ -300,7 +300,7 @@
                     lastSearchQuery: '',
 
                     init() {
-                         // Load from LocalStorage
+                        // Load from LocalStorage
                         const savedCart = localStorage.getItem('pos_cart');
                         if (savedCart) this.cart = JSON.parse(savedCart);
 
@@ -342,17 +342,19 @@
                                 this.lastSearchQuery = query;
 
                                 fetch('{{ route("ajax.products.search") }}', {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                                    },
-                                    body: JSON.stringify({ q: query })
-                                })
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                                        },
+                                        body: JSON.stringify({
+                                            q: query
+                                        })
+                                    })
                                     .then(response => response.json())
                                     .then(json => {
                                         callback(json);
-                                    }).catch(()=>{
+                                    }).catch(() => {
                                         callback();
                                     });
                             },
@@ -382,7 +384,7 @@
                             onChange: (value) => {
                                 if (value) {
                                     const item = this.productTs.options[value];
-                                    if(item) {
+                                    if (item) {
                                         this.addToCart(item);
 
                                         // Improved Logic: Prevent double input on Enter
@@ -418,17 +420,19 @@
                                 var url = '{{ route("ajax.customers.search") }}';
 
                                 fetch(url, {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                                    },
-                                    body: JSON.stringify({ q: query })
-                                })
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                                        },
+                                        body: JSON.stringify({
+                                            q: query
+                                        })
+                                    })
                                     .then(response => response.json())
                                     .then(json => {
                                         callback(json);
-                                    }).catch(()=>{
+                                    }).catch(() => {
                                         callback();
                                     });
                             },
@@ -445,7 +449,7 @@
                             onChange: (value) => {
                                 if (value) {
                                     const item = this.customerTs.options[value];
-                                    if(item) {
+                                    if (item) {
                                         // Update selected customer object structure to match what UI expects
                                         // The UI expects { id, name, phone, ... }
                                         // Our controller returns { value, text, name, phone }
@@ -486,9 +490,15 @@
                         if (existing) {
                             if (existing.quantity < product.quantity) {
                                 existing.quantity++;
-                                this.$dispatch('toast', { message: 'Product already exists. Quantity updated.', type: 'info' });
+                                this.$dispatch('toast', {
+                                    message: 'Product already exists. Quantity updated.',
+                                    type: 'info'
+                                });
                             } else {
-                                this.$dispatch('toast', { message: 'Insufficient stock!', type: 'error' });
+                                this.$dispatch('toast', {
+                                    message: 'Insufficient stock!',
+                                    type: 'error'
+                                });
                             }
                         } else {
                             if (product.quantity > 0) {
@@ -502,9 +512,15 @@
                                     unit: product.unit ? product.unit.symbol : '',
                                     discount: 0
                                 });
-                                this.$dispatch('toast', { message: 'Product "' + product.name + '" added to cart.', type: 'success' });
+                                this.$dispatch('toast', {
+                                    message: 'Product "' + product.name + '" added to cart.',
+                                    type: 'success'
+                                });
                             } else {
-                                this.$dispatch('toast', { message: 'Out of Stock!', type: 'error' });
+                                this.$dispatch('toast', {
+                                    message: 'Out of Stock!',
+                                    type: 'error'
+                                });
                             }
                         }
                     },
@@ -513,7 +529,10 @@
                         const item = this.cart[index];
                         if (item.quantity > item.max_stock) {
                             item.quantity = item.max_stock;
-                            this.$dispatch('toast', { message: 'Maksimum stok tercapai', type: 'warning' });
+                            this.$dispatch('toast', {
+                                message: 'Maksimum stok tercapai',
+                                type: 'warning'
+                            });
                         }
                         if (item.quantity < 1) item.quantity = 1;
                     },
@@ -521,12 +540,17 @@
                     removeFromCart(index) {
                         const removedItem = this.cart[index];
                         this.cart.splice(index, 1);
-                        this.$dispatch('toast', { message: 'Product "' + removedItem.name + '" removed from cart.', type: 'info' });
+                        this.$dispatch('toast', {
+                            message: 'Product "' + removedItem.name + '" removed from cart.',
+                            type: 'info'
+                        });
                     },
 
                     // Customer Modal Open
                     openCustomerModal() {
-                        this.$dispatch('open-modal', { name: 'customer-modal' });
+                        this.$dispatch('open-modal', {
+                            name: 'customer-modal'
+                        });
                         this.$nextTick(() => {
                             setTimeout(() => {
                                 this.$refs.nameInput && this.$refs.nameInput.focus();
@@ -558,32 +582,32 @@
                     },
 
                     unformatNumber(value) {
-                        if(typeof value !== 'string') return value || 0;
-                        
+                        if (typeof value !== 'string') return value || 0;
+
                         // Let's strip out the thousand separator safely
                         // e.g. "1,000.50" with thousand="," -> "1000.50"
                         let raw = value;
-                        if(window.thousandSeparator) {
+                        if (window.thousandSeparator) {
                             raw = raw.split(window.thousandSeparator).join('');
                         }
-                        
+
                         // Replace the designated decimal separator with a standard dot for JS parsing
-                        if(window.decimalSeparator && window.decimalSeparator !== '.') {
+                        if (window.decimalSeparator && window.decimalSeparator !== '.') {
                             raw = raw.replace(window.decimalSeparator, '.');
                         }
 
                         // Remove any characters that aren't numbers, dot, or minus sign
                         raw = raw.replace(/[^0-9\.-]/g, '');
-                        
+
                         // If it ends with a dot or dot-zero(s), we don't want to parse it yet 
                         // as it breaks the user's typing experience (e.g. typing "10." becomes "10" instantly)
                         // However, for pure JS calculation, we must return a number.
                         // The trick here is handled in the formatNumber/binding, but unformat must return string if it ends with dot
-                        
+
                         if (raw === '' || raw === '-') return 0;
                         // Return the raw string if the user is actively typing a decimal
                         if (raw.endsWith('.')) return raw;
-                        
+
                         return parseFloat(raw) || 0;
                     },
 
@@ -591,9 +615,9 @@
                         // If the user is mid-typing a decimal (e.g "10."), just return as is
                         // to prevent the cursor from jumping and erasing the dot.
                         if (typeof value === 'string' && value.endsWith('.')) {
-                             return value.replace('.', window.decimalSeparator);
+                            return value.replace('.', window.decimalSeparator);
                         }
-                        
+
                         let amount = parseFloat(value) || 0;
                         let isNegative = amount < 0;
                         amount = Math.abs(amount);
@@ -601,13 +625,13 @@
                         // Only force fraction digits if we are NOT actively typing
                         // Because formatting actively typing "0.5" might force "0.50" immediately.
                         // We will just let `Math.abs` Handle it unless formatting for display.
-                        
+
                         let strAmount = amount.toString();
                         // if we want to force fraction, use toFixed here. 
                         // But for active input fields, forcing .toFixed(2) while typing is bad UX.
                         // For display fields (Total), it's fine. 
                         // Since this is used in BOTH, we check if it's an integer.
-                        
+
                         let parts = strAmount.split('.');
                         let integerPart = parts[0];
                         let decimalPart = parts.length > 1 ? window.decimalSeparator + parts[1] : '';
@@ -625,11 +649,16 @@
                     openConfirmation() {
                         if (this.cart.length === 0) return;
                         if (this.payment.method === 'cash' && this.payment.cash_received < this.total) {
-                            this.$dispatch('toast', { message: 'Insufficient payment!', type: 'error' });
+                            this.$dispatch('toast', {
+                                message: 'Insufficient payment!',
+                                type: 'error'
+                            });
                             return;
                         }
 
-                        this.$dispatch('open-modal', { name: 'confirmation-modal' });
+                        this.$dispatch('open-modal', {
+                            name: 'confirmation-modal'
+                        });
                     },
 
                     // Submit Sale
@@ -669,7 +698,9 @@
                             const data = await res.json();
 
                             if (res.ok && data.success) {
-                                this.$dispatch('close-modal', { name: 'confirmation-modal' });
+                                this.$dispatch('close-modal', {
+                                    name: 'confirmation-modal'
+                                });
 
                                 if (data.print_url) {
                                     window.open(data.print_url, '_blank');
@@ -678,15 +709,24 @@
                                 this.clearStorage();
                                 this.resetForm();
 
-                                this.$dispatch('toast', { message: 'Transaction Successful!', type: 'success' });
+                                this.$dispatch('toast', {
+                                    message: 'Transaction Successful!',
+                                    type: 'success'
+                                });
 
                             } else {
-                                this.$dispatch('toast', { message: data.message || 'Error occurred', type: 'error' });
+                                this.$dispatch('toast', {
+                                    message: data.message || 'Error occurred',
+                                    type: 'error'
+                                });
                             }
 
                         } catch (e) {
                             console.error(e);
-                            this.$dispatch('toast', { message: 'Network error occurred', type: 'error' });
+                            this.$dispatch('toast', {
+                                message: 'Network error occurred',
+                                type: 'error'
+                            });
                         } finally {
                             this.isSubmitting = false;
                         }
@@ -715,17 +755,17 @@
                 <!-- Header -->
                 <div class="mb-6 space-y-1.5 text-center sm:text-left border-b border-gray-200 pb-4">
                     <h3 class="text-lg font-semibold leading-none tracking-tight text-foreground">
-                        Payment Confirmation
+                        Confirmación del pago
                     </h3>
                     <p class="text-sm text-muted-foreground">
-                        Please review transaction details before processing.
+                        Por favor revise los detalles de la transacción antes de procesar.
                     </p>
                 </div>
 
                 <!-- Summary Grid -->
                 <div class="grid gap-4 py-4">
                     <div class="flex items-center justify-between">
-                        <span class="text-sm font-medium text-gray-500">Total Items</span>
+                        <span class="text-sm font-medium text-gray-500">Total Artículos</span>
                         <span class="font-semibold" x-text="cart.reduce((sum, item) => sum + parseInt(item.quantity), 0)"></span>
                     </div>
                     <div class="flex items-center justify-between">
@@ -733,24 +773,24 @@
                         <span class="font-semibold" x-text="formatCurrency(subtotal)"></span>
                     </div>
                     <div class="flex items-center justify-between text-red-600" x-show="totalDiscount > 0">
-                        <span class="text-sm font-medium">Discount</span>
+                        <span class="text-sm font-medium"> Descuento </span>
                         <span class="font-semibold" x-text="'- ' + formatCurrency(totalDiscount)"></span>
                     </div>
                     <div class="flex items-center justify-between text-red-600" x-show="globalDiscount > 0">
-                        <span class="text-sm font-medium">Extra Discount (Global)</span>
+                        <span class="text-sm font-medium">Descuento adicional (Global)</span>
                         <span class="font-semibold" x-text="'- ' + formatCurrency(globalDiscount)"></span>
                     </div>
                     <div class="flex items-center justify-between border-t border-gray-100 pt-2 mt-2">
-                        <span class="text-lg font-bold">Total Bill</span>
+                        <span class="text-lg font-bold">Total a pagar </span>
                         <span class="text-lg font-bold text-blue-600" x-text="formatCurrency(total)"></span>
                     </div>
 
                     <div class="flex items-center justify-between border-t border-gray-100 pt-2 mt-2" x-show="payment.method === 'cash'">
-                        <span class="text-sm font-medium text-gray-500">Cash Received</span>
+                        <span class="text-sm font-medium text-gray-500">Efectivo Recibido</span>
                         <span class="font-semibold" x-text="formatCurrency(payment.cash_received)"></span>
                     </div>
                     <div class="flex items-center justify-between" x-show="payment.method === 'cash'">
-                        <span class="text-sm font-medium text-gray-500">Change</span>
+                        <span class="text-sm font-medium text-gray-500">Cambio</span>
                         <span class="font-bold text-green-600" x-text="formatCurrency(change)"></span>
                     </div>
                 </div>
@@ -759,23 +799,25 @@
                 <div class="mt-6 border-t border-gray-200 pt-4 space-y-4">
                     <!-- Status Selection -->
                     <div>
-                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Sale Status</label>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Estado de la Venta</label>
                         <div class="grid grid-cols-2 gap-2">
                             <button
                                 @click="saleStatus = 'completed'"
                                 class="px-4 py-2 text-sm font-medium rounded-md border flex items-center justify-center transition-colors"
-                                :class="saleStatus === 'completed' ? 'bg-green-600 text-white border-green-600 shadow-sm' : 'bg-white text-gray-700 border-gray-300 hover:bg-green-50'"
-                            >
-                                <svg x-show="saleStatus === 'completed'" class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                COMPLETED
+                                :class="saleStatus === 'completed' ? 'bg-green-600 text-white border-green-600 shadow-sm' : 'bg-white text-gray-700 border-gray-300 hover:bg-green-50'">
+                                <svg x-show="saleStatus === 'completed'" class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                COMPLETADO
                             </button>
                             <button
                                 @click="saleStatus = 'pending'"
                                 class="px-4 py-2 text-sm font-medium rounded-md border flex items-center justify-center transition-colors"
-                                :class="saleStatus === 'pending' ? 'bg-yellow-500 text-white border-yellow-500 shadow-sm' : 'bg-white text-gray-700 border-gray-300 hover:bg-yellow-50'"
-                            >
-                                <svg x-show="saleStatus === 'pending'" class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                PENDING
+                                :class="saleStatus === 'pending' ? 'bg-yellow-500 text-white border-yellow-500 shadow-sm' : 'bg-white text-gray-700 border-gray-300 hover:bg-yellow-50'">
+                                <svg x-show="saleStatus === 'pending'" class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                PENDIENTE
                             </button>
                         </div>
                     </div>
@@ -784,21 +826,24 @@
                         @click="submitSale()"
                         :disabled="isSubmitting"
                         class="w-full flex justify-center items-center py-3 px-4 rounded-lg shadow-sm text-lg font-bold text-white focus:outline-none disabled:opacity-50 transition-colors"
-                        :class="saleStatus === 'completed' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-600 hover:bg-gray-700'"
-                    >
+                        :class="saleStatus === 'completed' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-600 hover:bg-gray-700'">
                         <template x-if="isSubmitting">
-                            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
                         </template>
-                        <svg x-show="!isSubmitting" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                        <span x-text="isSubmitting ? 'Processing...' : 'PROCESS SALE'"></span>
+                        <svg x-show="!isSubmitting" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                        </svg>
+                        <span x-text="isSubmitting ? 'Procesando...' : 'PROCESAR VENTA'"></span>
                     </button>
 
                     <x-secondary-button
                         type="button"
                         @click="$dispatch('close-modal', { name: 'confirmation-modal' })"
-                        class="w-full justify-center"
-                    >
-                        Back
+                        class="w-full justify-center">
+                        Atras
                     </x-secondary-button>
                 </div>
             </div>
@@ -855,10 +900,10 @@
                 <!-- Header -->
                 <div class="mb-6 space-y-1.5 text-center sm:text-left border-b border-gray-200 pb-4">
                     <h3 class="text-lg font-semibold leading-none tracking-tight text-foreground">
-                        {{ __('Create New Customer') }}
+                        {{ __(''Crear nuevo cliente') }}
                     </h3>
                     <p class="text-sm text-muted-foreground">
-                        {{ __('Add a new customer to your records for this sale.') }}
+                        {{ __('Agregue un nuevo cliente a sus registros para esta venta.') }}
                     </p>
                 </div>
 
@@ -867,11 +912,10 @@
                     <div>
                         <x-form-input
                             name="new_name"
-                            label="Full Name"
+                            label="Nombre Completo"
                             x-model="newCust.name"
                             x-ref="nameInput"
-                            required
-                        />
+                            required />
                         <p x-show="errors.name" x-text="errors.name" class="text-sm font-medium text-red-600 mt-1" style="display: none;"></p>
                     </div>
 
@@ -882,50 +926,46 @@
                                 name="new_email"
                                 label="Email"
                                 type="email"
-                                x-model="newCust.email"
-                            />
+                                x-model="newCust.email" />
                             <p x-show="errors.email" x-text="errors.email" class="text-sm font-medium text-red-600 mt-1" style="display: none;"></p>
                         </div>
                         <div class="w-full sm:w-1/2">
                             <x-form-input
                                 name="new_phone"
-                                label="Phone"
-                                x-model="newCust.phone"
-                            />
+                                label="Telefono"
+                                x-model="newCust.phone" />
                             <p x-show="errors.phone" x-text="errors.phone" class="text-sm font-medium text-red-600 mt-1" style="display: none;"></p>
                         </div>
                     </div>
 
                     <!-- Address -->
                     <div class="space-y-2">
-                        <x-input-label for="new_address" :value="__('Address')" />
+                        <x-input-label for="new_address" :value="__('Direccion')" />
                         <textarea
                             id="new_address"
                             x-model="newCust.address"
                             rows="3"
                             class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                            placeholder="Full Address"
-                        ></textarea>
+                            placeholder="Dirección completa"></textarea>
                         <p x-show="errors.address" x-text="errors.address" class="text-sm font-medium text-red-600 mt-1" style="display: none;"></p>
                     </div>
 
                     <!-- Notes -->
                     <div class="space-y-2">
-                        <x-input-label for="new_notes" :value="__('Notes')" />
+                        <x-input-label for="new_notes" :value="__('Notas')" />
                         <textarea
                             id="new_notes"
                             x-model="newCust.notes"
                             rows="3"
                             class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                            placeholder="Additional notes..."
-                        ></textarea>
+                            placeholder="Notas adicionales..."></textarea>
                         <p x-show="errors.notes" x-text="errors.notes" class="text-sm font-medium text-red-600 mt-1" style="display: none;"></p>
                     </div>
 
                     <!-- Actions -->
                     <div class="mt-6 flex justify-end gap-3 border-t border-gray-200 pt-4">
                         <x-secondary-button type="button" x-on:click="$dispatch('close-modal', { name: 'customer-modal' })">
-                            {{ __('Cancel') }}
+                            {{ __('Cancelar') }}
                         </x-secondary-button>
 
                         <x-primary-button type="button" @click="save()" x-bind:disabled="loading">
@@ -935,7 +975,7 @@
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
                             </template>
-                            <span x-text="loading ? 'Saving...' : 'Save Customer'"></span>
+                            <span x-text="loading ? 'Guardando...' : 'Guardar Cliente'"></span>
                         </x-primary-button>
                     </div>
                 </div>
@@ -953,26 +993,24 @@
                     </div>
                     <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
                         <h3 class="text-lg font-semibold leading-6 text-gray-900" id="modal-title">
-                            Cancel Transaction?
+                            Cancelar transacción?
                         </h3>
                         <div class="mt-2">
                             <p class="text-sm text-gray-500">
-                                Are you sure you want to cancel? All current items and selections will be lost.
-                            </p>
+                                ¿Está seguro de que desea cancelar? Se perderán todos los artículos y selecciones actuales. </p>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 gap-2">
                 <x-danger-button @click="resetForm(); clearStorage(); $dispatch('close-modal', { name: 'cancel-modal' }); $dispatch('toast', { message: 'Transaction Cancelled', type: 'info' })" class="w-full sm:w-auto justify-center">
-                    {{ __('Yes, Cancel Transaction') }}
+                    {{ __('Sí, cancelar transacción') }}
                 </x-danger-button>
                 <button
                     type="button"
                     @click="$dispatch('close-modal', { name: 'cancel-modal' })"
-                    class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto transition-colors"
-                >
-                    {{ __('No, Return') }}
+                    class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto transition-colors">
+                    {{ __('No, Regresar') }}
                 </button>
             </div>
         </x-modal>
