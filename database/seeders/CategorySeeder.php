@@ -11,30 +11,12 @@ class CategorySeeder extends Seeder
     public function run(): void
     {
         $categories = [
-            [
-                'name' => 'Material Dasar',
-                'description' => 'Bahan bangunan utama seperti pasir, semen, batu, bata, hebel, dan besi beton.'
-            ],
-            [
-                'name' => 'Kayu & Atap',
-                'description' => 'Material kayu, triplek, kaso, serta penutup atap seperti genteng, asbes, seng, dan terpal.'
-            ],
-            [
-                'name' => 'Cat & Finishing',
-                'description' => 'Segala jenis cat (tembok/kayu/besi), thinner, pelapis anti bocor (no drop), dan lem.'
-            ],
-            [
-                'name' => 'Lantai & Dinding',
-                'description' => 'Penutup lantai dan dinding termasuk keramik, granit, plint, dan lis profil (kuku macan).'
-            ],
-            [
-                'name' => 'Pipa & Listrik',
-                'description' => 'Instalasi air (pipa PVC, kran, toren) dan instalasi listrik (kabel, lampu, saklar).'
-            ],
-            [
-                'name' => 'Paku & Alat',
-                'description' => 'Barang kecil/receh seperti paku, baut, sekrup, engsel, gembok, dan peralatan tukang.'
-            ],
+            ['name' => 'Electrónica e Informática', 'description' => 'Computadoras, tablets, celulares, accesorios y periféricos importados.'],
+            ['name' => 'Electrodomésticos', 'description' => 'Refrigeradores, lavadoras, microondas, licuadoras y pequeños aparatos del hogar.'],
+            ['name' => 'Ropa y Textiles', 'description' => 'Prendas de vestir, telas, ropa deportiva y accesorios de moda importados.'],
+            ['name' => 'Herramientas y Ferretería', 'description' => 'Herramientas eléctricas y manuales, tornillos, tuberías y materiales de construcción.'],
+            ['name' => 'Alimentos y Bebidas', 'description' => 'Productos alimenticios envasados, conservas, bebidas y condimentos importados.'],
+            ['name' => 'Cosméticos y Cuidado Personal', 'description' => 'Perfumes, cremas, shampoo, maquillaje y artículos de higiene personal.'],
         ];
 
         foreach ($categories as $cat) {

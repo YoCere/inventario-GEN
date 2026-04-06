@@ -11,16 +11,16 @@ class UnitSeeder extends Seeder
     public function run(): void
     {
         $units = [
-            ['name' => 'Pcs', 'symbol' => 'pcs'],       // Satuan umum (Alat, Sambungan Pipa, Kuas)
-            ['name' => 'Kilogram', 'symbol' => 'kg'],  // Paku, Kawat, Cat Kiloan
-            ['name' => 'Meter', 'symbol' => 'm'],      // Kabel, Talang, Plastik Cor
-            ['name' => 'Batang', 'symbol' => 'btg'],  // Pipa, Besi Beton, Baja Ringan, Lis
-            ['name' => 'Lembar', 'symbol' => 'lbr'],   // Triplek, Seng, Asbes, GRC
-            ['name' => 'Sak', 'symbol' => 'sak'],      // Khusus Semen
-            ['name' => 'Dus', 'symbol' => 'dus'],      // Keramik, Granit, Paku (Grosir)
-            ['name' => 'Roll', 'symbol' => 'roll'],    // Kabel Besar, Selang, Terpal Gulung
-            ['name' => 'Rit', 'symbol' => 'rit'],      // Pasir, Batu (Muatan Truk)
-            ['name' => 'Liter', 'symbol' => 'ltr'],    // Thinner, Cat Minyak
+            ['name' => 'Pieza',     'symbol' => 'pza'],
+            ['name' => 'Caja',      'symbol' => 'cja'],
+            ['name' => 'Kilogramo', 'symbol' => 'kg'],
+            ['name' => 'Litro',     'symbol' => 'ltr'],
+            ['name' => 'Metro',     'symbol' => 'm'],
+            ['name' => 'Par',       'symbol' => 'par'],
+            ['name' => 'Rollo',     'symbol' => 'roll'],
+            ['name' => 'Bolsa',     'symbol' => 'bol'],
+            ['name' => 'Docena',    'symbol' => 'doc'],
+            ['name' => 'Pallet',    'symbol' => 'plt'],
         ];
 
         foreach ($units as $unit) {
