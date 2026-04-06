@@ -900,7 +900,7 @@
                 <!-- Header -->
                 <div class="mb-6 space-y-1.5 text-center sm:text-left border-b border-gray-200 pb-4">
                     <h3 class="text-lg font-semibold leading-none tracking-tight text-foreground">
-                        {{ __(''Crear nuevo cliente') }}
+                        {{ __('Crear nuevo cliente') }}
                     </h3>
                     <p class="text-sm text-muted-foreground">
                         {{ __('Agregue un nuevo cliente a sus registros para esta venta.') }}
