@@ -28,7 +28,12 @@ RUN php artisan storage:link || true
 
 EXPOSE 8080
 
-CMD php artisan migrate --force && \
+CMD echo "Esperando MySQL..." && \
+    until php artisan migrate --force 2>&1; do \
+        echo "MySQL no listo, reintentando en 5s..."; \
+        sleep 5; \
+    done && \
     php artisan optimize:clear && \
     php artisan optimize && \
+    echo "Sirviendo en puerto ${PORT:-8080}" && \
     php artisan serve --host=0.0.0.0 --port=${PORT:-8080}
