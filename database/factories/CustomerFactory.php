@@ -17,11 +17,11 @@ class CustomerFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => fake()->name(),
-            'email' => fake()->unique()->safeEmail(),
-            'phone' => fake()->phoneNumber(),
-            'address' => fake()->address(),
-            'notes' => fake()->optional(0.3)->sentence(), // 30% chance of having notes
+            'name' => $this->faker->name(),
+            'email' => $this->faker->unique()->safeEmail(),
+            'phone' => $this->faker->numerify('7########'),
+            'address' => $this->faker->city() . ', Bolivia',
+            'notes' => $this->faker->optional(0.3)->sentence(),
         ];
     }
 }
