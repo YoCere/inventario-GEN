@@ -15,7 +15,7 @@
                 <div class="relative z-20 mb-2">
                     <select
                         x-ref="productSelect"
-                        placeholder="Search Products (Name or SKU) [F1]..."
+                        placeholder="Buscar productos (Nombre o SKU) [F1]..."
                         autocomplete="off"></select>
                 </div>
 
@@ -28,8 +28,8 @@
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
                                     <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Precio</th>
                                     <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
-                                    <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Unit</th>
-                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Disc/Unit</th>
+                                    <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Unidad</th>
+                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Desc. por unidad</th>
                                     <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
                                     <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Accion</th>
                                 </tr>
@@ -131,7 +131,7 @@
                             <div x-show="!selectedCustomer">
                                 <select
                                     x-ref="customerSelect"
-                                    placeholder="Search Customer [F2]..."
+                                    placeholder="Buscar cliente [F2]..."
                                     autocomplete="off"></select>
                             </div>
                         </div>
@@ -272,7 +272,7 @@
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
                         </template>
-                        <span x-text="isSubmitting ? 'Processing...' : 'PAGAR (F3)'"></span>
+                        <span x-text="isSubmitting ? 'Procesando...' : 'PAGAR (F3)'"></span>
                     </button>
                 </div>
             </div>
@@ -491,12 +491,12 @@
                             if (existing.quantity < product.quantity) {
                                 existing.quantity++;
                                 this.$dispatch('toast', {
-                                    message: 'Product already exists. Quantity updated.',
+                                    message: 'El producto ya existe. Cantidad actualizada.',
                                     type: 'info'
                                 });
                             } else {
                                 this.$dispatch('toast', {
-                                    message: 'Insufficient stock!',
+                                    message: '¡Stock insuficiente!',
                                     type: 'error'
                                 });
                             }
@@ -513,12 +513,12 @@
                                     discount: 0
                                 });
                                 this.$dispatch('toast', {
-                                    message: 'Product "' + product.name + '" added to cart.',
+                                    message: 'Producto "' + product.name + '" agregado al carrito.',
                                     type: 'success'
                                 });
                             } else {
                                 this.$dispatch('toast', {
-                                    message: 'Out of Stock!',
+                                    message: '¡Agotado!',
                                     type: 'error'
                                 });
                             }
@@ -530,7 +530,7 @@
                         if (item.quantity > item.max_stock) {
                             item.quantity = item.max_stock;
                             this.$dispatch('toast', {
-                                message: 'Maksimum stok tercapai',
+                                message: 'Máximo de stock alcanzado',
                                 type: 'warning'
                             });
                         }
@@ -541,7 +541,7 @@
                         const removedItem = this.cart[index];
                         this.cart.splice(index, 1);
                         this.$dispatch('toast', {
-                            message: 'Product "' + removedItem.name + '" removed from cart.',
+                            message: 'Producto "' + removedItem.name + '" eliminado del carrito.',
                             type: 'info'
                         });
                     },
