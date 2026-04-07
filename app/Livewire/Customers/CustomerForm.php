@@ -73,10 +73,10 @@ class CustomerForm extends Component
 
             if ($this->isEditing && $this->customer) {
                 $service->updateCustomer($this->customer, $customerData);
-                $message = 'Customer updated successfully.';
+                $message = 'Cliente actualizado correctamente.';
             } else {
                 $service->createCustomer($customerData);
-                $message = 'Customer created successfully.';
+                $message = 'Cliente creado correctamente.';
             }
 
             $this->dispatch('close-modal', name: 'customer-modal');

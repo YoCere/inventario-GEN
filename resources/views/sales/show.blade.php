@@ -1,16 +1,16 @@
-<x-app-layout title="Sale Details">
+<x-app-layout title="Detalles de Venta">
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-foreground leading-tight">
-                {{ __('Sale Details') }} #{{ $sale->invoice_number ?: $sale->id }}
+                {{ __('Detalles de Venta') }} #{{ $sale->invoice_number ?: $sale->id }}
             </h2>
             <div class="flex items-center gap-2">
                 <x-secondary-button href="{{ route('sales.index') }}">
-                    &larr; {{ __('Back to List') }}
+                    &larr; {{ __('Volver al Listado') }}
                 </x-secondary-button>
                 <x-primary-button href="{{ route('sales.print', $sale) }}" target="_blank">
                     <x-heroicon-o-printer class="w-4 h-4 mr-2" />
-                    {{ __('Print Invoice') }}
+                    {{ __('Imprimir Factura') }}
                 </x-primary-button>
             </div>
         </div>
@@ -18,45 +18,45 @@
 
     <div class="py-4">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-            <!-- Main Info Card -->
+            <!-- Tarjeta de Información Principal -->
             <div class="bg-white shadow-sm sm:rounded-lg overflow-hidden border border-gray-200">
                 <div class="p-6">
-                    <!-- Header Info -->
+                    <!-- Información de Cabecera -->
                     <div class="flex items-start justify-between border-b border-gray-100 pb-4 mb-6">
                         <div>
-                            <h3 class="text-lg font-medium text-gray-900">{{ __('Sale Information') }}</h3>
-                            <p class="text-sm text-gray-500">{{ __('Details of the sales transaction') }}</p>
+                            <h3 class="text-lg font-medium text-gray-900">{{ __('Información de la Venta') }}</h3>
+                            <p class="text-sm text-gray-500">{{ __('Detalles de la transacción de venta') }}</p>
                         </div>
                         <div class="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-xs font-medium border border-slate-200">
                             ID: #{{ $sale->id }}
                         </div>
                     </div>
 
-                    <!-- Content Grid -->
+                    <!-- Cuadrícula de Contenido -->
                     <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                        <!-- Customer -->
-                        <x-detail-item label="Customer" :value="$sale->customer->name ?? 'Guest'">
+                        <!-- Cliente -->
+                        <x-detail-item label="Cliente" :value="$sale->customer->name ?? 'Invitado'">
                             <x-heroicon-o-user class="w-4 h-4 text-gray-400" />
                         </x-detail-item>
 
-                        <!-- Invoice -->
-                        <x-detail-item label="Invoice Number" :value="$sale->invoice_number ?? '-'">
+                        <!-- Factura -->
+                        <x-detail-item label="Número de Factura" :value="$sale->invoice_number ?? '-'">
                             <x-heroicon-o-document-text class="w-4 h-4 text-gray-400" />
                         </x-detail-item>
 
-                        <!-- Sale Date -->
-                        <x-detail-item label="Sale Date" :value="$sale->sale_date->format('d M Y')">
+                        <!-- Fecha de Venta -->
+                        <x-detail-item label="Fecha de Venta" :value="$sale->sale_date->format('d M Y')">
                             <x-heroicon-o-calendar class="w-4 h-4 text-gray-400" />
                         </x-detail-item>
 
-                        <!-- Payment Method -->
-                        <x-detail-item label="Payment Method" :value="$sale->payment_method->label()">
+                        <!-- Método de Pago -->
+                        <x-detail-item label="Método de Pago" :value="$sale->payment_method->label()">
                             <x-heroicon-o-credit-card class="w-4 h-4 text-gray-400" />
                         </x-detail-item>
 
-                        <!-- Status -->
+                        <!-- Estado -->
                         <div>
-                            <label class="text-sm font-medium leading-none text-gray-500">Status</label>
+                            <label class="text-sm font-medium leading-none text-gray-500">Estado</label>
                             <div class="mt-1">
                                 <span class="px-2.5 py-0.5 rounded-full text-xs font-medium border {{ $sale->status->color() }}">
                                     {{ $sale->status->label() }}
@@ -64,37 +64,35 @@
                             </div>
                         </div>
 
-
-
-                        <!-- Created By -->
-                        <x-detail-item label="Created By" :value="$sale->creator->name ?? 'Unknown'">
+                        <!-- Creado Por -->
+                        <x-detail-item label="Creado Por" :value="$sale->creator->name ?? 'Desconocido'">
                             <x-heroicon-o-user class="w-4 h-4 text-gray-400" />
                         </x-detail-item>
                     </div>
 
-                    <!-- Notes -->
+                    <!-- Notas -->
                     <div class="mt-6 pt-6 border-t border-gray-100">
                         <div class="space-y-1">
                             <label class="text-sm font-medium leading-none text-gray-500">
-                                Notes
+                                Notas
                             </label>
                             <div class="bg-gray-50 p-3 rounded-md border border-gray-100">
-                                <p class="text-sm text-slate-700 italic leading-relaxed">{{ $sale->notes ?: 'No additional notes.' }}</p>
+                                <p class="text-sm text-slate-700 italic leading-relaxed">{{ $sale->notes ?: 'Sin notas adicionales.' }}</p>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Items Table Section -->
+                    <!-- Sección de Tabla de Productos -->
                     <div class="mt-6 border-t overflow-x-auto">
                         <table class="w-full text-sm text-left">
                             <thead class="text-xs text-gray-700 uppercase bg-gray-50">
                                 <tr>
-                                    <th class="px-6 py-3">Code</th>
-                                    <th class="px-6 py-3">Product</th>
-                                    <th class="px-6 py-3">Unit</th>
-                                    <th class="px-6 py-3 text-center">Qty</th>
-                                    <th class="px-6 py-3 text-right">Price</th>
-                                    <th class="px-6 py-3 text-right">Discount</th>
+                                    <th class="px-6 py-3">Código</th>
+                                    <th class="px-6 py-3">Producto</th>
+                                    <th class="px-6 py-3">Unidad</th>
+                                    <th class="px-6 py-3 text-center">Cant.</th>
+                                    <th class="px-6 py-3 text-right">Precio</th>
+                                    <th class="px-6 py-3 text-right">Descuento</th>
                                     <th class="px-6 py-3 text-right">Subtotal</th>
                                 </tr>
                             </thead>
@@ -134,7 +132,7 @@
                                 </tr>
                                 @if($sale->total_discount > 0)
                                     <tr>
-                                        <td colspan="6" class="px-6 py-4 text-right text-red-600">Total Discount (Items)</td>
+                                        <td colspan="6" class="px-6 py-4 text-right text-red-600">Total Descuentos (Productos)</td>
                                         <td class="px-6 py-4 text-right text-red-600">
                                             - @money($sale->total_discount - $sale->global_discount)
                                         </td>
@@ -142,7 +140,7 @@
                                 @endif
                                 @if($sale->global_discount > 0)
                                     <tr>
-                                        <td colspan="6" class="px-6 py-4 text-right text-red-600">Global Discount (Transaction)</td>
+                                        <td colspan="6" class="px-6 py-4 text-right text-red-600">Descuento Global (Transacción)</td>
                                         <td class="px-6 py-4 text-right text-red-600">
                                             - @money($sale->global_discount)
                                         </td>
@@ -155,13 +153,13 @@
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td colspan="6" class="px-6 py-4 text-right text-gray-600">Cash Received</td>
+                                    <td colspan="6" class="px-6 py-4 text-right text-gray-600">Efectivo Recibido</td>
                                     <td class="px-6 py-4 text-right text-gray-800">
                                         @money($sale->cash_received)
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td colspan="6" class="px-6 py-4 text-right text-gray-600">Change</td>
+                                    <td colspan="6" class="px-6 py-4 text-right text-gray-600">Cambio</td>
                                     <td class="px-6 py-4 text-right text-green-600">
                                         @money($sale->change)
                                     </td>
@@ -172,7 +170,7 @@
                 </div>
             </div>
 
-            <!-- Action Buttons Workflow -->
+            <!-- Botones de Acción - Flujo de Trabajo -->
             <div x-data="{
                 actionUrl: '',
                 actionMethod: '',
@@ -193,21 +191,21 @@
             }" class="flex flex-col sm:flex-row justify-end gap-4">
 
                 @if($sale->status === \App\Enums\SaleStatus::PENDING)
-                    {{-- Complete / Pay Action --}}
+                    {{-- Acción Completar / Pagar --}}
                     <x-primary-button
                         class="!bg-green-600 hover:!bg-green-700 focus:!ring-green-500"
-                        @click="confirmAction('{{ route('sales.complete', $sale) }}', 'PATCH', 'Complete Sale', 'Mark this sale as Completed? This confirms payment has been received.', 'Complete Sale', '!bg-green-600 hover:!bg-green-700 focus:!ring-green-500')"
+                        @click="confirmAction('{{ route('sales.complete', $sale) }}', 'PATCH', 'Completar Venta', '¿Marcar esta venta como Completada? Esto confirma que se ha recibido el pago.', 'Completar Venta', '!bg-green-600 hover:!bg-green-700 focus:!ring-green-500')"
                     >
-                        {{ __('Complete Sale') }}
+                        {{ __('Completar Venta') }}
                     </x-primary-button>
 
-                    {{-- Cancel Pending Action (Modal) --}}
+                    {{-- Acción Cancelar Pendiente (Modal) --}}
                     <div x-data="{ cancelOpen: false }">
                         <x-danger-button @click="cancelOpen = true">
-                            {{ __('Cancel Sale') }}
+                            {{ __('Cancelar Venta') }}
                         </x-danger-button>
 
-                        <!-- Cancel Modal -->
+                        <!-- Modal de Cancelación -->
                         <div x-show="cancelOpen"
                              style="display: none;"
                              x-transition.opacity
@@ -218,10 +216,10 @@
                                  class="relative bg-white rounded-lg max-w-md w-full p-6 shadow-xl text-left">
 
                                 <h3 class="text-lg font-medium text-gray-900 mb-2">
-                                    {{ __('Cancel Pending Sale') }}
+                                    {{ __('Cancelar Venta Pendiente') }}
                                 </h3>
                                 <p class="text-sm text-gray-500 mb-4">
-                                    {{ __('Are you sure you want to cancel this pending sale? Please provide a reason.') }}
+                                    {{ __('¿Está seguro de que desea cancelar esta venta pendiente? Por favor, proporcione un motivo.') }}
                                 </p>
 
                                 <form action="{{ route('sales.destroy', $sale) }}" method="POST">
@@ -229,23 +227,23 @@
                                     @method('DELETE')
 
                                     <div class="mb-4">
-                                        <x-input-label for="reason" :value="__('Reason')" />
+                                        <x-input-label for="reason" :value="__('Motivo')" />
                                         <textarea
                                             name="reason"
                                             id="reason"
                                             rows="3"
                                             class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                                            placeholder="Customer changed mind..."
+                                            placeholder="El cliente cambió de opinión..."
                                             required
                                         ></textarea>
                                     </div>
 
                                     <div class="mt-6 flex justify-end gap-3">
                                         <x-secondary-button type="button" @click="cancelOpen = false">
-                                            {{ __('Back') }}
+                                            {{ __('Volver') }}
                                         </x-secondary-button>
                                         <x-danger-button type="submit">
-                                            {{ __('Cancel Sale') }}
+                                            {{ __('Cancelar Venta') }}
                                         </x-danger-button>
                                     </div>
                                 </form>
@@ -255,26 +253,26 @@
                 @endif
 
                 @if($sale->status === \App\Enums\SaleStatus::COMPLETED)
-                    {{-- Cancel Action --}}
+                    {{-- Acción Cancelar --}}
                     <x-secondary-button
                         class="text-red-600 hover:bg-red-50 border-red-200"
-                        @click="confirmAction('{{ route('sales.destroy', $sale) }}', 'DELETE', 'Cancel Sale', 'Are you sure you want to cancel (VOID) this sale? Stocks will be returned.', 'Yes, Cancel Sale', '!bg-red-600 hover:!bg-red-700 focus:!ring-red-500')"
+                        @click="confirmAction('{{ route('sales.destroy', $sale) }}', 'DELETE', 'Cancelar Venta', '¿Está seguro de que desea cancelar (ANULAR) esta venta? Se devolverá el stock.', 'Sí, Cancelar Venta', '!bg-red-600 hover:!bg-red-700 focus:!ring-red-500')"
                     >
-                        {{ __('Cancel Sale') }}
+                        {{ __('Cancelar Venta') }}
                     </x-secondary-button>
                 @endif
 
                 @if($sale->status === \App\Enums\SaleStatus::CANCELLED)
-                    {{-- Restore Action --}}
+                    {{-- Acción Restaurar --}}
                     <x-secondary-button
                         class="bg-gray-800 text-white hover:bg-gray-700 focus:ring-gray-500"
-                        @click="confirmAction('{{ route('sales.restore', $sale) }}', 'PATCH', 'Restore Sale', 'Restore this sale to Pending status? You can then complete it again.', 'Restore to Pending', '!bg-gray-800 hover:!bg-gray-700 text-white')"
+                        @click="confirmAction('{{ route('sales.restore', $sale) }}', 'PATCH', 'Restaurar Venta', '¿Restaurar esta venta a estado Pendiente? Luego podrá completarla nuevamente.', 'Restaurar a Pendiente', '!bg-gray-800 hover:!bg-gray-700 text-white')"
                     >
-                        {{ __('Restore to Pending') }}
+                        {{ __('Restaurar a Pendiente') }}
                     </x-secondary-button>
                 @endif
 
-                <!-- Shared Confirmation Modal -->
+                <!-- Modal de Confirmación Compartido -->
                 <x-modal name="confirmation-modal">
                     <div class="p-6" x-data="{ submitting: false }">
                         <h2 class="text-lg font-medium text-gray-900" x-text="modalTitle"></h2>
@@ -283,7 +281,7 @@
 
                         <div class="mt-6 flex justify-end">
                             <x-secondary-button x-on:click="$dispatch('close-modal', { name: 'confirmation-modal' })" x-bind:disabled="submitting">
-                                {{ __('Back') }}
+                                {{ __('Volver') }}
                             </x-secondary-button>
 
                             <form :action="actionUrl" method="POST" class="ml-3" @submit="submitting = true">
