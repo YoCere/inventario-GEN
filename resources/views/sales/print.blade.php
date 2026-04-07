@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Faktur #{{ $sale->invoice_number }}</title>
+    <title>Factura N.º #{{ $sale->invoice_number }}</title>
     <style>
         @media print {
             @page {
@@ -33,7 +33,7 @@
             border: 0px solid #000;
         }
 
-        /* HEADER GRID */
+        /* CABECERA EN CUADRÍCULA */
         .header {
             display: flex;
             width: 100%;
@@ -118,7 +118,7 @@
             min-width: 150px;
         }
 
-        /* INVOICE NO ROW */
+        /* LÍNEA DEL NÚMERO DE FACTURA */
         .invoice-row {
             margin-top: 2px;
             margin-bottom: 5px;
@@ -139,7 +139,7 @@
              display: inline-block;
         }
 
-        /* TABLE */
+        /* TABLA */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -166,7 +166,7 @@
             padding: 4px 5px;
             font-size: 8pt;
             vertical-align: middle;
-            height: 20px; /* Minimum height for lines */
+            height: 20px; /* Altura mínima para las líneas */
         }
 
         .col-name { width: 43%; text-align: left; }
@@ -176,7 +176,7 @@
         .col-disc { width: 15%; text-align: right; }
         .col-total { width: 18%; text-align: right; }
 
-        /* FOOTER GRID */
+        /* PIE DE PÁGINA EN CUADRÍCULA */
         .footer {
             display: flex;
             margin-top: 5px;
@@ -239,45 +239,45 @@
 <body>
 
     <div class="container">
-        <!-- Header -->
+        <!-- Cabecera -->
         <div class="header">
             <div class="header-left">
                 <div class="logo-box">TB</div>
                 <div class="company-info">
                     <div class="company-name">{{ \App\Models\Setting::get('store_name', config('app.name')) }}</div>
-                    <div class="company-desc">Menjual: Bahan Bangunan, Alat Teknik, Cat, Dll.</div>
+                    <div class="company-desc">Venta de: Materiales de Construcción, Herramientas Técnicas, Pintura, etc.</div>
                     <div class="company-address">
-                        {{ \App\Models\Setting::get('store_address', 'Jl. Default No. 1') }}<br>
-                        HP. {{ \App\Models\Setting::get('store_phone', '-') }}
+                        {{ \App\Models\Setting::get('store_address', 'Calle Predeterminada N.º 1') }}<br>
+                        Tel. {{ \App\Models\Setting::get('store_phone', '-') }}
                     </div>
                 </div>
             </div>
             <div class="header-right">
                 <div class="header-row">
-                    <span>{{ $sale->sale_date->locale('id')->isoFormat('dddd, D MMMM Y') }}</span>
+                    <span>{{ $sale->sale_date->locale('es')->isoFormat('dddd, D MMMM Y') }}</span>
                 </div>
                 <div class="header-row">
-                    <span class="header-label">Kepada Yth,</span>
-                    <span class="header-value">{{ $sale->customer->name ?? 'Guest' }}</span>
+                    <span class="header-label">A quien corresponda,</span>
+                    <span class="header-value">{{ $sale->customer->name ?? 'Invitado' }}</span>
                 </div>
             </div>
         </div>
 
-        <!-- Invoice No Line -->
+        <!-- Línea del Número de Factura -->
         <div class="invoice-row">
-            <span class="invoice-label">FAKTUR / BON / KONTAN No.</span>
+            <span class="invoice-label">FACTURA / COMPROBANTE / CONTADO N.º</span>
             <span class="invoice-value">{{ $sale->invoice_number }}</span>
         </div>
 
-        <!-- Table -->
+        <!-- Tabla -->
         <table>
             <thead>
                 <tr>
-                    <th class="col-name">Nama Barang</th>
-                    <th class="col-qty">Qty</th>
-                    <th class="col-price">Harga</th>
-                    <th class="col-disc">Diskon</th>
-                    <th class="col-total">Jumlah</th>
+                    <th class="col-name">Nombre del Artículo</th>
+                    <th class="col-qty">Cant.</th>
+                    <th class="col-price">Precio</th>
+                    <th class="col-disc">Descuento</th>
+                    <th class="col-total">Importe</th>
                 </tr>
             </thead>
             <tbody>
@@ -294,7 +294,7 @@
                 </tr>
                 @endforeach
 
-                {{-- Fill empty rows to maintain size --}}
+                {{-- Llenar filas vacías para mantener el tamaño --}}
                 @for($i = 0; $i < max(0, 8 - count($sale->items)); $i++)
                 <tr>
                     <td>&nbsp;</td>
@@ -307,17 +307,17 @@
             </tbody>
         </table>
 
-        <!-- Footer -->
+        <!-- Pie de página -->
         <div class="footer">
             <div class="footer-left">
-                <div>Tanda Terima</div>
+                <div>Recibí Conforme</div>
                 <div class="signature-space"></div>
                 <div>( .................................... )</div>
             </div>
 
             <div class="footer-center">
                 <div class="disclaimer-box">
-                    Mohon diperiksa bahwa barang dalam keadaan baik pada waktu diterima, barang yang sudah dibeli tidak dapat dikembalikan
+                    Por favor, compruebe que la mercancía se encuentra en buen estado en el momento de la recepción; los artículos ya comprados no pueden ser devueltos.
                 </div>
             </div>
 
@@ -328,7 +328,7 @@
                 </div>
                 @if($sale->global_discount > 0)
                 <div class="amount-row">
-                    <span class="amount-label">Diskon Extra</span>
+                    <span class="amount-label">Descuento Extra</span>
                     <span class="amount-value">- @money($sale->global_discount)</span>
                 </div>
                 @endif
@@ -337,11 +337,11 @@
                     <span class="amount-value">@money($sale->total)</span>
                 </div>
                 <div class="amount-row">
-                    <span class="amount-label">Uang Diterima</span>
+                    <span class="amount-label">Dinero Recibido</span>
                     <span class="amount-value">@money($sale->cash_received)</span>
                 </div>
                 <div class="amount-row">
-                    <span class="amount-label">Kembalian</span>
+                    <span class="amount-label">Cambio</span>
                     <span class="amount-value">@money($sale->change)</span>
                 </div>
             </div>
