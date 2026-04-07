@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Laporan Arus Kas - {{ $storeName }}</title>
+    <title>Informe de Flujo de Caja - {{ $storeName }}</title>
     <style>
         body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 12px; line-height: 1.5; color: #333; margin: 0; padding: 40px; }
         .header-container { border-bottom: 2px solid #444; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-start; }
@@ -21,9 +21,9 @@
         .text-center { text-align: center; }
 
         .badge { display: inline-block; font-size: 10px; font-weight: bold; text-transform: uppercase; }
-        /* Using strong colors that print well */
-        .badge-income { color: #15803d; } /* Green-700 */
-        .badge-expense { color: #b91c1c; } /* Red-700 */
+        /* Usando colores fuertes que se imprimen bien */
+        .badge-income { color: #15803d; } /* Verde-700 */
+        .badge-expense { color: #b91c1c; } /* Rojo-700 */
 
         .summary-section { display: flex; justify-content: flex-end; margin-top: 20px; page-break-inside: avoid; }
         .summary-table { width: 40%; border: none; }
@@ -37,13 +37,13 @@
         @media print {
             body { padding: 0; margin: 0; }
             .no-print { display: none !important; }
-            /* Essential resets */
+            /* Restablecimientos esenciales */
             * { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: transparent !important; box-shadow: none !important; text-shadow: none !important; }
 
-            /* Force black text generally */
+            /* Forzar texto negro en general */
             body, h1, p, table, th, td { color: #000; }
 
-            /* Allow specific colors for badges */
+            /* Permitir colores específicos para las etiquetas */
             .badge-income { color: #15803d !important; }
             .badge-expense { color: #b91c1c !important; }
 
@@ -59,7 +59,7 @@
 <body>
 
     <div class="no-print" style="text-align: right; margin-bottom: 20px;">
-        <button onclick="window.print()" class="btn-print">🖨️ Print Report</button>
+        <button onclick="window.print()" class="btn-print">🖨️ Imprimir Informe</button>
     </div>
 
     <div class="header-container">
@@ -67,30 +67,30 @@
             <h1>{{ $storeName }}</h1>
             <p>{{ $storeAddress }}</p>
             @if($storePhone !== '-')
-                <p>Telp: {{ $storePhone }}</p>
+                <p>Teléfono: {{ $storePhone }}</p>
             @endif
         </div>
         <div class="report-meta">
-            <div class="report-title">Cash Flow Report</div>
+            <div class="report-title">Informe de Flujo de Caja</div>
             <div class="meta-item">
-                Period: {{ $periodText }}
+                Período: {{ $periodText }}
             </div>
             <div class="meta-item">
-                Printed: {{ now()->setTimezone('Asia/Jakarta')->translatedFormat('d F Y, H:i') }}
+                Impreso: {{ now()->setTimezone('Asia/Jakarta')->translatedFormat('d F Y, H:i') }}
             </div>
-            <div class="meta-item">By: {{ auth()->user()->name ?? 'Admin' }}</div>
+            <div class="meta-item">Por: {{ auth()->user()->name ?? 'Administrador' }}</div>
         </div>
     </div>
 
     <table>
         <thead>
             <tr>
-                <th width="5%" class="text-center">No</th>
-                <th width="12%">Date</th>
-                <th width="10%">Type</th>
-                <th width="18%">Category</th>
-                <th width="40%">Description</th>
-                <th width="15%" class="text-right">Amount</th>
+                <th width="5%" class="text-center">N.º</th>
+                <th width="12%">Fecha</th>
+                <th width="10%">Tipo</th>
+                <th width="18%">Categoría</th>
+                <th width="40%">Descripción</th>
+                <th width="15%" class="text-right">Monto</th>
             </tr>
         </thead>
         <tbody>
@@ -101,9 +101,9 @@
 
                     <td>
                         @if($cf->category->type === \App\Enums\FinanceCategoryType::Income)
-                            <span class="badge badge-income">INCOME</span>
+                            <span class="badge badge-income">INGRESO</span>
                         @else
-                            <span class="badge badge-expense">EXPENSE</span>
+                            <span class="badge badge-expense">GASTO</span>
                         @endif
                     </td>
 
@@ -115,11 +115,11 @@
                         {{ $cf->description }}
                         @if($cf->external_reference)
                             <div style="font-size: 10px; color: #888; margin-top: 2px;">
-                                Ref: {{ $cf->external_reference }}
+                                Ref.: {{ $cf->external_reference }}
                             </div>
                         @else
                              <div style="font-size: 10px; color: #aaa; margin-top: 2px;">
-                                Ref: {{ $cf->code }}
+                                Ref.: {{ $cf->code }}
                             </div>
                         @endif
                     </td>
@@ -131,7 +131,7 @@
             @empty
                 <tr>
                     <td colspan="6" class="text-center" style="padding: 30px; color: #888;">
-                        No transactions selected.
+                        No se seleccionaron transacciones.
                     </td>
                 </tr>
             @endforelse
@@ -141,19 +141,19 @@
     <div class="summary-section">
         <table class="summary-table">
             <tr>
-                <td class="text-right" style="color: #666;">Opening Balance ({{ \Carbon\Carbon::parse($openingBalanceDate)->format('d M Y') }})</td>
+                <td class="text-right" style="color: #666;">Saldo Inicial ({{ \Carbon\Carbon::parse($openingBalanceDate)->format('d M Y') }})</td>
                 <td class="text-right">{{ number_format($openingBalanceAmount, 0, ',', '.') }}</td>
             </tr>
             <tr>
-                <td class="text-right" style="color: #666;">Total Income</td>
+                <td class="text-right" style="color: #666;">Total de Ingresos</td>
                 <td class="text-right" style="color: #065f46;">+ {{ number_format($totalIncome, 0, ',', '.') }}</td>
             </tr>
             <tr>
-                <td class="text-right" style="color: #666;">Total Expense</td>
+                <td class="text-right" style="color: #666;">Total de Gastos</td>
                 <td class="text-right" style="color: #991b1b;">- {{ number_format($totalExpense, 0, ',', '.') }}</td>
             </tr>
             <tr class="summary-row-total">
-                <td class="text-right">Estimated Final Balance</td>
+                <td class="text-right">Saldo Final Estimado</td>
                 <td class="text-right">Rp {{ number_format($estimatedFinalBalance, 0, ',', '.') }}</td>
             </tr>
         </table>
@@ -161,19 +161,19 @@
 
     <div class="signature-area">
         <div class="signature-box">
-            <div>Created By</div>
+            <div>Creado por</div>
             <div class="signature-line"></div>
-            <div style="font-size: 10px; color: #666; margin-top: 5px;">(Finance Admin)</div>
+            <div style="font-size: 10px; color: #666; margin-top: 5px;">(Administrador Financiero)</div>
         </div>
         <div class="signature-box">
-            <div>Checked By</div>
+            <div>Revisado por</div>
             <div class="signature-line"></div>
-            <div style="font-size: 10px; color: #666; margin-top: 5px;">(Ops Manager)</div>
+            <div style="font-size: 10px; color: #666; margin-top: 5px;">(Gerente de Operaciones)</div>
         </div>
         <div class="signature-box">
-            <div>Approved By</div>
+            <div>Aprobado por</div>
             <div class="signature-line"></div>
-            <div style="font-size: 10px; color: #666; margin-top: 5px;">(Store Owner)</div>
+            <div style="font-size: 10px; color: #666; margin-top: 5px;">(Propietario de la Tienda)</div>
         </div>
     </div>
 
