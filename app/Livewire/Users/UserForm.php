@@ -30,18 +30,19 @@ class UserForm extends Component
         ];
     }
 
-    #[On('open-modal')]
-    public function handleOpenModal($name): void
-    {
-        if ($name === 'user-form-modal' && !$this->isEditing) {
-            $this->create(); // Ensure we reset if opening for create
-        }
-    }
-
+    #[On('create-user')]  // ← AGREGAR ESTO
     public function create(): void
     {
         $this->reset(['user', 'isEditing', 'name', 'username', 'email', 'password', 'password_confirmation']);
         $this->dispatch('open-modal', name: 'user-form-modal');
+    }
+
+    #[On('open-modal')]
+    public function handleOpenModal($name): void
+    {
+        if ($name === 'user-form-modal' && !$this->isEditing) {
+            $this->create();
+        }
     }
 
     #[On('edit-user')]
@@ -67,23 +68,22 @@ class UserForm extends Component
             name: $this->name,
             username: $this->username,
             email: $this->email,
-            password: $this->password ?: null, // Pass null if empty in edit mode
+            password: $this->password ?: null,
         );
 
         try {
             if ($this->isEditing && $this->user) {
                 $service->updateUser($this->user, $data);
-                $message = 'User updated successfully.';
+                $message = 'Usuario actualizado correctamente.';
             } else {
                 $service->createUser($data);
-                $message = 'User created successfully.';
+                $message = 'Usuario creado correctamente.';
             }
 
             $this->dispatch('close-modal', name: 'user-form-modal');
             $this->dispatch('pg:eventRefresh-user-table');
             $this->dispatch('toast', message: $message, type: 'success');
 
-            // Reset after save
             $this->reset(['user', 'isEditing', 'name', 'username', 'email', 'password', 'password_confirmation']);
 
         } catch (\Exception $e) {

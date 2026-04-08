@@ -21,4 +21,8 @@ class UserDetail extends Component
     {
         return view('livewire.users.user-detail');
     }
+    public function closeModal()
+    {
+        $this->user = null;
+    }
 }
