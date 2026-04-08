@@ -77,10 +77,10 @@ class SupplierForm extends Component
 
             if ($this->isEditing && $this->supplier) {
                 $service->updateSupplier($this->supplier, $supplierData);
-                $message = 'Supplier updated successfully.';
+                $message = 'Proveedor actualizado correctamente.';
             } else {
                 $service->createSupplier($supplierData);
-                $message = 'Supplier created successfully.';
+                $message = 'Proveedor creado correctamente.';
             }
 
             $this->dispatch('close-modal', name: 'supplier-modal');
