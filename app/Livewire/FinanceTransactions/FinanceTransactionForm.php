@@ -18,7 +18,7 @@ class FinanceTransactionForm extends Component
     public bool $isEditing = false;
 
     public $transaction_date;
-    public $type = 'expense'; // Default to expense
+    public $type = 'expense'; // Predeterminado a gasto
     public $finance_category_id;
     public $amount;
     public $description;
@@ -47,7 +47,7 @@ class FinanceTransactionForm extends Component
         }
 
         $this->categoryOptions = $query->get()->map(function ($c) {
-            return ['value' => $c->id, 'label' => $c->name]; // Type is redundant in label if filtered
+            return ['value' => $c->id, 'label' => $c->name];
         })->toArray();
     }
 
@@ -67,9 +67,9 @@ class FinanceTransactionForm extends Component
     public function create(): void
     {
         $this->reset(['transaction', 'isEditing', 'finance_category_id', 'amount', 'description', 'external_reference']);
-        $this->type = 'expense'; // Reset to default
+        $this->type = 'expense'; // Reiniciar a predeterminado
         $this->transaction_date = now()->format('Y-m-d');
-        $this->loadOptions(); // Reload based on default type
+        $this->loadOptions(); // Recargar basado en el tipo predeterminado
         $this->dispatch('open-modal', name: 'finance-transaction-form-modal');
     }
 
@@ -77,7 +77,7 @@ class FinanceTransactionForm extends Component
     public function edit(FinanceTransaction $transaction): void
     {
         if ($transaction->reference_type) {
-            $this->dispatch('toast', message: 'System transactions (Sales/Purchases) cannot be edited.', type: 'error');
+            $this->dispatch('toast', message: 'Las transacciones del sistema (Ventas/Compras) no se pueden editar.', type: 'error');
             return;
         }
 
@@ -86,7 +86,7 @@ class FinanceTransactionForm extends Component
 
         $this->transaction_date = $transaction->transaction_date->format('Y-m-d');
         $this->type = $transaction->category->type->value;
-        $this->loadOptions(); // Reload based on transaction type
+        $this->loadOptions(); // Recargar basado en el tipo de transacción
 
         $this->finance_category_id = $transaction->finance_category_id;
         $this->amount = $transaction->amount;
@@ -106,16 +106,16 @@ class FinanceTransactionForm extends Component
             amount: (int) $this->amount,
             description: $this->description,
             external_reference: $this->external_reference,
-            created_by: Auth::id() ?? 1, // Fallback for safety, though Auth check should be middleware
+            created_by: Auth::id() ?? 1, // Fallback por seguridad, aunque la verificación de Auth debería estar en middleware
         );
 
         try {
             if ($this->isEditing && $this->transaction) {
                 $service->updateTransaction($this->transaction, $data);
-                $message = 'Transaction updated successfully.';
+                $message = 'Transacción actualizada correctamente.';
             } else {
                 $service->createTransaction($data);
-                $message = 'Transaction recorded successfully.';
+                $message = 'Transacción registrada correctamente.';
             }
 
             $this->dispatch('close-modal', name: 'finance-transaction-form-modal');

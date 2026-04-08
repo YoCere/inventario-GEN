@@ -36,7 +36,7 @@ final class FinanceTransactionTable extends PowerGridComponent
         $this->showCheckBox();
 
         return [
-            PowerGrid::exportable('finance_transaction_export_' . now()->format('Y_m_d'))
+            PowerGrid::exportable('transaccion_financiera_exportacion_' . now()->format('Y_m_d'))
                 ->type(Exportable::TYPE_XLS, Exportable::TYPE_CSV),
 
             PowerGrid::header()
@@ -91,36 +91,32 @@ final class FinanceTransactionTable extends PowerGridComponent
                 ->hidden()
                 ->visibleInExport(true),
 
-            Column::make('Date', 'transaction_date_formatted', 'transaction_date')
+            Column::make('Fecha', 'transaction_date_formatted', 'transaction_date')
                 ->sortable(),
 
-            Column::make('Reference', 'reference_display', 'code')
+            Column::make('Referencia', 'reference_display', 'code')
                 ->sortable()
                 ->searchable(),
 
-            Column::make('Period', 'date_period')
+            Column::make('Período', 'date_period')
                 ->hidden(),
 
-            Column::make('Category', 'category_name', 'finance_category_id')
+            Column::make('Categoría', 'category_name', 'finance_category_id')
                 ->sortable()
                 ->searchable(),
 
-            Column::make('Type', 'type_badge')
+            Column::make('Tipo', 'type_badge')
                 ->sortable(),
 
-            Column::make('Amount', 'amount_formatted', 'amount')
+            Column::make('Monto', 'amount_formatted', 'amount')
                 ->sortable()
                 ->headerAttribute('text-right')
                 ->bodyAttribute('text-right'),
 
-            Column::make('Description', 'description')
-                ->sortable()
-                ->searchable(),
-
-            Column::make('Created By', 'creator_name', 'created_by')
+            Column::make('Creado Por', 'creator_name', 'created_by')
                 ->sortable(),
 
-            Column::action('Action'),
+            Column::action('Acción'),
         ];
     }
 
@@ -143,12 +139,12 @@ final class FinanceTransactionTable extends PowerGridComponent
 
             Filter::select('date_period')
                 ->dataSource([
-                    ['name' => 'Today', 'value' => 'today'],
-                    ['name' => 'Yesterday', 'value' => 'yesterday'],
-                    ['name' => 'This Week', 'value' => 'this_week'],
-                    ['name' => 'Last Week', 'value' => 'last_week'],
-                    ['name' => 'This Month', 'value' => 'this_month'],
-                    ['name' => 'Last Month', 'value' => 'last_month'],
+                    ['name' => 'Hoy', 'value' => 'today'],
+                    ['name' => 'Ayer', 'value' => 'yesterday'],
+                    ['name' => 'Esta Semana', 'value' => 'this_week'],
+                    ['name' => 'Semana Pasada', 'value' => 'last_week'],
+                    ['name' => 'Este Mes', 'value' => 'this_month'],
+                    ['name' => 'Mes Pasado', 'value' => 'last_month'],
                 ])
                 ->optionLabel('name')
                 ->optionValue('value')
@@ -186,31 +182,31 @@ final class FinanceTransactionTable extends PowerGridComponent
                 ->slot('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>')
                 ->class('bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-md flex items-center justify-center')
                 ->dispatch('view-finance-transaction', ['transaction' => $row->id])
-                ->tooltip('View Detail'),
+                ->tooltip('Ver Detalle'),
         ];
 
-        // View Source Button for System Generated
+        // Ver Fuente para Transacciones Generadas por el Sistema
         if ($row->reference_type === \App\Models\Sale::class) {
             $actions[] = Button::add('view-source')
                 ->slot('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>')
                 ->class('bg-indigo-500 hover:bg-indigo-600 text-white p-2 rounded-md flex items-center justify-center')
                 ->route('sales.show', ['sale' => $row->reference_id])
-                ->tooltip('Go to Sale');
+                ->tooltip('Ir a Venta');
         } elseif ($row->reference_type === \App\Models\Purchase::class) {
             $actions[] = Button::add('view-source')
                 ->slot('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>')
                 ->class('bg-indigo-500 hover:bg-indigo-600 text-white p-2 rounded-md flex items-center justify-center')
                 ->route('purchases.show', ['purchase' => $row->reference_id])
-                ->tooltip('Go to Purchase');
+                ->tooltip('Ir a Compra');
         }
 
-        // Only allow edit/delete for Manual Transactions (where reference_type is null)
+        // Solo permitir editar/eliminar para Transacciones Manuales (donde reference_type es null)
         if (is_null($row->reference_type)) {
             $actions[] = Button::add('edit')
                 ->slot('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>')
                 ->class('bg-amber-500 hover:bg-amber-600 text-white p-2 rounded-md flex items-center justify-center')
                 ->dispatch('edit-finance-transaction', ['transaction' => $row->id])
-                ->tooltip('Edit Transaction');
+                ->tooltip('Editar Transacción');
 
             $actions[] = Button::add('delete')
                 ->slot('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>')
@@ -219,10 +215,10 @@ final class FinanceTransactionTable extends PowerGridComponent
                     'component' => 'finance-transactions.finance-transaction-table',
                     'method' => 'delete',
                     'params' => ['rowId' => $row->id],
-                    'title' => 'Delete Transaction?',
-                    'description' => "Are you sure you want to delete this transaction? This action cannot be undone.",
+                    'title' => '¿Eliminar Transacción?',
+                    'description' => "¿Está seguro de que desea eliminar esta transacción? Esta acción no se puede deshacer.",
                 ])
-                ->tooltip('Delete Transaction');
+                ->tooltip('Eliminar Transacción');
         }
 
         return $actions;
@@ -232,7 +228,7 @@ final class FinanceTransactionTable extends PowerGridComponent
     {
         return [
             Button::add('print-selected')
-                ->slot('🖨️ Print Selected')
+                ->slot('🖨️ Imprimir Seleccionados')
                 ->class('bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md font-medium text-sm')
                 ->dispatch('bulk-print', []),
         ];
@@ -244,23 +240,23 @@ final class FinanceTransactionTable extends PowerGridComponent
         $checkboxValues = $this->checkboxValues;
 
         if (empty($checkboxValues)) {
-            $this->dispatch('toast', message: 'No transactions selected.', type: 'warning');
+            $this->dispatch('toast', message: 'No hay transacciones seleccionadas.', type: 'warning');
             return;
         }
 
-        // Generate a unique ID for this print session
+        // Generar un ID único para esta sesión de impresión
         $printId = (string) Str::uuid();
 
-        // Store selected IDs in cache for 5 minutes
+        // Almacenar los IDs seleccionados en caché por 5 minutos
         \Illuminate\Support\Facades\Cache::put("finance_print_{$printId}", $checkboxValues, now()->addMinutes(5));
 
-        // Get filter info to pass along
+        // Obtener información del filtro para pasar
         $period = $this->filters['date_period'] ?? null;
         if (is_array($period)) {
             $period = $period[0] ?? null;
         }
 
-        // Construct URL
+        // Construir URL
         $url = route('finance.transactions.print', ['printId' => $printId]);
 
         if ($period) {
@@ -278,11 +274,11 @@ final class FinanceTransactionTable extends PowerGridComponent
         if ($transaction) {
             try {
                 $service->deleteTransaction($transaction);
-                $this->dispatch('toast', message: 'Transaction deleted successfully.', type: 'success');
+                $this->dispatch('toast', message: 'Transacción eliminada correctamente.', type: 'success');
             } catch (\Exception $e) {
                 $message = $e instanceof FinanceTransactionException
                     ? $e->getMessage()
-                    : 'Failed to delete transaction: ' . $e->getMessage();
+                    : 'Error al eliminar la transacción: ' . $e->getMessage();
 
                 $this->dispatch('toast', message: $message, type: 'error');
             }
