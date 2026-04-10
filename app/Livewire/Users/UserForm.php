@@ -3,6 +3,7 @@
 namespace App\Livewire\Users;
 
 use App\Models\User;
+use App\Enums\UserRole;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use App\DTOs\UserData;
@@ -19,6 +20,7 @@ class UserForm extends Component
     public $email;
     public $password;
     public $password_confirmation;
+    public string $role = 'staff';
 
     public function rules(): array
     {
@@ -27,13 +29,16 @@ class UserForm extends Component
             'username' => ['required', 'string', 'max:255', Rule::unique('users', 'username')->ignore($this->user?->id)],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($this->user?->id)],
             'password' => [$this->isEditing ? 'nullable' : 'required', 'string', 'min:8', 'confirmed'],
+            'role' => ['required', Rule::enum(UserRole::class)],
         ];
     }
 
-    #[On('create-user')]  // ← AGREGAR ESTO
+    #[On('create-user')]
     public function create(): void
     {
-        $this->reset(['user', 'isEditing', 'name', 'username', 'email', 'password', 'password_confirmation']);
+        abort_if(!auth()->user()->isAdmin(), 403);
+        $this->reset(['user', 'isEditing', 'name', 'username', 'email', 'password', 'password_confirmation', 'role']);
+        $this->role = 'staff';
         $this->dispatch('open-modal', name: 'user-form-modal');
     }
 
@@ -48,6 +53,7 @@ class UserForm extends Component
     #[On('edit-user')]
     public function edit(User $user): void
     {
+        abort_if(!auth()->user()->isAdmin(), 403);
         $this->user = $user;
         $this->isEditing = true;
 
@@ -56,12 +62,14 @@ class UserForm extends Component
         $this->email = $user->email;
         $this->password = '';
         $this->password_confirmation = '';
+        $this->role = $user->role->value;
 
         $this->dispatch('open-modal', name: 'user-form-modal');
     }
 
     public function save(UserService $service): void
     {
+        abort_if(!auth()->user()->isAdmin(), 403);
         $this->validate();
 
         $data = new UserData(
@@ -69,6 +77,7 @@ class UserForm extends Component
             username: $this->username,
             email: $this->email,
             password: $this->password ?: null,
+            role: $this->role,
         );
 
         try {

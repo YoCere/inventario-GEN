@@ -23,6 +23,8 @@ class SettingForm extends Component
     #[On('edit-setting')]
     public function edit($key)
     {
+        abort_if(!auth()->user()->isAdmin(), 403);
+
         $this->resetValidation();
         $setting = Setting::findOrFail($key);
 
@@ -35,6 +37,8 @@ class SettingForm extends Component
 
     public function save()
     {
+        abort_if(!auth()->user()->isAdmin(), 403);
+
         $this->validate();
 
         try {

@@ -1,20 +1,20 @@
-<x-guest-layout title="Login">
-    <!-- Session Status -->
+<x-guest-layout title="Iniciar Sesión">
+    <!-- Estado de la Sesión -->
     <x-auth-session-status class="mb-4" :status="session('status')" />
 
     <div class="space-y-6">
         <div class="space-y-2 text-center">
-            <h1 class="text-2xl font-semibold tracking-tight">Login</h1>
-            <p class="text-sm text-muted-foreground">Enter your username below to login to your account</p>
+            <h1 class="text-2xl font-semibold tracking-tight">Iniciar Sesión</h1>
+            <p class="text-sm text-muted-foreground">Ingrese su nombre de usuario para acceder a su cuenta</p>
         </div>
 
         <form method="POST" action="{{ route('login') }}" x-data="{ loading: false }" @submit="loading = true">
             @csrf
 
-            <!-- Username -->
+            <!-- Nombre de Usuario -->
             <x-form-input
                 name="username"
-                label="Username"
+                label="Nombre de Usuario"
                 type="text"
                 :value="old('username')"
                 required
@@ -23,13 +23,13 @@
                 :messages="$errors->get('username')"
             />
 
-            <!-- Password -->
+            <!-- Contraseña -->
             <div class="mt-4 space-y-2">
                 <div class="flex items-center justify-between">
-                    <x-input-label for="password" :value="__('Password')" :required="true" />
+                    <x-input-label for="password" :value="__('Contraseña')" :required="true" />
                     @if (Route::has('password.request'))
                         <a class="text-sm font-medium text-primary hover:underline" href="{{ route('password.request') }}">
-                            {{ __('Forgot your password?') }}
+                            {{ __('¿Olvidó su contraseña?') }}
                         </a>
                     @endif
                 </div>
@@ -37,11 +37,11 @@
                 <x-input-error :messages="$errors->get('password')" class="mt-2" />
             </div>
 
-            <!-- Remember Me -->
+            <!-- Recordarme -->
             <div class="block mt-4">
                 <label for="remember_me" class="inline-flex items-center">
                     <input id="remember_me" type="checkbox" class="rounded border-gray-300 text-primary shadow-sm focus:ring-ring" name="remember">
-                    <span class="ms-2 text-sm text-muted-foreground">{{ __('Remember me') }}</span>
+                    <span class="ms-2 text-sm text-muted-foreground">{{ __('Recordarme') }}</span>
                 </label>
             </div>
 
@@ -51,14 +51,14 @@
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    {{ __('Log in') }}
+                    {{ __('Iniciar Sesión') }}
                 </x-primary-button>
             </div>
 
             <div class="mt-4 text-center text-sm">
-                Don't have an account?
+                ¿No tiene una cuenta?
                 <a href="{{ route('register') }}" class="underline text-primary">
-                    Sign up
+                    Regístrese
                 </a>
             </div>
         </form>

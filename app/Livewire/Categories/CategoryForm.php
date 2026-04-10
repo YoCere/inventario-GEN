@@ -41,6 +41,7 @@ class CategoryForm extends Component
     #[On('create-category')]
     public function create(): void
     {
+        abort_if(!auth()->user()->isAdmin(), 403);
         $this->reset(['name', 'description', 'category', 'isEditing']);
         $this->dispatch('open-modal', name: 'category-form-modal');
     }
@@ -48,6 +49,7 @@ class CategoryForm extends Component
     #[On('edit-category')]
     public function edit(Category $category): void
     {
+        abort_if(!auth()->user()->isAdmin(), 403);
         $this->category = $category;
         $this->name = $category->name;
         $this->description = $category->description ?? '';
@@ -57,6 +59,7 @@ class CategoryForm extends Component
 
     public function save(CategoryService $service): void
     {
+        abort_if(!auth()->user()->isAdmin(), 403);
         $validated = $this->validate();
 
         $slug = Str::slug(str_replace('&', '', $this->name));

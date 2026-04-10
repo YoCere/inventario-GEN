@@ -47,6 +47,7 @@ class ProductForm extends Component
     #[On('create-product')]
     public function create(): void
     {
+        abort_if(!auth()->user()->isAdmin(), 403);
         $this->reset(['sku', 'name', 'category_id', 'unit_id', 'purchase_price', 'selling_price', 'quantity', 'min_stock', 'description', 'notes', 'product', 'isEditing', 'categoryName', 'unitName']);
         $this->is_active = true;
 
@@ -56,6 +57,7 @@ class ProductForm extends Component
     #[On('edit-product')]
     public function edit(Product $product): void
     {
+        abort_if(!auth()->user()->isAdmin(), 403);
         $this->product = $product;
         $this->sku = $product->sku;
         $this->name = $product->name;
@@ -102,6 +104,7 @@ class ProductForm extends Component
 
     public function save(ProductService $service): void
     {
+        abort_if(!auth()->user()->isAdmin(), 403);
         $validated = $this->validate();
 
         $data = ProductData::fromArray($validated);

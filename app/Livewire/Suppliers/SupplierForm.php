@@ -55,6 +55,7 @@ class SupplierForm extends Component
     #[On('edit-supplier')]
     public function edit(Supplier $supplier): void
     {
+        abort_if(!auth()->user()->isAdmin(), 403);
         $this->resetValidation();
         $this->supplier = $supplier;
         $this->name = $supplier->name;
@@ -70,6 +71,10 @@ class SupplierForm extends Component
 
     public function save(SupplierService $service): void
     {
+        if ($this->isEditing) {
+            abort_if(!auth()->user()->isAdmin(), 403);
+        }
+
         $validated = $this->validate($this->rules());
 
         try {

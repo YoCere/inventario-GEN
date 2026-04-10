@@ -109,6 +109,8 @@ class PurchaseController extends Controller
 
     public function destroy(Purchase $purchase)
     {
+        abort_if(!auth()->user()->isAdmin(), 403);
+
         try {
             $this->service->deletePurchase($purchase);
             return redirect()->route('purchases.index')->with('success', 'Purchase deleted successfully.');

@@ -39,6 +39,7 @@ class UnitForm extends Component
     #[On('create-unit')]
     public function create(): void
     {
+        abort_if(!auth()->user()->isAdmin(), 403);
         $this->reset(['name', 'symbol', 'unit', 'isEditing']);
         $this->dispatch('open-modal', name: 'unit-form-modal');
     }
@@ -46,6 +47,7 @@ class UnitForm extends Component
     #[On('edit-unit')]
     public function edit(Unit $unit): void
     {
+        abort_if(!auth()->user()->isAdmin(), 403);
         $this->unit = $unit;
         $this->name = $unit->name;
         $this->symbol = $unit->symbol;
@@ -55,6 +57,7 @@ class UnitForm extends Component
 
     public function save(UnitService $service): void
     {
+        abort_if(!auth()->user()->isAdmin(), 403);
         $validated = $this->validate();
 
         $data = UnitData::fromArray($validated);

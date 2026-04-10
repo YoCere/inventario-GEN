@@ -52,6 +52,7 @@ class CustomerForm extends Component
     #[On('edit-customer')]
     public function edit(Customer $customer): void
     {
+        abort_if(!auth()->user()->isAdmin(), 403);
         $this->resetValidation();
         $this->customer = $customer;
         $this->name = $customer->name;
@@ -66,6 +67,10 @@ class CustomerForm extends Component
 
     public function save(CustomerService $service): void
     {
+        if ($this->isEditing) {
+            abort_if(!auth()->user()->isAdmin(), 403);
+        }
+
         $validated = $this->validate($this->rules());
 
         try {

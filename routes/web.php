@@ -59,10 +59,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // =========================================================================
-    // Settings & Users
+    // Settings & Users - Solo Admin
     // =========================================================================
-    Route::view('users', 'users.index')->name('users.index');
-    Route::view('settings', 'settings.index')->name('settings.index');
+    Route::middleware('admin')->group(function () {
+        Route::view('users', 'users.index')->name('users.index');
+        Route::view('settings', 'settings.index')->name('settings.index');
+    });
 
     // =========================================================================
     // Internal APIs (AJAX)

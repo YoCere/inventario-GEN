@@ -67,6 +67,17 @@ class SalesController extends Controller
 
     public function destroy(Request $request, Sale $sale, SaleService $saleService)
     {
+        // Lógica de autorización por estado de venta
+        if ($sale->status === \App\Enums\SaleStatus::COMPLETED) {
+            // Solo admin puede cancelar ventas completadas
+            abort_if(!auth()->user()->isAdmin(), 403);
+        } elseif ($sale->status === \App\Enums\SaleStatus::PENDING) {
+            // Staff puede cancelar su propia venta pendiente
+            if ($sale->created_by !== auth()->id() && !auth()->user()->isAdmin()) {
+                abort(403, 'Solo puedes cancelar tus propias ventas.');
+            }
+        }
+
         try {
             $reason = $request->input('reason');
             $saleService->cancelSale($sale, $reason);
@@ -84,6 +95,8 @@ class SalesController extends Controller
 
     public function restore(Sale $sale, SaleService $saleService)
     {
+        abort_if(!auth()->user()->isAdmin(), 403);
+
         try {
             $saleService->restoreSale($sale);
             return redirect()->back()->with('success', 'Sale restored to Pending.');

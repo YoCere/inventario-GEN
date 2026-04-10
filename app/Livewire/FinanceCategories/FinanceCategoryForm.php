@@ -43,6 +43,7 @@ class FinanceCategoryForm extends Component
     #[On('create-finance-category')]
     public function create(): void
     {
+        abort_if(!auth()->user()->isAdmin(), 403);
         $this->reset(['name', 'type', 'description', 'category', 'isEditing']);
         $this->type = FinanceCategoryType::Expense->value;
         $this->dispatch('open-modal', name: 'finance-category-form-modal');
@@ -51,6 +52,7 @@ class FinanceCategoryForm extends Component
     #[On('edit-finance-category')]
     public function edit(FinanceCategory $category): void
     {
+        abort_if(!auth()->user()->isAdmin(), 403);
         $this->category = $category;
         $this->name = $category->name;
         $this->type = $category->type->value;
@@ -61,6 +63,7 @@ class FinanceCategoryForm extends Component
 
     public function save(FinanceCategoryService $service): void
     {
+        abort_if(!auth()->user()->isAdmin(), 403);
         $this->validate();
 
         if ($this->isEditing && $this->category && in_array($this->category->name, ['Product Sales', 'Product Purchases'])) {
