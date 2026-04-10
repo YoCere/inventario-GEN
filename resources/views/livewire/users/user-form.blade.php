@@ -41,6 +41,17 @@
                 placeholder="correo@ejemplo.com"
             />
 
+            <!-- Rol -->
+            <div class="space-y-2">
+                <x-input-label for="role" :value="__('Rol')" />
+                <select id="role" wire:model="role"
+                    class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2">
+                    <option value="staff">Staff</option>
+                    <option value="admin">Administrador</option>
+                </select>
+                <x-input-error :messages="$errors->get('role')" />
+            </div>
+
             <!-- Contraseña -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="space-y-2">

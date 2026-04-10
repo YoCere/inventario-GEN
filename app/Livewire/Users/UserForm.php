@@ -42,14 +42,6 @@ class UserForm extends Component
         $this->dispatch('open-modal', name: 'user-form-modal');
     }
 
-    #[On('open-modal')]
-    public function handleOpenModal($name): void
-    {
-        if ($name === 'user-form-modal' && !$this->isEditing) {
-            $this->create();
-        }
-    }
-
     #[On('edit-user')]
     public function edit(User $user): void
     {
