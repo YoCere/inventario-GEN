@@ -10,7 +10,7 @@
         <div class="flex flex-col lg:flex-row h-[calc(100vh-100px)] space-y-4 lg:space-y-0 lg:space-x-4 relative">
 
             <!-- Left Side: Transaction Details (70%) -->
-            <div class="w-full lg:w-[70%] flex flex-col space-y-4 h-full">
+            <div class="w-full lg:w-[75%] flex flex-col space-y-4 h-full">
                 <!-- Search Bar (TomSelect) -->
                 <div class="relative z-20 mb-2">
                     <select
@@ -98,7 +98,7 @@
             </div>
 
             <!-- Right Side: Payment Details (30%) -->
-            <div class="w-full lg:w-[30%] flex flex-col bg-white rounded-lg shadow border border-gray-200 h-full">
+            <div class="w-full lg:w-[25%] flex flex-col bg-white rounded-lg shadow border border-gray-200 h-full">
                 <!-- Header -->
                 <div class="p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
                     <h2 class="text-xs font-bold text-gray-500 uppercase tracking-wide">Detalles del pago</h2>
@@ -204,33 +204,7 @@
                                         placeholder="0">
                                 </div>
 
-                                <!-- Botones de pago rápido -->
-                                <div class="grid grid-cols-4 gap-2 mt-2">
-                                    <button @click="payment.cash_received = total" class="px-2 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-xs font-bold text-gray-700">
-                                        EXACTO
-                                    </button>
-                                    <button @click="payment.cash_received = (parseInt(payment.cash_received) || 0) + 100000" class="px-2 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-xs font-bold text-gray-700">
-                                        +100K
-                                    </button>
-                                    <button @click="payment.cash_received = (parseInt(payment.cash_received) || 0) + 50000" class="px-2 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-xs font-bold text-gray-700">
-                                        +50K
-                                    </button>
-                                    <button @click="payment.cash_received = (parseInt(payment.cash_received) || 0) + 20000" class="px-2 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-xs font-bold text-gray-700">
-                                        +20K
-                                    </button>
-                                    <button @click="payment.cash_received = (parseInt(payment.cash_received) || 0) + 10000" class="px-2 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-xs font-bold text-gray-700">
-                                        +10K
-                                    </button>
-                                    <button @click="payment.cash_received = (parseInt(payment.cash_received) || 0) + 5000" class="px-2 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-xs font-bold text-gray-700">
-                                        +5K
-                                    </button>
-                                    <button @click="payment.cash_received = (parseInt(payment.cash_received) || 0) + 2000" class="px-2 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-xs font-bold text-gray-700">
-                                        +2K
-                                    </button>
-                                    <button @click="payment.cash_received = (parseInt(payment.cash_received) || 0) + 1000" class="px-2 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-xs font-bold text-gray-700">
-                                        +1K
-                                    </button>
-                                </div>
+                                
                                 <div class="bg-green-50 p-3 rounded-md border border-green-100 flex justify-between items-center mt-2"
                                     :class="change < 0 ? 'bg-red-50 border-red-100 text-red-800' : 'bg-green-50 border-green-100 text-green-800'">
                                     <span class="text-sm font-medium uppercase" x-text="change < 0 ? 'Por Pagar' : 'Cambio'"></span>
