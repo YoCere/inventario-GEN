@@ -1,11 +1,11 @@
-<x-guest-layout title="Login">
+<x-guest-layout title="Iniciar sesión">
     <!-- Session Status -->
     <x-auth-session-status class="mb-4" :status="session('status')" />
 
     <div class="space-y-6">
         <div class="space-y-2 text-center">
-            <h1 class="text-2xl font-semibold tracking-tight">Login</h1>
-            <p class="text-sm text-muted-foreground">Enter your username below to login to your account</p>
+            <h1 class="text-2xl font-semibold tracking-tight">Iniciar sesión</h1>
+            <p class="text-sm text-muted-foreground">Ingresa tu usuario para iniciar sesión en tu cuenta</p>
         </div>
 
         <form method="POST" action="{{ route('login') }}" x-data="{ loading: false }" @submit="loading = true">
@@ -14,7 +14,7 @@
             <!-- Username -->
             <x-form-input
                 name="username"
-                label="Username"
+                label="Usuario"
                 type="text"
                 :value="old('username')"
                 required
@@ -56,9 +56,9 @@
             </div>
 
             <div class="mt-4 text-center text-sm">
-                Don't have an account?
+                ¿No tienes una cuenta?
                 <a href="{{ route('register') }}" class="underline text-primary">
-                    Sign up
+                    Regístrate
                 </a>
             </div>
         </form>

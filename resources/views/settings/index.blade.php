@@ -1,7 +1,7 @@
-<x-app-layout title="Settings">
+<x-app-layout title="Ajustes">
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-foreground leading-tight">
-            {{ __('Settings') }}
+            {{ __('Ajustes') }}
         </h2>
     </x-slot>
 

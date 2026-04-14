@@ -1,4 +1,4 @@
-<x-guest-layout title="Forgot Password">
+<x-guest-layout title="Olvidé mi contraseña">
     <div class="mb-4 text-sm text-muted-foreground">
         {{ __('Forgot your password? No problem. Just let us know your email address and we will email you a password reset link that will allow you to choose a new one.') }}
     </div>
@@ -28,7 +28,7 @@
 
         <div class="mt-4 text-center text-sm">
             <a href="{{ route('login') }}" class="underline text-muted-foreground hover:text-foreground">
-                Back to Login
+                Volver al inicio de sesión
             </a>
         </div>
     </form>

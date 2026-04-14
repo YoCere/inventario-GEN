@@ -16,7 +16,7 @@
                 label="Name"
                 type="text"
                 wire:model="name"
-                placeholder="Customer Name"
+                placeholder="Nombre del cliente"
                 required
             />
 

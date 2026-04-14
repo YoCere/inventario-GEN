@@ -109,10 +109,10 @@ class ProductForm extends Component
         try {
             if ($this->isEditing && $this->product) {
                 $service->updateProduct($this->product, $data);
-                $message = 'Product updated successfully.';
+                $message = 'Producto actualizado correctamente.';
             } else {
                 $service->createProduct($data);
-                $message = 'Product created successfully.';
+                $message = 'Producto creado correctamente.';
             }
 
             $this->dispatch('close-modal', name: 'product-form-modal');

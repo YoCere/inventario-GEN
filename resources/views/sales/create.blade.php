@@ -119,7 +119,7 @@
                                 <div class="flex justify-between items-center">
                                     <div>
                                         <h3 class="font-bold text-lg text-gray-900" x-text="selectedCustomer.name"></h3>
-                                        <p class="text-sm text-gray-600" x-text="selectedCustomer.phone || 'No Phone'"></p>
+                                        <p class="text-sm text-gray-600" x-text="selectedCustomer.phone || 'Sin teléfono'"></p>
                                     </div>
                                     <button @click="resetCustomer()" class="text-gray-400 hover:text-red-500">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -415,7 +415,7 @@
                                     return `
                                         <div class="py-2 px-3 hover:bg-indigo-50">
                                             <div class="font-medium text-gray-900">${escape(item.name)}</div>
-                                            <div class="text-xs text-gray-500">${escape(item.phone || 'No Phone')}</div>
+                                            <div class="text-xs text-gray-500">${escape(item.phone || 'Sin teléfono')}</div>
                                         </div>
                                     `;
                                 }
@@ -684,13 +684,13 @@
                                 this.resetForm();
 
                                 this.$dispatch('toast', {
-                                    message: 'Transaction Successful!',
+                                    message: '¡Transacción exitosa!',
                                     type: 'success'
                                 });
 
                             } else {
                                 this.$dispatch('toast', {
-                                    message: data.message || 'Error occurred',
+                                    message: data.message || 'Ocurrió un error',
                                     type: 'error'
                                 });
                             }
@@ -698,7 +698,7 @@
                         } catch (e) {
                             console.error(e);
                             this.$dispatch('toast', {
-                                message: 'Network error occurred',
+                                message: 'Ocurrió un error de red',
                                 type: 'error'
                             });
                         } finally {
@@ -791,7 +791,7 @@
                                 <svg x-show="saleStatus === 'pending'" class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                 </svg>
-                                PENDIENTE
+                                RESERVAR
                             </button>
                         </div>
                     </div>
@@ -864,7 +864,7 @@
                                 });
                             } else {
                                 // Fallback if generic error
-                                this.$dispatch('toast', { message: data.message || 'Error creating customer', type: 'error' });
+                                this.$dispatch('toast', { message: data.message || 'Error al crear cliente', type: 'error' });
                             }
                         }
                     } catch(e) { console.error(e); }
@@ -977,7 +977,7 @@
                 </div>
             </div>
             <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 gap-2">
-                <x-danger-button @click="resetForm(); clearStorage(); $dispatch('close-modal', { name: 'cancel-modal' }); $dispatch('toast', { message: 'Transaction Cancelled', type: 'info' })" class="w-full sm:w-auto justify-center">
+                <x-danger-button @click="resetForm(); clearStorage(); $dispatch('close-modal', { name: 'cancel-modal' }); $dispatch('toast', { message: 'Transacción cancelada', type: 'info' })" class="w-full sm:w-auto justify-center">
                     {{ __('Sí, cancelar transacción') }}
                 </x-danger-button>
                 <button

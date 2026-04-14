@@ -25,8 +25,8 @@
                 
                 @if($key === 'currency_position')
                     <select id="value" wire:model="value" class="block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm">
-                        <option value="left">Left (Example: Rp 10.000)</option>
-                        <option value="right">Right (Example: 10.000 Rp)</option>
+                        <option value="left">Izquierda (Ejemplo: Rp 10.000)</option>
+                        <option value="right">Derecha (Ejemplo: 10.000 Rp)</option>
                     </select>
                 @elseif($key === 'currency_fraction_digits')
                     <input 
@@ -36,14 +36,14 @@
                         min="0"
                         max="4"
                         class="block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm" 
-                        placeholder="0 for IDR, 2 for USD"
+                        placeholder="0 para IDR, 2 para USD"
                     >
                 @elseif(in_array($key, ['currency_thousand_separator', 'currency_decimal_separator']))
                     <select id="value" wire:model="value" class="block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm">
-                        <option value=".">Dot (.)</option>
-                        <option value=",">Comma (,)</option>
-                        <option value=" ">Space ( )</option>
-                        <option value="">None</option>
+                        <option value=".">Punto (.)</option>
+                        <option value=",">Coma (,)</option>
+                        <option value=" ">Espacio ( )</option>
+                        <option value="">Ninguno</option>
                     </select>
                 @elseif(in_array($key, ['store_address']))
                     <textarea
@@ -51,7 +51,7 @@
                         wire:model="value"
                         rows="4"
                         class="block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm"
-                        placeholder="Enter value..."
+                        placeholder="Ingresa un valor..."
                     ></textarea>
                 @else
                     <input 
@@ -59,7 +59,7 @@
                         id="value" 
                         wire:model="value" 
                         class="block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm" 
-                        placeholder="Enter value..."
+                        placeholder="Ingresa un valor..."
                     >
                 @endif
                 <x-input-error :messages="$errors->get('value')" />

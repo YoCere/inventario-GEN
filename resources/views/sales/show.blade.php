@@ -199,7 +199,7 @@
                         {{ __('Completar Venta') }}
                     </x-primary-button>
 
-                    {{-- Acción Cancelar Pendiente (Modal) --}}
+                    {{-- Acción Cancelar Reservada (Modal) --}}
                     <div x-data="{ cancelOpen: false }">
                         <x-danger-button @click="cancelOpen = true">
                             {{ __('Cancelar Venta') }}
@@ -216,10 +216,10 @@
                                  class="relative bg-white rounded-lg max-w-md w-full p-6 shadow-xl text-left">
 
                                 <h3 class="text-lg font-medium text-gray-900 mb-2">
-                                    {{ __('Cancelar Venta Pendiente') }}
+                                    {{ __('Cancelar venta reservada') }}
                                 </h3>
                                 <p class="text-sm text-gray-500 mb-4">
-                                    {{ __('¿Está seguro de que desea cancelar esta venta pendiente? Por favor, proporcione un motivo.') }}
+                                    {{ __('¿Está seguro de que desea cancelar esta venta reservada? Por favor, proporcione un motivo.') }}
                                 </p>
 
                                 <form action="{{ route('sales.destroy', $sale) }}" method="POST">
@@ -266,9 +266,9 @@
                     {{-- Acción Restaurar --}}
                     <x-secondary-button
                         class="bg-gray-800 text-white hover:bg-gray-700 focus:ring-gray-500"
-                        @click="confirmAction('{{ route('sales.restore', $sale) }}', 'PATCH', 'Restaurar Venta', '¿Restaurar esta venta a estado Pendiente? Luego podrá completarla nuevamente.', 'Restaurar a Pendiente', '!bg-gray-800 hover:!bg-gray-700 text-white')"
+                        @click="confirmAction('{{ route('sales.restore', $sale) }}', 'PATCH', 'Restaurar venta', '¿Restaurar esta venta a estado reservado? Luego podrás completarla nuevamente.', 'Restaurar a reservado', '!bg-gray-800 hover:!bg-gray-700 text-white')"
                     >
-                        {{ __('Restaurar a Pendiente') }}
+                        {{ __('Restaurar a reservado') }}
                     </x-secondary-button>
                 @endif
 

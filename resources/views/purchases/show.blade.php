@@ -6,11 +6,11 @@
             </h2>
             <div class="flex items-center gap-2">
                 <x-secondary-button href="{{ route('purchases.index') }}">
-                    &larr; {{ __('Back to List') }}
+                    &larr; {{ __('Volver al listado') }}
                 </x-secondary-button>
                 @if(in_array($purchase->status, [\App\Enums\PurchaseStatus::DRAFT, \App\Enums\PurchaseStatus::ORDERED]))
                     <x-secondary-button href="{{ route('purchases.edit', $purchase) }}">
-                        {{ __('Edit') }}
+                        {{ __('Editar') }}
                     </x-secondary-button>
                 @endif
             </div>
@@ -36,7 +36,7 @@
                     <!-- Content Grid -->
                     <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
                         <!-- Supplier -->
-                        <x-detail-item label="Supplier" :value="$purchase->supplier->name">
+                        <x-detail-item label="Proveedor" :value="$purchase->supplier->name">
                             <x-heroicon-o-building-storefront class="w-4 h-4 text-gray-400" />
                         </x-detail-item>
 
@@ -71,7 +71,7 @@
                         </x-detail-item>
 
                         <!-- Created By -->
-                        <x-detail-item label="Created By" :value="$purchase->creator->name ?? 'Unknown'">
+                        <x-detail-item label="Creado por" :value="$purchase->creator->name ?? 'Desconocido'">
                             <x-heroicon-o-user class="w-4 h-4 text-gray-400" />
                         </x-detail-item>
 
@@ -82,7 +82,7 @@
                                 <div class="mt-1">
                                     <a href="{{ Storage::url($purchase->proof_image) }}" target="_blank" class="text-indigo-600 hover:underline text-sm flex items-center gap-1">
                                         <x-heroicon-o-paper-clip class="w-4 h-4" />
-                                        View Image
+                                        Ver imagen
                                     </a>
                                 </div>
                             </div>
@@ -109,11 +109,11 @@
                             <thead class="text-xs text-gray-700 uppercase bg-gray-50">
                                 <tr>
                                     <th class="px-6 py-3">Code</th>
-                                    <th class="px-6 py-3">Product</th>
-                                    <th class="px-6 py-3">Unit</th>
-                                    <th class="px-6 py-3 text-center">Quantity</th>
-                                    <th class="px-6 py-3 text-right">Buying Price</th>
-                                    <th class="px-6 py-3 text-right">Selling Price</th>
+                                    <th class="px-6 py-3">Producto</th>
+                                    <th class="px-6 py-3">Unidad</th>
+                                    <th class="px-6 py-3 text-center">Cantidad</th>
+                                    <th class="px-6 py-3 text-right">Precio compra</th>
+                                    <th class="px-6 py-3 text-right">Precio venta</th>
                                     <th class="px-6 py-3 text-right">Subtotal</th>
                                 </tr>
                             </thead>
@@ -184,18 +184,18 @@
                     {{-- Delete Action --}}
                     <x-danger-button
                         type="button"
-                        @click="confirmAction('{{ route('purchases.destroy', $purchase) }}', 'DELETE', 'Delete Draft', 'Are you sure you want to delete this draft? This action cannot be undone.', 'Delete Draft', '!bg-red-600 hover:!bg-red-700 focus:!ring-red-500')"
+                        @click="confirmAction('{{ route('purchases.destroy', $purchase) }}', 'DELETE', 'Eliminar borrador', '¿Seguro que deseas eliminar este borrador? Esta acción no se puede deshacer.', 'Eliminar borrador', '!bg-red-600 hover:!bg-red-700 focus:!ring-red-500')"
                     >
-                        {{ __('Delete Draft') }}
+                        {{ __('Eliminar borrador') }}
                     </x-danger-button>
 
                     {{-- Order Action --}}
                     <x-primary-button
                         type="button"
                         class="!bg-sky-600 hover:!bg-sky-700 focus:!ring-sky-500"
-                        @click="confirmAction('{{ route('purchases.mark-ordered', $purchase) }}', 'PATCH', 'Mark as Ordered', 'Are you sure you want to mark this purchase as ordered? The stock will not be updated until items are received.', 'Mark as Ordered', '!bg-sky-600 hover:!bg-sky-700 focus:!ring-sky-500')"
+                        @click="confirmAction('{{ route('purchases.mark-ordered', $purchase) }}', 'PATCH', 'Marcar como pedido', '¿Seguro que deseas marcar esta compra como pedida? El stock no se actualizará hasta recibir los productos.', 'Marcar como pedido', '!bg-sky-600 hover:!bg-sky-700 focus:!ring-sky-500')"
                     >
-                        {{ __('Mark as Ordered') }}
+                        {{ __('Marcar como pedido') }}
                     </x-primary-button>
 
                 @elseif($purchase->status === \App\Enums\PurchaseStatus::ORDERED)
@@ -204,9 +204,9 @@
                     <x-secondary-button
                         type="button"
                         class="text-red-600 hover:bg-red-50 border-red-200"
-                        @click="confirmAction('{{ route('purchases.cancel', $purchase) }}', 'PATCH', 'Cancel Order', 'Are you sure you want to cancel this order?', 'Cancel Order', '!bg-red-600 hover:!bg-red-700 focus:!ring-red-500')"
+                        @click="confirmAction('{{ route('purchases.cancel', $purchase) }}', 'PATCH', 'Cancelar pedido', '¿Seguro que deseas cancelar este pedido?', 'Cancelar pedido', '!bg-red-600 hover:!bg-red-700 focus:!ring-red-500')"
                     >
-                        {{ __('Cancel Order') }}
+                        {{ __('Cancelar pedido') }}
                     </x-secondary-button>
 
                     {{-- Receive Action Trigger (Modal) --}}
@@ -268,7 +268,7 @@
                                                 <span class="block text-xs font-medium text-gray-500 uppercase mb-1">Proof of Receipt</span>
                                                 <a href="{{ Storage::url($purchase->proof_image) }}" target="_blank" class="text-indigo-600 hover:underline text-sm flex items-center gap-1">
                                                     <x-heroicon-o-paper-clip class="w-4 h-4" />
-                                                    View Uploaded Image
+                                                    Ver imagen cargada
                                                 </a>
                                             </div>
                                         @else
@@ -302,7 +302,7 @@
 
                                     <div class="mt-6 flex justify-end gap-3">
                                         <x-secondary-button type="button" @click="open = false" x-bind:disabled="submitting">
-                                            Cancel
+                                            Cancelar
                                         </x-secondary-button>
                                         <x-primary-button
                                             class="!bg-green-600 hover:!bg-green-700 focus:!ring-green-500"
@@ -327,10 +327,10 @@
                     <x-primary-button
                         type="button"
                         class="!bg-emerald-600 hover:!bg-emerald-700 focus:!ring-emerald-500"
-                        @click="confirmAction('{{ route('purchases.mark-paid', $purchase) }}', 'PATCH', 'Mark as Paid', 'Are you sure you want to mark this purchase as paid? This assumes the full amount has been paid.', 'Mark as Paid', '!bg-emerald-600 hover:!bg-emerald-700 focus:!ring-emerald-500')"
+                        @click="confirmAction('{{ route('purchases.mark-paid', $purchase) }}', 'PATCH', 'Marcar como pagada', '¿Seguro que deseas marcar esta compra como pagada? Esto asume que se pagó el monto completo.', 'Marcar como pagada', '!bg-emerald-600 hover:!bg-emerald-700 focus:!ring-emerald-500')"
                     >
                         <x-heroicon-o-currency-dollar class="w-5 h-5 mr-1" />
-                        {{ __('Mark as Paid') }}
+                        {{ __('Marcar como pagada') }}
                     </x-primary-button>
 
                 @elseif($purchase->status === \App\Enums\PurchaseStatus::CANCELLED)
@@ -338,9 +338,9 @@
                     {{-- Restore Action --}}
                     <x-secondary-button
                         type="button"
-                        @click="confirmAction('{{ route('purchases.restore-draft', $purchase) }}', 'PATCH', 'Restore to Draft', 'Restore this purchase to Draft status? You can edit it again.', 'Restore to Draft', '!bg-gray-800 hover:!bg-gray-700 text-white')"
+                        @click="confirmAction('{{ route('purchases.restore-draft', $purchase) }}', 'PATCH', 'Restaurar a borrador', '¿Restaurar esta compra al estado borrador? Podrás editarla nuevamente.', 'Restaurar a borrador', '!bg-gray-800 hover:!bg-gray-700 text-white')"
                     >
-                        {{ __('Restore to Draft') }}
+                        {{ __('Restaurar a borrador') }}
                     </x-secondary-button>
 
                 @endif
@@ -354,7 +354,7 @@
 
                         <div class="mt-6 flex justify-end">
                             <x-secondary-button x-on:click="$dispatch('close-modal', { name: 'confirmation-modal' })" x-bind:disabled="submitting">
-                                {{ __('Cancel') }}
+                                {{ __('Cancelar') }}
                             </x-secondary-button>
 
                             <form id="confirmation-form" method="POST" class="ml-3" x-ref="confirmForm" @submit.prevent>

@@ -13,11 +13,11 @@ enum PurchaseStatus: string
     public function label(): string
     {
         return match($this) {
-            self::DRAFT => 'Draft',
-            self::ORDERED => 'Ordered',
-            self::RECEIVED => 'Received',
-            self::PAID => 'Paid',
-            self::CANCELLED => 'Cancelled',
+            self::DRAFT => 'Borrador',
+            self::ORDERED => 'Pedido',
+            self::RECEIVED => 'Recibido',
+            self::PAID => 'Pagado',
+            self::CANCELLED => 'Cancelado',
         };
     }
 

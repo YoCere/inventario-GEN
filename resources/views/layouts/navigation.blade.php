@@ -119,11 +119,11 @@
 
                     <x-slot name="content">
                         <x-dropdown-link :href="route('profile.index')" :active="request()->routeIs('profile.*')">
-                            {{ __('Profile') }}
+                            Perfil
                         </x-dropdown-link>
 
                         <x-dropdown-link :href="route('settings.index')" :active="request()->routeIs('settings.*')">
-                            {{ __('Settings') }}
+                            Ajustes
                         </x-dropdown-link>
 
                         <!-- Authentication -->
@@ -237,7 +237,7 @@
                         </div>
 
                         <!-- Mobile Users Link -->
-                        <a href="{{ route('users.index') }}" class="text-md font-semibold hover:underline border-b pb-4 {{ request()->routeIs('users.*') ? 'text-primary' : '' }}">Users</a>
+                        <a href="{{ route('users.index') }}" class="text-md font-semibold hover:underline border-b pb-4 {{ request()->routeIs('users.*') ? 'text-primary' : '' }}">Usuarios</a>
 
                         <!-- Mobile Products Accordion -->
                         <div x-data="{ expanded: {{ request()->routeIs(['products.*', 'categories.*', 'units.*']) ? 'true' : 'false' }} }" class="border-b-0">
