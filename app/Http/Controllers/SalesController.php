@@ -99,7 +99,7 @@ class SalesController extends Controller
 
         try {
             $saleService->restoreSale($sale);
-            return redirect()->back()->with('success', 'Sale restored to Pending.');
+            return redirect()->back()->with('success', 'Venta restaurada a reservado.');
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }

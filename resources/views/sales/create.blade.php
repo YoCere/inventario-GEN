@@ -10,7 +10,7 @@
         <div class="flex flex-col lg:flex-row h-[calc(100vh-100px)] space-y-4 lg:space-y-0 lg:space-x-4 relative">
 
             <!-- Left Side: Transaction Details (70%) -->
-            <div class="w-full lg:w-[70%] flex flex-col space-y-4 h-full">
+            <div class="w-full lg:w-[75%] flex flex-col space-y-4 h-full">
                 <!-- Search Bar (TomSelect) -->
                 <div class="relative z-20 mb-2">
                     <select
@@ -98,7 +98,7 @@
             </div>
 
             <!-- Right Side: Payment Details (30%) -->
-            <div class="w-full lg:w-[30%] flex flex-col bg-white rounded-lg shadow border border-gray-200 h-full">
+            <div class="w-full lg:w-[25%] flex flex-col bg-white rounded-lg shadow border border-gray-200 h-full">
                 <!-- Header -->
                 <div class="p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
                     <h2 class="text-xs font-bold text-gray-500 uppercase tracking-wide">Detalles del pago</h2>
@@ -119,7 +119,7 @@
                                 <div class="flex justify-between items-center">
                                     <div>
                                         <h3 class="font-bold text-lg text-gray-900" x-text="selectedCustomer.name"></h3>
-                                        <p class="text-sm text-gray-600" x-text="selectedCustomer.phone || 'No Phone'"></p>
+                                        <p class="text-sm text-gray-600" x-text="selectedCustomer.phone || 'Sin teléfono'"></p>
                                     </div>
                                     <button @click="resetCustomer()" class="text-gray-400 hover:text-red-500">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -204,33 +204,7 @@
                                         placeholder="0">
                                 </div>
 
-                                <!-- Botones de pago rápido -->
-                                <div class="grid grid-cols-4 gap-2 mt-2">
-                                    <button @click="payment.cash_received = total" class="px-2 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-xs font-bold text-gray-700">
-                                        EXACTO
-                                    </button>
-                                    <button @click="payment.cash_received = (parseInt(payment.cash_received) || 0) + 100000" class="px-2 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-xs font-bold text-gray-700">
-                                        +100K
-                                    </button>
-                                    <button @click="payment.cash_received = (parseInt(payment.cash_received) || 0) + 50000" class="px-2 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-xs font-bold text-gray-700">
-                                        +50K
-                                    </button>
-                                    <button @click="payment.cash_received = (parseInt(payment.cash_received) || 0) + 20000" class="px-2 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-xs font-bold text-gray-700">
-                                        +20K
-                                    </button>
-                                    <button @click="payment.cash_received = (parseInt(payment.cash_received) || 0) + 10000" class="px-2 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-xs font-bold text-gray-700">
-                                        +10K
-                                    </button>
-                                    <button @click="payment.cash_received = (parseInt(payment.cash_received) || 0) + 5000" class="px-2 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-xs font-bold text-gray-700">
-                                        +5K
-                                    </button>
-                                    <button @click="payment.cash_received = (parseInt(payment.cash_received) || 0) + 2000" class="px-2 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-xs font-bold text-gray-700">
-                                        +2K
-                                    </button>
-                                    <button @click="payment.cash_received = (parseInt(payment.cash_received) || 0) + 1000" class="px-2 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-xs font-bold text-gray-700">
-                                        +1K
-                                    </button>
-                                </div>
+                                
                                 <div class="bg-green-50 p-3 rounded-md border border-green-100 flex justify-between items-center mt-2"
                                     :class="change < 0 ? 'bg-red-50 border-red-100 text-red-800' : 'bg-green-50 border-green-100 text-green-800'">
                                     <span class="text-sm font-medium uppercase" x-text="change < 0 ? 'Por Pagar' : 'Cambio'"></span>
@@ -441,7 +415,7 @@
                                     return `
                                         <div class="py-2 px-3 hover:bg-indigo-50">
                                             <div class="font-medium text-gray-900">${escape(item.name)}</div>
-                                            <div class="text-xs text-gray-500">${escape(item.phone || 'No Phone')}</div>
+                                            <div class="text-xs text-gray-500">${escape(item.phone || 'Sin teléfono')}</div>
                                         </div>
                                     `;
                                 }
@@ -710,13 +684,13 @@
                                 this.resetForm();
 
                                 this.$dispatch('toast', {
-                                    message: 'Transaction Successful!',
+                                    message: '¡Transacción exitosa!',
                                     type: 'success'
                                 });
 
                             } else {
                                 this.$dispatch('toast', {
-                                    message: data.message || 'Error occurred',
+                                    message: data.message || 'Ocurrió un error',
                                     type: 'error'
                                 });
                             }
@@ -724,7 +698,7 @@
                         } catch (e) {
                             console.error(e);
                             this.$dispatch('toast', {
-                                message: 'Network error occurred',
+                                message: 'Ocurrió un error de red',
                                 type: 'error'
                             });
                         } finally {
@@ -817,7 +791,7 @@
                                 <svg x-show="saleStatus === 'pending'" class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                 </svg>
-                                PENDIENTE
+                                RESERVAR
                             </button>
                         </div>
                     </div>
@@ -890,7 +864,7 @@
                                 });
                             } else {
                                 // Fallback if generic error
-                                this.$dispatch('toast', { message: data.message || 'Error creating customer', type: 'error' });
+                                this.$dispatch('toast', { message: data.message || 'Error al crear cliente', type: 'error' });
                             }
                         }
                     } catch(e) { console.error(e); }
@@ -1003,7 +977,7 @@
                 </div>
             </div>
             <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 gap-2">
-                <x-danger-button @click="resetForm(); clearStorage(); $dispatch('close-modal', { name: 'cancel-modal' }); $dispatch('toast', { message: 'Transaction Cancelled', type: 'info' })" class="w-full sm:w-auto justify-center">
+                <x-danger-button @click="resetForm(); clearStorage(); $dispatch('close-modal', { name: 'cancel-modal' }); $dispatch('toast', { message: 'Transacción cancelada', type: 'info' })" class="w-full sm:w-auto justify-center">
                     {{ __('Sí, cancelar transacción') }}
                 </x-danger-button>
                 <button

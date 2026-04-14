@@ -1,11 +1,11 @@
-<x-app-layout title="Edit Purchase">
+<x-app-layout title="Editar compra">
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-foreground leading-tight">
-                {{ __('Edit Purchase') }} #{{ $purchase->id }}
+                {{ __('Editar compra') }} #{{ $purchase->id }}
             </h2>
             <x-secondary-button href="{{ route('purchases.index') }}">
-                &larr; {{ __('Back to List') }}
+                &larr; {{ __('Volver al listado') }}
             </x-secondary-button>
         </div>
     </x-slot>

@@ -56,7 +56,7 @@ class PurchaseController extends Controller
         } catch (PurchaseException $e) {
             return back()->withInput()->with('error', $e->getMessage());
         } catch (\Exception $e) {
-            return back()->withInput()->with('error', 'Error creating purchase: ' . $e->getMessage());
+            return back()->withInput()->with('error', 'Error al crear la compra: ' . $e->getMessage());
         }
     }
 

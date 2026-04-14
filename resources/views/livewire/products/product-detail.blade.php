@@ -10,11 +10,11 @@
                 <div>
                     @if($product->is_active)
                         <span class="inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
-                            Active
+                            Activo
                         </span>
                     @else
                         <span class="inline-flex items-center rounded-full bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/20">
-                            Inactive
+                            Inactivo
                         </span>
                     @endif
                 </div>
@@ -65,14 +65,14 @@
                 <div class="space-y-1">
                     <label class="text-sm font-medium leading-none text-muted-foreground">{{ __('Description') }}</label>
                     <p class="text-sm text-foreground font-medium">
-                        {{ $product->description ?: 'No description provided.' }}
+                        {{ $product->description ?: 'No se proporcionó descripción.' }}
                     </p>
                 </div>
 
                 <div class="space-y-1">
                     <label class="text-sm font-medium leading-none text-muted-foreground">{{ __('Internal Notes') }}</label>
                     <div class="bg-gray-50 border border-secondary p-3 rounded-md">
-                        <p class="text-sm text-foreground font-mono whitespace-pre-wrap leading-relaxed">{{ $product->notes ?: 'No notes.' }}</p>
+                        <p class="text-sm text-foreground font-mono whitespace-pre-wrap leading-relaxed">{{ $product->notes ?: 'Sin notas.' }}</p>
                     </div>
                 </div>
 

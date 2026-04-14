@@ -38,6 +38,7 @@ class UserForm extends Component
     {
         abort_if(!auth()->user()->isAdmin(), 403);
         $this->reset(['user', 'isEditing', 'name', 'username', 'email', 'password', 'password_confirmation', 'role']);
+        $this->resetValidation();
         $this->role = 'staff';
         $this->dispatch('open-modal', name: 'user-form-modal');
     }
@@ -85,7 +86,8 @@ class UserForm extends Component
             $this->dispatch('pg:eventRefresh-user-table');
             $this->dispatch('toast', message: $message, type: 'success');
 
-            $this->reset(['user', 'isEditing', 'name', 'username', 'email', 'password', 'password_confirmation']);
+            $this->reset(['user', 'isEditing', 'name', 'username', 'email', 'password', 'password_confirmation', 'role']);
+            $this->role = 'staff';
 
         } catch (\Exception $e) {
             $this->dispatch('toast', message: 'Error: ' . $e->getMessage(), type: 'error');

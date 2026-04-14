@@ -121,12 +121,12 @@
 
                     <x-slot name="content">
                         <x-dropdown-link :href="route('profile.index')" :active="request()->routeIs('profile.*')">
-                            {{ __('Profile') }}
+                            Perfil
                         </x-dropdown-link>
 
                         @if(auth()->user()->isAdmin())
                         <x-dropdown-link :href="route('settings.index')" :active="request()->routeIs('settings.*')">
-                            {{ __('Settings') }}
+                            Ajustes
                         </x-dropdown-link>
                         @endif
 
@@ -242,7 +242,7 @@
 
                         <!-- Mobile Users Link (Admin Only) -->
                         @if(auth()->user()->isAdmin())
-                        <a href="{{ route('users.index') }}" class="text-md font-semibold hover:underline border-b pb-4 {{ request()->routeIs('users.*') ? 'text-primary' : '' }}">Users</a>
+                        <a href="{{ route('users.index') }}" class="text-md font-semibold hover:underline border-b pb-4 {{ request()->routeIs('users.*') ? 'text-primary' : '' }}">Usuarios</a>
                         @endif
 
                         <!-- Mobile Products Accordion -->

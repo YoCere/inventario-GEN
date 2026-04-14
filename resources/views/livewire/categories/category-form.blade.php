@@ -3,7 +3,7 @@
         <!-- Custom Header -->
         <div class="mb-6 space-y-1.5 text-center sm:text-left border-b border-gray-200 pb-4">
             <h3 class="text-lg font-semibold leading-none tracking-tight text-foreground">
-                {{ $isEditing ? 'Edit Category' : 'Create Category' }}
+                {{ $isEditing ? 'Editar categoría' : 'Crear categoría' }}
             </h3>
             <p class="text-sm text-muted-foreground">
                 {{ $isEditing ? 'Make changes to your category here. Click save when you\'re done.' : 'Add a new category to your inventory.' }}
@@ -29,7 +29,7 @@
                     wire:model="description"
                     rows="3"
                     class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    placeholder="Optional description..."
+                    placeholder="Descripción opcional..."
                 ></textarea>
                 <x-input-error :messages="$errors->get('description')" />
             </div>

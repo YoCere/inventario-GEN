@@ -1,8 +1,8 @@
-<x-guest-layout title="Reset Password">
+<x-guest-layout title="Restablecer contraseña">
     <div class="space-y-6">
         <div class="space-y-2 text-center">
-            <h1 class="text-2xl font-semibold tracking-tight">Reset Password</h1>
-            <p class="text-sm text-muted-foreground">Enter your new password below.</p>
+            <h1 class="text-2xl font-semibold tracking-tight">Restablecer contraseña</h1>
+            <p class="text-sm text-muted-foreground">Ingresa tu nueva contraseña.</p>
         </div>
 
         <form method="POST" action="{{ route('password.store') }}" x-data="{ loading: false }" @submit="loading = true">
