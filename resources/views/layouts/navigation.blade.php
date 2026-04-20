@@ -80,6 +80,9 @@
                                 <x-dropdown-link :href="route('finance.journal-entries.index')" :active="request()->routeIs('finance.journal-entries.index')">
                                     Libro diario
                                 </x-dropdown-link>
+                                <x-dropdown-link :href="route('finance.statements.index')" :active="request()->routeIs('finance.statements.index')">
+                                    Estados financieros
+                                </x-dropdown-link>
                             </x-slot>
                         </x-nav-dropdown>
 
@@ -244,6 +247,7 @@
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.categories.index') ? 'text-primary' : '' }}" href="{{ route('finance.categories.index') }}">Categorias</a>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.chart-of-accounts.index') ? 'text-primary' : '' }}" href="{{ route('finance.chart-of-accounts.index') }}">Plan de cuentas</a>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.journal-entries.index') ? 'text-primary' : '' }}" href="{{ route('finance.journal-entries.index') }}">Libro diario</a>
+                                    <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.statements.index') ? 'text-primary' : '' }}" href="{{ route('finance.statements.index') }}">Estados financieros</a>
                                 </div>
                             </div>
                         </div>

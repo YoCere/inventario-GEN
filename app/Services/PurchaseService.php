@@ -8,13 +8,15 @@ use App\Models\Purchase;
 use App\DTOs\PurchaseData;
 use App\Models\PurchaseItem;
 use App\Enums\PurchaseStatus;
+use App\Services\Accounting\PurchaseAccountingService;
 use Illuminate\Support\Facades\DB;
 use App\Exceptions\PurchaseException;
 
 class PurchaseService
 {
     public function __construct(
-        protected FinanceTransactionService $financeService
+        protected FinanceTransactionService $financeService,
+        protected PurchaseAccountingService $purchaseAccountingService
     ) {
     }
 
@@ -197,6 +199,7 @@ class PurchaseService
             $purchase->update(['status' => PurchaseStatus::PAID]);
 
             $this->financeService->recordExpenseFromPurchase($purchase);
+            $this->purchaseAccountingService->postPaidPurchase($purchase, (int) ($purchase->created_by ?? auth()->id() ?? 1));
         });
     }
 

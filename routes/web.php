@@ -5,6 +5,7 @@ use App\Http\Controllers\SalesController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FinanceReportController;
+use App\Http\Controllers\FinancialStatementController;
 
 Route::middleware(['auth', 'verified'])->group(function () {
     // =========================================================================
@@ -57,6 +58,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::view('transactions', 'finance-transactions.index')->name('transactions.index');
         Route::view('chart-of-accounts', 'finance-chart-of-accounts.index')->name('chart-of-accounts.index');
         Route::view('journal-entries', 'finance-journal-entries.index')->name('journal-entries.index');
+        Route::get('statements', [FinancialStatementController::class, 'index'])->name('statements.index');
         Route::get('transactions/print/{printId}', [FinanceReportController::class, 'print'])->name('transactions.print');
     });
 

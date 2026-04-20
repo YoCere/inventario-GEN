@@ -3,9 +3,12 @@
 namespace App\Services\Accounting;
 
 use App\Enums\JournalEntryStatus;
+use App\Models\AccountingPeriod;
 use App\Models\JournalEntry;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
+use RuntimeException;
 
 class JournalEntryService
 {
@@ -61,6 +64,62 @@ class JournalEntryService
         });
     }
 
+    public function findPostedSourceEntry(string $sourceType, int $sourceId): ?JournalEntry
+    {
+        return JournalEntry::query()
+            ->where('source_type', $sourceType)
+            ->where('source_id', $sourceId)
+            ->where('status', JournalEntryStatus::Posted)
+            ->whereNull('reversed_entry_id')
+            ->first();
+    }
+
+    public function reverseEntry(JournalEntry $entry, int $userId, ?string $description = null): JournalEntry
+    {
+        if ($entry->status !== JournalEntryStatus::Posted) {
+            throw new RuntimeException('Solo se pueden revertir asientos contabilizados.');
+        }
+
+        $existing = JournalEntry::query()
+            ->where('reversed_entry_id', $entry->id)
+            ->where('status', JournalEntryStatus::Posted)
+            ->first();
+
+        if ($existing) {
+            return $existing->load('lines');
+        }
+
+        $entry->loadMissing('lines');
+
+        $reverseDate = now()->toDateString();
+        $period = $this->resolveOpenPeriod($reverseDate);
+
+        $reverseLines = $entry->lines->map(function ($line) {
+            return [
+                'chart_of_account_id' => $line->chart_of_account_id,
+                'description' => $line->description,
+                'debit_amount' => (int) $line->credit_amount,
+                'credit_amount' => (int) $line->debit_amount,
+                'reference' => $line->reference,
+            ];
+        })->all();
+
+        $reverse = $this->createPostedEntry([
+            'entry_date' => $reverseDate,
+            'accounting_period_id' => $period->id,
+            'description' => $description ?? ('Reverso de asiento ' . $entry->entry_number),
+            'source_type' => $entry->source_type,
+            'source_id' => $entry->source_id,
+            'created_by' => $userId,
+            'posted_by' => $userId,
+        ], $reverseLines);
+
+        $reverse->update(['reversed_entry_id' => $entry->id]);
+        $entry->update(['status' => JournalEntryStatus::Reversed]);
+
+        return $reverse->fresh('lines');
+    }
+
     /**
      * @param array<int, array{debit_amount?: int, credit_amount?: int}> $lines
      */
@@ -108,5 +167,23 @@ class JournalEntryService
 
         $last = (int) substr($latest->entry_number, -4);
         return $prefix . str_pad((string) ($last + 1), 4, '0', STR_PAD_LEFT);
+    }
+
+    protected function resolveOpenPeriod(string $entryDate): AccountingPeriod
+    {
+        $date = Carbon::parse($entryDate)->toDateString();
+
+        $period = AccountingPeriod::query()
+            ->whereDate('start_date', '<=', $date)
+            ->whereDate('end_date', '>=', $date)
+            ->where('status', 'open')
+            ->orderBy('start_date')
+            ->first();
+
+        if (!$period) {
+            throw new RuntimeException("No existe periodo contable abierto para {$date}.");
+        }
+
+        return $period;
     }
 }

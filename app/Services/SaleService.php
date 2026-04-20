@@ -181,6 +181,7 @@ class SaleService
 
                 // Void Finance
                 $this->financeService->voidTransaction($sale);
+                $this->saleAccountingService->reverseSaleEntry($sale, (int) (auth()->id() ?? $sale->created_by ?? 1), $reason);
 
                 return $sale;
 

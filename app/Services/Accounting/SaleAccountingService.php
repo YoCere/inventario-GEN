@@ -23,6 +23,7 @@ class SaleAccountingService
             ->where('source_type', Sale::class)
             ->where('source_id', $sale->id)
             ->where('status', JournalEntryStatus::Posted)
+            ->whereNull('reversed_entry_id')
             ->exists();
 
         if ($exists) {
@@ -90,6 +91,22 @@ class SaleAccountingService
             'created_by' => $userId,
             'posted_by' => $userId,
         ], $lines);
+    }
+
+    public function reverseSaleEntry(Sale $sale, int $userId, ?string $reason = null): ?JournalEntry
+    {
+        $original = $this->journalEntryService->findPostedSourceEntry(Sale::class, $sale->id);
+
+        if (!$original) {
+            return null;
+        }
+
+        $description = 'Reverso contable por cancelación de venta ' . $sale->invoice_number;
+        if ($reason) {
+            $description .= ' | Motivo: ' . $reason;
+        }
+
+        return $this->journalEntryService->reverseEntry($original, $userId, $description);
     }
 
     protected function resolveOpenPeriod(string $entryDate): AccountingPeriod
