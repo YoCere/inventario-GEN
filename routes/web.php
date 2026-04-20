@@ -54,6 +54,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Finance
     // =========================================================================
     Route::prefix('finance')->name('finance.')->group(function () {
+        Route::view('/', 'finance.index')->name('index');
         Route::view('categories', 'finance-categories.index')->name('categories.index');
         Route::view('transactions', 'finance-transactions.index')->name('transactions.index');
         Route::view('chart-of-accounts', 'finance-chart-of-accounts.index')->name('chart-of-accounts.index');

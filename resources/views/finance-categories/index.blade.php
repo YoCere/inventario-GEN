@@ -1,13 +1,19 @@
-<x-app-layout title="CategorÃ­as Financieras">
+<x-app-layout title="Categorías Financieras">
     <x-slot name="header">
-        <div class="flex justify-between items-center">
+        <div class="flex justify-between items-center gap-2">
             <h2 class="font-semibold text-xl text-foreground leading-tight">
-                {{ __('CategorÃ­as Financieras') }}
+                {{ __('Categorías Financieras') }}
             </h2>
-            <x-primary-button x-data x-on:click="$dispatch('create-finance-category')">
-                <x-heroicon-o-plus class="w-4 h-4 mr-2" />
-                {{ __('Crear CategorÃ­a') }}
-            </x-primary-button>
+            <div class="flex items-center gap-2 print:hidden">
+                <x-secondary-button type="button" onclick="window.print()">
+                    <x-heroicon-o-printer class="w-4 h-4 mr-2" />
+                    Imprimir
+                </x-secondary-button>
+                <x-primary-button x-data x-on:click="$dispatch('create-finance-category')">
+                    <x-heroicon-o-plus class="w-4 h-4 mr-2" />
+                    Crear Categoría
+                </x-primary-button>
+            </div>
         </div>
     </x-slot>
 
@@ -19,4 +25,10 @@
 
     <livewire:finance-categories.finance-category-form />
     <livewire:finance-categories.finance-category-detail />
+
+    <style>
+        @media print {
+            .print\:hidden { display: none !important; }
+        }
+    </style>
 </x-app-layout>
