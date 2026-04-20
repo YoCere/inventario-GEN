@@ -9,12 +9,14 @@ use App\Models\Product;
 use App\Enums\SaleStatus;
 use App\Enums\PaymentMethod;
 use App\Exceptions\SaleException;
+use App\Services\Accounting\SaleAccountingService;
 use Illuminate\Support\Facades\DB;
 
 class SaleService
 {
     public function __construct(
-        protected FinanceTransactionService $financeService
+        protected FinanceTransactionService $financeService,
+        protected SaleAccountingService $saleAccountingService
     ) {
     }
 
@@ -134,6 +136,7 @@ class SaleService
 
                 if ($sale->status === SaleStatus::COMPLETED) {
                     $this->financeService->recordIncomeFromSale($sale);
+                    $this->saleAccountingService->postCompletedSale($sale, (int) ($sale->created_by ?? 1));
                 }
 
                 return $sale;
@@ -220,6 +223,7 @@ class SaleService
 
             // Sync Finance
             $this->financeService->recordIncomeFromSale($sale);
+            $this->saleAccountingService->postCompletedSale($sale, (int) ($sale->created_by ?? auth()->id() ?? 1));
 
             return $sale;
         });

@@ -55,6 +55,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('finance')->name('finance.')->group(function () {
         Route::view('categories', 'finance-categories.index')->name('categories.index');
         Route::view('transactions', 'finance-transactions.index')->name('transactions.index');
+        Route::view('chart-of-accounts', 'finance-chart-of-accounts.index')->name('chart-of-accounts.index');
+        Route::view('journal-entries', 'finance-journal-entries.index')->name('journal-entries.index');
         Route::get('transactions/print/{printId}', [FinanceReportController::class, 'print'])->name('transactions.print');
     });
 

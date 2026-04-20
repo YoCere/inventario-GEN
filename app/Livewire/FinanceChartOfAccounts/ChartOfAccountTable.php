@@ -1,0 +1,137 @@
+<?php
+
+namespace App\Livewire\FinanceChartOfAccounts;
+
+use App\Models\ChartOfAccount;
+use App\Enums\AccountType;
+use Illuminate\Database\Eloquent\Builder;
+use PowerComponents\LivewirePowerGrid\Button;
+use PowerComponents\LivewirePowerGrid\Column;
+use PowerComponents\LivewirePowerGrid\Facades\Filter;
+use PowerComponents\LivewirePowerGrid\PowerGridFields;
+use PowerComponents\LivewirePowerGrid\Facades\PowerGrid;
+use PowerComponents\LivewirePowerGrid\Traits\WithExport;
+use PowerComponents\LivewirePowerGrid\PowerGridComponent;
+use PowerComponents\LivewirePowerGrid\Components\SetUp\Exportable;
+
+final class ChartOfAccountTable extends PowerGridComponent
+{
+    use WithExport;
+
+    public string $tableName = 'chart-of-account-table';
+    public string $sortField = 'code';
+    public string $sortDirection = 'asc';
+
+    public function boot(): void
+    {
+        config(['livewire-powergrid.filter' => 'outside']);
+    }
+
+    public function setUp(): array
+    {
+        return [
+            PowerGrid::exportable('plan_de_cuentas_' . now()->format('Y_m_d'))
+                ->type(Exportable::TYPE_XLS, Exportable::TYPE_CSV),
+
+            PowerGrid::header()
+                ->showSearchInput(),
+
+            PowerGrid::footer()
+                ->showPerPage(perPage: 20, perPageValues: [20, 50, 100])
+                ->showRecordCount(),
+        ];
+    }
+
+    public function datasource(): Builder
+    {
+        return ChartOfAccount::query()->with('parent');
+    }
+
+    public function fields(): PowerGridFields
+    {
+        return PowerGrid::fields()
+            ->add('id')
+            ->add('code')
+            ->add('name')
+            ->add('level')
+            ->add('parent_name', fn (ChartOfAccount $model) => $model->parent?->code . ' - ' . $model->parent?->name ?: '-')
+            ->add('account_type')
+            ->add('account_type_label', fn (ChartOfAccount $model) => $model->account_type->label())
+            ->add('normal_balance')
+            ->add('normal_balance_label', fn (ChartOfAccount $model) => $model->normal_balance->label())
+            ->add('allows_posting_label', fn (ChartOfAccount $model) => $model->allows_posting ? 'Sí' : 'No')
+            ->add('is_active_label', fn (ChartOfAccount $model) => $model->is_active ? 'Activo' : 'Inactivo');
+    }
+
+    public function columns(): array
+    {
+        return [
+            Column::make('Código', 'code')
+                ->sortable()
+                ->searchable(),
+
+            Column::make('Nombre', 'name')
+                ->sortable()
+                ->searchable(),
+
+            Column::make('Nivel', 'level')
+                ->sortable(),
+
+            Column::make('Cuenta padre', 'parent_name'),
+
+            Column::make('Tipo', 'account_type_label', 'account_type')
+                ->sortable(),
+
+            Column::make('Naturaleza', 'normal_balance_label', 'normal_balance')
+                ->sortable(),
+
+            Column::make('Imputable', 'allows_posting_label', 'allows_posting')
+                ->sortable(),
+
+            Column::make('Estado', 'is_active_label', 'is_active')
+                ->sortable(),
+
+            Column::action('Acción'),
+        ];
+    }
+
+    public function filters(): array
+    {
+        return [
+            Filter::select('account_type', 'account_type')
+                ->dataSource(collect(AccountType::cases())->map(fn ($type) => [
+                    'value' => $type->value,
+                    'label' => $type->label(),
+                ])->toArray())
+                ->optionLabel('label')
+                ->optionValue('value'),
+
+            Filter::select('is_active', 'is_active')
+                ->dataSource([
+                    ['value' => 1, 'label' => 'Activo'],
+                    ['value' => 0, 'label' => 'Inactivo'],
+                ])
+                ->optionLabel('label')
+                ->optionValue('value'),
+
+            Filter::select('allows_posting', 'allows_posting')
+                ->dataSource([
+                    ['value' => 1, 'label' => 'Sí'],
+                    ['value' => 0, 'label' => 'No'],
+                ])
+                ->optionLabel('label')
+                ->optionValue('value'),
+        ];
+    }
+
+    public function actions(ChartOfAccount $row): array
+    {
+        return [
+            Button::add('view')
+                ->slot('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>')
+                ->class('bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-md flex items-center justify-center')
+                ->dispatch('view-chart-account', ['account' => $row->id])
+                ->tooltip('Ver Cuenta'),
+        ];
+    }
+}

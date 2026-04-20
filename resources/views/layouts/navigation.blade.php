@@ -74,6 +74,12 @@
                                 <x-dropdown-link :href="route('finance.categories.index')" :active="request()->routeIs('finance.categories.index')">
                                     Categorías
                                 </x-dropdown-link>
+                                <x-dropdown-link :href="route('finance.chart-of-accounts.index')" :active="request()->routeIs('finance.chart-of-accounts.index')">
+                                    Plan de cuentas
+                                </x-dropdown-link>
+                                <x-dropdown-link :href="route('finance.journal-entries.index')" :active="request()->routeIs('finance.journal-entries.index')">
+                                    Libro diario
+                                </x-dropdown-link>
                             </x-slot>
                         </x-nav-dropdown>
 
@@ -236,6 +242,8 @@
                                 <div class="mt-2 flex flex-col gap-2 pl-4 border-l border-border ml-2">
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.transactions.index') ? 'text-primary' : '' }}" href="{{ route('finance.transactions.index') }}">Transacciones</a>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.categories.index') ? 'text-primary' : '' }}" href="{{ route('finance.categories.index') }}">Categorias</a>
+                                    <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.chart-of-accounts.index') ? 'text-primary' : '' }}" href="{{ route('finance.chart-of-accounts.index') }}">Plan de cuentas</a>
+                                    <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.journal-entries.index') ? 'text-primary' : '' }}" href="{{ route('finance.journal-entries.index') }}">Libro diario</a>
                                 </div>
                             </div>
                         </div>
