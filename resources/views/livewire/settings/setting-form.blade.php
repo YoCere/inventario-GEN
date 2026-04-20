@@ -38,6 +38,17 @@
                         class="block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm" 
                         placeholder="0 para IDR, 2 para USD"
                     >
+                @elseif($key === 'discount_rate_annual')
+                    <input
+                        type="number"
+                        id="value"
+                        wire:model="value"
+                        min="0"
+                        max="200"
+                        step="0.01"
+                        class="block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm"
+                        placeholder="Ejemplo: 12 para 12%"
+                    >
                 @elseif(in_array($key, ['currency_thousand_separator', 'currency_decimal_separator']))
                     <select id="value" wire:model="value" class="block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm">
                         <option value=".">Punto (.)</option>

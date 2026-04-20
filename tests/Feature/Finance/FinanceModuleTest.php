@@ -2,14 +2,14 @@
 
 namespace Tests\Feature\Finance;
 
-use Tests\TestCase;
-use App\Models\User;
-use App\Models\ChartOfAccount;
 use App\Models\AccountingPeriod;
+use App\Models\ChartOfAccount;
+use App\Models\User;
 use App\Services\Accounting\JournalEntryService;
-use Database\Seeders\ChartOfAccountSeeder;
 use Database\Seeders\AccountingPeriodSeeder;
+use Database\Seeders\ChartOfAccountSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
 class FinanceModuleTest extends TestCase
 {
@@ -36,7 +36,12 @@ class FinanceModuleTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('finance.statements.index'))
-            ->assertOk();
+            ->assertOk()
+            ->assertSeeText('Indicadores de Inversion')
+            ->assertSeeText('ROI')
+            ->assertSeeText('TIR')
+            ->assertSeeText('VAN')
+            ->assertSeeText('Periodo de recuperacion');
     }
 
     public function test_journal_entry_can_be_reversed_correctly(): void

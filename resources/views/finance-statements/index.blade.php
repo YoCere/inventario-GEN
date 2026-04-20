@@ -109,17 +109,70 @@
             </div>
 
             <div class="bg-card border border-border rounded-lg p-4 break-inside-avoid">
-                <h3 class="text-lg font-semibold mb-3">3. Estado de Resultados Acumulados / Patrimonio</h3>
+                <h3 class="text-lg font-semibold mb-3">3. Indicadores de Inversion (ROI y TIR)</h3>
+                @php($ind = $statements['indicadores_inversion'])
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+                    <div class="border border-border rounded-md p-3">
+                        <p class="text-muted-foreground">Base de inversion</p>
+                        <p class="text-lg font-semibold">@money($ind['investment_base'])</p>
+                        @if(!empty($ind['opening_balance_date']))
+                            <p class="text-xs text-muted-foreground mt-1">Configurada desde {{ \Carbon\Carbon::parse($ind['opening_balance_date'])->format('d/m/Y') }}</p>
+                        @endif
+                    </div>
+                    <div class="border border-border rounded-md p-3">
+                        <p class="text-muted-foreground">ROI del periodo</p>
+                        <p class="text-lg font-semibold">
+                            @if($ind['roi_percent'] !== null)
+                                {{ number_format($ind['roi_percent'], 2, '.', ',') }}%
+                            @else
+                                No disponible
+                            @endif
+                        </p>
+                    </div>
+                    <div class="border border-border rounded-md p-3">
+                        <p class="text-muted-foreground">TIR estimada</p>
+                        <p class="text-lg font-semibold">
+                            @if($ind['tir_annual_percent'] !== null)
+                                {{ number_format($ind['tir_annual_percent'], 2, '.', ',') }}% anual
+                            @else
+                                No disponible
+                            @endif
+                        </p>
+                        @if($ind['tir_monthly_percent'] !== null)
+                            <p class="text-xs text-muted-foreground mt-1">{{ number_format($ind['tir_monthly_percent'], 2, '.', ',') }}% mensual</p>
+                        @endif
+                    </div>
+                    <div class="border border-border rounded-md p-3">
+                        <p class="text-muted-foreground">VAN</p>
+                        <p class="text-lg font-semibold">
+                            @if($ind['van_amount'] !== null)
+                                @money($ind['van_amount'])
+                            @else
+                                No disponible
+                            @endif
+                        </p>
+                        <p class="text-xs text-muted-foreground mt-1">Tasa anual: {{ number_format($ind['discount_rate_annual'], 2, '.', ',') }}%</p>
+                    </div>
+                </div>
+                <p class="mt-2 text-sm">
+                    <span class="font-medium">Periodo de recuperacion:</span>
+                    {{ $ind['payback_label'] ?? 'No disponible' }}
+                </p>
+                <p class="mt-3 text-sm"><span class="font-medium">Interpretacion:</span> {{ $ind['analysis'] }}</p>
+            </div>
+
+            <div class="bg-card border border-border rounded-lg p-4 break-inside-avoid">
+                <h3 class="text-lg font-semibold mb-3">4. Estado de Resultados Acumulados / Patrimonio</h3>
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
                     <p><span class="font-medium">Patrimonio Inicial:</span> @money($statements['estado_patrimonio']['opening_equity'])</p>
                     <p><span class="font-medium">Resultado del Periodo:</span> @money($statements['estado_patrimonio']['period_result'])</p>
-                    <p><span class="font-medium">Variación:</span> @money($statements['estado_patrimonio']['changes'])</p>
+                    <p><span class="font-medium">Variacion:</span> @money($statements['estado_patrimonio']['changes'])</p>
                     <p><span class="font-medium">Patrimonio Final:</span> @money($statements['estado_patrimonio']['closing_equity'])</p>
                 </div>
             </div>
 
             <div class="bg-card border border-border rounded-lg p-4 break-inside-avoid">
-                <h3 class="text-lg font-semibold mb-3">4. Estado de Cambios de la Situación Financiera / Flujo de Efectivo</h3>
+                <h3 class="text-lg font-semibold mb-3">5. Estado de Cambios de la Situacion Financiera / Flujo de Efectivo</h3>
                 <div class="text-sm space-y-2">
                     @forelse($statements['flujo_efectivo']['cash_accounts'] as $row)
                         <p class="flex justify-between gap-2">
@@ -131,12 +184,12 @@
                     @endforelse
                     <p class="font-semibold mt-2">Entrada Total: @money($statements['flujo_efectivo']['total_inflow'])</p>
                     <p class="font-semibold">Salida Total: @money($statements['flujo_efectivo']['total_outflow'])</p>
-                    <p class="font-bold">Variación Neta de Efectivo: @money($statements['flujo_efectivo']['net_change'])</p>
+                    <p class="font-bold">Variacion Neta de Efectivo: @money($statements['flujo_efectivo']['net_change'])</p>
                 </div>
             </div>
 
             <div class="bg-card border border-border rounded-lg p-4 break-inside-avoid">
-                <h3 class="text-lg font-semibold mb-3">5. Notas a los Estados Financieros</h3>
+                <h3 class="text-lg font-semibold mb-3">6. Notas a los Estados Financieros</h3>
                 <ul class="list-disc pl-5 text-sm space-y-1">
                     @foreach($statements['notas'] as $note)
                         <li>{{ $note }}</li>

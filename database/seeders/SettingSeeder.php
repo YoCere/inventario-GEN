@@ -17,6 +17,7 @@ class SettingSeeder extends Seeder
         Setting::set('store_phone', '72345678');
         Setting::set('opening_balance_date', now()->startOfYear()->toDateString());
         Setting::set('opening_balance_amount', '50000');
+        Setting::set('discount_rate_annual', '12');
         Setting::set('currency_symbol', 'Bs');
         Setting::set('currency_position', 'left');
         Setting::set('currency_fraction_digits', '2');
