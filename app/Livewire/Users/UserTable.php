@@ -56,6 +56,8 @@ final class UserTable extends PowerGridComponent
     public function columns(): array
     {
         return [
+            Column::action('Accion'),
+
             Column::make('ID', 'id')
                 ->visibleInExport(true)
                 ->hidden(),
@@ -68,14 +70,12 @@ final class UserTable extends PowerGridComponent
                 ->searchable()
                 ->sortable(),
 
-            Column::make('Correo Electrónico', 'email')
+            Column::make('Correo electronico', 'email')
                 ->searchable()
                 ->sortable(),
 
             Column::make('Creado el', 'created_at_formatted', 'created_at')
                 ->sortable(),
-
-            Column::action('Acción')
         ];
     }
 
@@ -105,8 +105,8 @@ final class UserTable extends PowerGridComponent
                     'component' => 'users.user-table',
                     'method' => 'delete',
                     'params' => ['userId' => $row->id],
-                    'title' => '¿Eliminar Usuario?',
-                    'description' => "¿Está seguro de que desea eliminar al usuario '{$row->name}'? Esta acción no se puede deshacer.",
+                    'title' => 'Eliminar usuario?',
+                    'description' => "Seguro que deseas eliminar al usuario '{$row->name}'? Esta accion no se puede deshacer.",
                 ])
                 ->tooltip('Eliminar Usuario');
         }

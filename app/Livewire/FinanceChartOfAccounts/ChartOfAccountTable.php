@@ -59,14 +59,16 @@ final class ChartOfAccountTable extends PowerGridComponent
             ->add('account_type_label', fn (ChartOfAccount $model) => $model->account_type->label())
             ->add('normal_balance')
             ->add('normal_balance_label', fn (ChartOfAccount $model) => $model->normal_balance->label())
-            ->add('allows_posting_label', fn (ChartOfAccount $model) => $model->allows_posting ? 'Sí' : 'No')
+            ->add('allows_posting_label', fn (ChartOfAccount $model) => $model->allows_posting ? 'Si' : 'No')
             ->add('is_active_label', fn (ChartOfAccount $model) => $model->is_active ? 'Activo' : 'Inactivo');
     }
 
     public function columns(): array
     {
         return [
-            Column::make('Código', 'code')
+            Column::action('Accion'),
+
+            Column::make('Codigo', 'code')
                 ->sortable()
                 ->searchable(),
 
@@ -91,7 +93,6 @@ final class ChartOfAccountTable extends PowerGridComponent
             Column::make('Estado', 'is_active_label', 'is_active')
                 ->sortable(),
 
-            Column::action('Acción'),
         ];
     }
 
@@ -116,7 +117,7 @@ final class ChartOfAccountTable extends PowerGridComponent
 
             Filter::select('allows_posting', 'allows_posting')
                 ->dataSource([
-                    ['value' => 1, 'label' => 'Sí'],
+                    ['value' => 1, 'label' => 'Si'],
                     ['value' => 0, 'label' => 'No'],
                 ])
                 ->optionLabel('label')

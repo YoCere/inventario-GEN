@@ -6,6 +6,10 @@
                 <form method="GET" action="{{ route('finance.statements.index') }}" class="flex items-center gap-2">
                     <input type="date" name="from" value="{{ $from }}" class="rounded-md border-input bg-background text-sm" />
                     <input type="date" name="to" value="{{ $to }}" class="rounded-md border-input bg-background text-sm" />
+                    <label class="inline-flex items-center gap-2 text-sm text-foreground border border-input rounded-md px-3 py-2">
+                        <input type="checkbox" name="with_taxes" value="1" class="rounded border-input" {{ $withTaxes ? 'checked' : '' }} onchange="this.form.submit()" />
+                        Con impuestos (Bolivia)
+                    </label>
                     <x-primary-button type="submit">Actualizar</x-primary-button>
                 </form>
                 <x-secondary-button type="button" onclick="window.print()">
@@ -21,6 +25,10 @@
             <div class="bg-card border border-border rounded-lg p-4">
                 <h3 class="text-lg font-semibold mb-1">Resumen del periodo</h3>
                 <p class="text-sm text-muted-foreground">Desde {{ \Carbon\Carbon::parse($from)->format('d/m/Y') }} hasta {{ \Carbon\Carbon::parse($to)->format('d/m/Y') }}</p>
+                <p class="text-sm mt-1">
+                    <span class="font-medium">Modo:</span>
+                    {{ $withTaxes ? 'Con impuestos (IVA e IT)' : 'Sin impuestos' }}
+                </p>
             </div>
 
             <div class="bg-card border border-border rounded-lg p-4 break-inside-avoid">
@@ -106,6 +114,17 @@
                     </div>
                 </div>
                 <p class="mt-4 text-base font-bold">Resultado Neto: @money($statements['estado_resultados']['net_result'])</p>
+                @if($withTaxes)
+                    <div class="mt-3 text-sm border-t border-border pt-3 space-y-1">
+                        <p class="font-medium">Impuestos estimados Bolivia</p>
+                        <p>IVA débito ({{ number_format($statements['estado_resultados']['taxes']['iva_rate'], 2, '.', ',') }}%): @money($statements['estado_resultados']['taxes']['iva_debito'])</p>
+                        <p>IVA crédito: @money($statements['estado_resultados']['taxes']['iva_credito'])</p>
+                        <p>IVA determinado: @money($statements['estado_resultados']['taxes']['iva_determinado'])</p>
+                        <p>IT ({{ number_format($statements['estado_resultados']['taxes']['it_rate'], 2, '.', ',') }}%): @money($statements['estado_resultados']['taxes']['it_amount'])</p>
+                        <p class="font-semibold">Total Impuestos: @money($statements['estado_resultados']['taxes']['total_tax'])</p>
+                        <p class="font-bold">Resultado Neto con Impuestos: @money($statements['estado_resultados']['net_result_after_tax'])</p>
+                    </div>
+                @endif
             </div>
 
             <div class="bg-card border border-border rounded-lg p-4 break-inside-avoid">

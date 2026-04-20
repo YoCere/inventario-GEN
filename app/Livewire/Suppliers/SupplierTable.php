@@ -59,6 +59,8 @@ final class SupplierTable extends PowerGridComponent
     public function columns(): array
     {
         return [
+            Column::action('Accion'),
+
             Column::make('ID', 'id')
                 ->hidden()
                 ->visibleInExport(true),
@@ -75,12 +77,12 @@ final class SupplierTable extends PowerGridComponent
                 ->sortable()
                 ->searchable(),
 
-            Column::make('Teléfono', 'phone')
+            Column::make('Telefono', 'phone')
                 ->sortable()
                 ->searchable(),
 
             // Exportaciones
-            Column::make('Dirección', 'address')
+            Column::make('Direccion', 'address')
                 ->hidden()
                 ->visibleInExport(true),
 
@@ -88,7 +90,6 @@ final class SupplierTable extends PowerGridComponent
                 ->hidden()
                 ->visibleInExport(true),
 
-            Column::action('Acción'),
         ];
     }
 
@@ -114,8 +115,8 @@ final class SupplierTable extends PowerGridComponent
                     'component' => 'suppliers.supplier-table',
                     'method' => 'delete',
                     'params' => ['rowId' => $row->id],
-                    'title' => '¿Eliminar Proveedor?',
-                    'description' => "¿Está seguro de que desea eliminar al proveedor '{$row->name}'? Esta acción no se puede deshacer.",
+                    'title' => 'Eliminar proveedor?',
+                    'description' => "Seguro que deseas eliminar al proveedor '{$row->name}'? Esta accion no se puede deshacer.",
                 ])
                 ->tooltip('Eliminar Proveedor'),
         ];

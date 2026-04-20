@@ -4,6 +4,7 @@ namespace App\Livewire\Settings;
 
 use Livewire\Component;
 use App\Models\Setting;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Livewire\Attributes\On;
 
@@ -12,24 +13,43 @@ class SettingForm extends Component
     public ?string $key = null;
     public ?string $value = null;
     public string $label = '';
+    public string $admin_password = '';
 
     public function rules()
     {
-        return [
+        $rules = [
             'value' => ['nullable', 'string'],
         ];
+
+        if ($this->requiresSensitiveConfirmation()) {
+            $rules['admin_password'] = ['required', 'string'];
+        }
+
+        return $rules;
     }
 
     #[On('edit-setting')]
-    public function edit($key)
+    public function edit($key = null)
     {
         abort_if(!auth()->user()->isAdmin(), 403);
 
         $this->resetValidation();
-        $setting = Setting::findOrFail($key);
+        if (is_array($key)) {
+            $key = $key['key'] ?? $key[0] ?? null;
+        }
+
+        if (! is_string($key) || $key === '') {
+            return;
+        }
+
+        $setting = Setting::query()->find($key) ?? new Setting([
+            'key' => $key,
+            'value' => '',
+        ]);
 
         $this->key = $setting->key;
         $this->value = $setting->value;
+        $this->admin_password = '';
         $this->label = Str::title(str_replace('_', ' ', $setting->key));
 
         $this->dispatch('open-modal', name: 'setting-form-modal');
@@ -41,15 +61,29 @@ class SettingForm extends Component
 
         $this->validate();
 
+        if ($this->requiresSensitiveConfirmation() && ! Hash::check($this->admin_password, auth()->user()->password)) {
+            $this->addError('admin_password', 'Contrasena de administrador incorrecta.');
+            return;
+        }
+
         try {
             Setting::set($this->key, $this->value);
 
             $this->dispatch('close-modal', name: 'setting-form-modal');
             $this->dispatch('pg:eventRefresh-setting-table');
-            $this->dispatch('toast', message: 'Setting updated successfully.', type: 'success');
+            $this->dispatch('settings-updated');
+            $this->dispatch('toast', message: 'Ajuste actualizado correctamente.', type: 'success');
         } catch (\Exception $e) {
-            $this->dispatch('toast', message: 'Failed to update setting: ' . $e->getMessage(), type: 'error');
+            $this->dispatch('toast', message: 'No se pudo actualizar el ajuste: ' . $e->getMessage(), type: 'error');
         }
+    }
+
+    protected function requiresSensitiveConfirmation(): bool
+    {
+        return in_array($this->key, [
+            'opening_balance_date',
+            'opening_balance_amount',
+        ], true);
     }
 
     public function render()

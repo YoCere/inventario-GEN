@@ -1,40 +1,40 @@
 <x-modal name="unit-form-modal" :title="''" maxWidth="2xl">
     <div class="p-6">
-        <!-- Custom Header -->
+        <!-- Encabezado -->
         <div class="mb-6 space-y-1.5 text-center sm:text-left border-b border-gray-200 pb-4">
             <h3 class="text-lg font-semibold leading-none tracking-tight text-foreground">
                 {{ $isEditing ? 'Editar unidad' : 'Crear unidad' }}
             </h3>
             <p class="text-sm text-muted-foreground">
-                {{ $isEditing ? 'Make changes to your unit here. Click save when you\'re done.' : 'Add a new unit to your inventory.' }}
+                {{ $isEditing ? 'Realiza cambios en tu unidad y luego guarda.' : 'Agrega una nueva unidad a tu inventario.' }}
             </p>
         </div>
 
         <form wire:submit="save" class="space-y-4">
-            <!-- Name -->
+            <!-- Nombre -->
             <x-form-input
                 name="name"
-                label="Name"
+                label="Nombre"
                 type="text"
                 wire:model="name"
-                placeholder="e.g. Kilogram"
+                placeholder="e.g. Kilogramo"
                 required
             />
 
-            <!-- Symbol -->
+            <!-- Simbolo -->
             <x-form-input
                 name="symbol"
-                label="Symbol"
+                label="Simbolo"
                 type="text"
                 wire:model="symbol"
                 placeholder="e.g. kg"
                 required
             />
 
-            <!-- Actions -->
+            <!-- Acciones -->
             <div class="mt-6 flex justify-end gap-3 border-t border-gray-200 pt-4">
                 <x-secondary-button type="button" x-on:click="$dispatch('close-modal', { name: 'unit-form-modal' })">
-                    {{ __('Cancel') }}
+                    {{ __('Cancelar') }}
                 </x-secondary-button>
 
                 <x-primary-button type="submit" wire:loading.attr="disabled">
@@ -43,7 +43,7 @@
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                     <x-heroicon-o-check wire:loading.remove wire:target="save" class="w-4 h-4 mr-2" />
-                    {{ $isEditing ? __('Save Changes') : __('Create Unit') }}
+                    {{ $isEditing ? __('Guardar cambios') : __('Crear unidad') }}
                 </x-primary-button>
             </div>
         </form>

@@ -5,6 +5,25 @@
         <div>
             <h2 class="text-lg font-semibold text-foreground">Resumen</h2>
             <p class="text-sm text-muted-foreground">Monitorea el rendimiento de tu negocio de un vistazo.</p>
+            @if(auth()->user()?->isAdmin())
+                <div class="mt-2 inline-flex items-center gap-2 rounded-md border border-input bg-background px-2 py-1">
+                    <span class="text-xs text-muted-foreground">Modo:</span>
+                    <button
+                        type="button"
+                        wire:click="setDisplayMode('percent')"
+                        class="rounded px-2 py-1 text-xs {{ $displayMode === 'percent' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted' }}"
+                    >
+                        Porcentajes
+                    </button>
+                    <button
+                        type="button"
+                        wire:click="setDisplayMode('amount')"
+                        class="rounded px-2 py-1 text-xs {{ $displayMode === 'amount' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted' }}"
+                    >
+                        Montos
+                    </button>
+                </div>
+            @endif
         </div>
         <div class="flex flex-wrap items-center gap-2">
             <!-- Period Selector -->
@@ -57,14 +76,37 @@
         <div class="rounded-xl border border-gray-800 bg-gray-900 text-white shadow-sm">
             <div class="p-4 flex flex-row items-center justify-between space-y-0 pb-2">
                 <h3 class="tracking-tight text-sm font-medium text-gray-300">Ventas totales</h3>
-                <x-heroicon-o-banknotes class="h-4 w-4 text-gray-400" />
+                <div class="flex items-center gap-2">
+                    @if(auth()->user()?->isAdmin())
+                        <button type="button" wire:click="toggleSalesVisibility" class="text-gray-300 hover:text-white" title="Mostrar/ocultar">
+                            @if($showSalesTotals)
+                                <x-heroicon-o-eye class="h-4 w-4" />
+                            @else
+                                <x-heroicon-o-eye-slash class="h-4 w-4" />
+                            @endif
+                        </button>
+                    @endif
+                    <x-heroicon-o-banknotes class="h-4 w-4 text-gray-400" />
+                </div>
             </div>
             <div class="p-4 pt-0">
                 <div class="text-xl sm:text-2xl font-bold text-white">
-                    @money($stats['total_sales'] ?? 0)
+                    @if($displayMode === 'percent')
+                        {{ $this->salesToIncomePercent !== null ? number_format($this->salesToIncomePercent, 2, '.', ',') . '%' : 'N/D' }}
+                    @else
+                        @if(auth()->user()?->isAdmin() && ! $showSalesTotals)
+                            ******
+                        @else
+                            @money($stats['total_sales'] ?? 0)
+                        @endif
+                    @endif
                 </div>
                 <p class="text-xs text-gray-400 mt-1">
-                    {{ $stats['sales_count'] ?? 0 }} transacciones
+                    @if($displayMode === 'percent')
+                        Participacion de ventas sobre ingresos
+                    @else
+                        {{ $stats['sales_count'] ?? 0 }} transacciones
+                    @endif
                 </p>
             </div>
         </div>
@@ -77,7 +119,11 @@
             </div>
             <div class="p-4 pt-0">
                 <div class="text-xl sm:text-2xl font-bold {{ ($stats['net_cash_flow'] ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-600' }}">
-                    @money($stats['net_cash_flow'] ?? 0)
+                    @if($displayMode === 'percent')
+                        {{ $this->netCashFlowPercent !== null ? number_format($this->netCashFlowPercent, 2, '.', ',') . '%' : 'N/D' }}
+                    @else
+                        @money($stats['net_cash_flow'] ?? 0)
+                    @endif
                 </div>
                 <div class="flex justify-between text-[11px] sm:text-xs text-muted-foreground mt-1">
                     <span class="text-emerald-600 flex items-center gap-1" title="Ingreso total">
@@ -98,10 +144,18 @@
             </div>
             <div class="p-4 pt-0">
                 <div class="text-xl sm:text-2xl font-bold">
-                    @money($stats['gross_profit'] ?? 0)
+                    @if($displayMode === 'percent')
+                        {{ $this->grossProfitMarginPercent !== null ? number_format($this->grossProfitMarginPercent, 2, '.', ',') . '%' : 'N/D' }}
+                    @else
+                        @money($stats['gross_profit'] ?? 0)
+                    @endif
                 </div>
                 <p class="text-xs text-muted-foreground mt-1">
-                    Estimado basado en costo de ventas
+                    @if($displayMode === 'percent')
+                        Margen bruto sobre ventas
+                    @else
+                        Estimado basado en costo de ventas
+                    @endif
                 </p>
             </div>
         </div>

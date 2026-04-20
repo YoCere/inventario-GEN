@@ -47,7 +47,7 @@
             <div class="flex flex-col sm:flex-row gap-6">
                 <!-- Category -->
                 <div class="w-full sm:w-1/2 space-y-2">
-                    <x-input-label for="category_id" :value="__('Category')" required />
+                    <x-input-label for="category_id" value="Categoria" required />
                     <div wire:ignore>
                         <x-tom-select
                             id="category_id"
@@ -64,7 +64,7 @@
 
                 <!-- Unit -->
                 <div class="w-full sm:w-1/2 space-y-2">
-                    <x-input-label for="unit_id" :value="__('Unit')" required />
+                    <x-input-label for="unit_id" value="Unidad" required />
                     <div wire:ignore>
                         <x-tom-select
                             id="unit_id"
@@ -84,7 +84,7 @@
             <div class="flex flex-col sm:flex-row gap-6">
                 <!-- Purchase Price -->
                 <div class="w-full sm:w-1/2 space-y-2">
-                    <x-input-label for="purchase_price" :value="__('Purchase Price') . ' (' . \App\Models\Setting::get('currency_symbol', 'Rp') . ')'" />
+                    <x-input-label for="purchase_price" :value="'Precio de compra (' . \App\Models\Setting::get('currency_symbol', 'Rp') . ')'" />
                     <x-currency-input
                         id="purchase_price"
                         wire:model.live.debounce.500ms="purchase_price"
@@ -96,7 +96,7 @@
 
                 <!-- Selling Price -->
                 <div class="w-full sm:w-1/2 space-y-2">
-                    <x-input-label for="selling_price" :value="__('Selling Price') . ' (' . \App\Models\Setting::get('currency_symbol', 'Rp') . ')'" />
+                    <x-input-label for="selling_price" :value="'Precio de venta (' . \App\Models\Setting::get('currency_symbol', 'Rp') . ')'" />
                     <x-currency-input
                         id="selling_price"
                         wire:model.live.debounce.500ms="selling_price"
@@ -140,7 +140,7 @@
                             class="w-6 h-6 rounded-full border-2 border-primary text-primary focus:ring-primary/20"
                         >
                         <span class="ml-3 text-sm font-medium text-gray-700 dark:text-gray-300">
-                            {{ __('Active') }}
+                            Activo
                         </span>
                     </label>
                 </div>
@@ -175,7 +175,7 @@
             <!-- Actions -->
             <div class="mt-6 flex justify-end gap-3 border-t pt-4 border-gray-200">
                 <x-secondary-button type="button" x-on:click="$dispatch('close-modal', { name: 'product-form-modal' })">
-                    {{ __('Cancel') }}
+                    Cancelar
                 </x-secondary-button>
 
                 <x-primary-button type="submit" wire:loading.attr="disabled">
@@ -184,7 +184,7 @@
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                     <x-heroicon-o-check wire:loading.remove wire:target="save" class="w-4 h-4 mr-2" />
-                    {{ $isEditing ? __('Save Changes') : __('Create Product') }}
+                    {{ $isEditing ? 'Guardar cambios' : 'Crear producto' }}
                 </x-primary-button>
             </div>
         </form>

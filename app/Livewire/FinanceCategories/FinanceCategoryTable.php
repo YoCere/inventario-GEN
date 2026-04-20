@@ -57,6 +57,13 @@ final class FinanceCategoryTable extends PowerGridComponent
         return PowerGrid::fields()
             ->add('id')
             ->add('name')
+            ->add('name_display', function (FinanceCategory $model) {
+                return match ($model->name) {
+                    'Product Sales' => 'Ventas de productos',
+                    'Product Purchases' => 'Compras de productos',
+                    default => $model->name,
+                };
+            })
             ->add('slug')
             ->add('type', fn(FinanceCategory $model) => $model->type->value)
             ->add('type_badge', function (FinanceCategory $model) {
@@ -69,11 +76,13 @@ final class FinanceCategoryTable extends PowerGridComponent
     public function columns(): array
     {
         return [
+            Column::action('Accion'),
+
             Column::make('ID', 'id')
                 ->hidden()
                 ->visibleInExport(true),
 
-            Column::make('Nombre', 'name')
+            Column::make('Nombre', 'name_display', 'name')
                 ->sortable()
                 ->searchable(),
 
@@ -85,11 +94,10 @@ final class FinanceCategoryTable extends PowerGridComponent
                 ->sortable()
                 ->searchable(),
 
-            Column::make('Descripción', 'description')
+            Column::make('Descripcion', 'description')
                 ->sortable()
                 ->searchable(),
 
-            Column::action('Acción'),
         ];
     }
 
@@ -113,10 +121,10 @@ final class FinanceCategoryTable extends PowerGridComponent
                 ->slot('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>')
                 ->class('bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-md flex items-center justify-center')
                 ->dispatch('view-finance-category', ['category' => $row->id])
-                ->tooltip('Ver Categoría'),
+                ->tooltip('Ver Categoria'),
         ];
 
-        // Proteger Categorías del Sistema
+        // Proteger Categorias del Sistema
         $systemCategories = ['Product Sales', 'Product Purchases'];
 
         if (!in_array($row->name, $systemCategories)) {
@@ -124,7 +132,7 @@ final class FinanceCategoryTable extends PowerGridComponent
                 ->slot('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>')
                 ->class('bg-amber-500 hover:bg-amber-600 text-white p-2 rounded-md flex items-center justify-center')
                 ->dispatch('edit-finance-category', ['category' => $row->id])
-                ->tooltip('Editar Categoría');
+                ->tooltip('Editar Categoria');
 
             $actions[] = Button::add('delete')
                 ->slot('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>')
@@ -133,10 +141,10 @@ final class FinanceCategoryTable extends PowerGridComponent
                     'component' => 'finance-categories.finance-category-table',
                     'method' => 'delete',
                     'params' => ['rowId' => $row->id],
-                    'title' => '¿Eliminar Categoría Financiera?',
-                    'description' => "¿Está seguro de que desea eliminar la categoría '{$row->name}'? Esta acción no se puede deshacer.",
+                    'title' => 'Eliminar categoria financiera?',
+                    'description' => "Seguro que deseas eliminar la categoria '{$row->name}'? Esta accion no se puede deshacer.",
                 ])
-                ->tooltip('Eliminar Categoría');
+                ->tooltip('Eliminar Categoria');
         }
 
         return $actions;
@@ -148,19 +156,19 @@ final class FinanceCategoryTable extends PowerGridComponent
         $category = FinanceCategory::find($rowId);
 
         if ($category) {
-            // Proteger Categorías del Sistema
+            // Proteger Categorias del Sistema
             if (in_array($category->name, ['Product Sales', 'Product Purchases'])) {
-                $this->dispatch('toast', ['message' => 'Las categorías del sistema no se pueden eliminar.', 'type' => 'error']);
+                $this->dispatch('toast', ['message' => 'Las categorias del sistema no se pueden eliminar.', 'type' => 'error']);
                 return;
             }
 
             try {
                 $service->deleteCategory($category);
-                $this->dispatch('toast', ['message' => 'Categoría eliminada correctamente.', 'type' => 'success']);
+                $this->dispatch('toast', ['message' => 'Categoria eliminada correctamente.', 'type' => 'success']);
             } catch (\Exception $e) {
                 $message = $e instanceof FinanceCategoryException
                     ? $e->getMessage()
-                    : 'Error al eliminar la categoría: ' . $e->getMessage();
+                    : 'Error al eliminar la categoria: ' . $e->getMessage();
 
                 $this->dispatch('toast', ['message' => $message, 'type' => 'error']);
             }

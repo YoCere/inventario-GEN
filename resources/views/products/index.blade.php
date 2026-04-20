@@ -6,7 +6,7 @@
             </h2>
             <x-primary-button x-data x-on:click="$dispatch('create-product')">
                 <x-heroicon-o-plus class="w-4 h-4 mr-2" />
-                {{ __('Create Product') }}
+                Crear producto
             </x-primary-button>
         </div>
     </x-slot>

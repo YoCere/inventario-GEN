@@ -72,7 +72,7 @@ final class SalesTable extends PowerGridComponent
     public function columns(): array
     {
         return [
-            Column::action('Acción'),
+            Column::action('Accion'),
 
             Column::make('ID', 'id')->hidden(),
 
@@ -90,7 +90,7 @@ final class SalesTable extends PowerGridComponent
             Column::make('Fecha', 'sale_date_formatted', 'sale_date')
                 ->sortable(),
 
-            Column::make('Período', 'date_period')
+            Column::make('Periodo', 'date_period')
                 ->hidden(),
 
             Column::make('Total', 'total_formatted', 'total')
@@ -204,8 +204,8 @@ final class SalesTable extends PowerGridComponent
                     'component' => 'sales.sales-table',
                     'method' => 'delete',
                     'params' => ['rowId' => $row->id],
-                    'title' => '¿Eliminar Venta?',
-                    'description' => "¿Está seguro de que desea ELIMINAR PERMANENTEMENTE la factura '{$row->invoice_number}'? Esta acción no se puede deshacer.",
+                    'title' => 'Eliminar venta?',
+                    'description' => "Seguro que deseas eliminar permanentemente la factura '{$row->invoice_number}'? Esta accion no se puede deshacer.",
                 ])
                 ->tooltip('Eliminar Venta')
                 ->can(fn($row) => $row->status === SaleStatus::CANCELLED),

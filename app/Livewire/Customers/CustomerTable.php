@@ -61,6 +61,8 @@ final class CustomerTable extends PowerGridComponent
     public function columns(): array
     {
         return [
+            Column::action('Accion'),
+
             Column::make('ID', 'id')
                 ->hidden()
                 ->visibleInExport(true),
@@ -73,7 +75,7 @@ final class CustomerTable extends PowerGridComponent
                 ->sortable()
                 ->searchable(),
 
-            Column::make('Teléfono', 'phone')
+            Column::make('Telefono', 'phone')
                 ->sortable()
                 ->searchable(),
 
@@ -81,12 +83,11 @@ final class CustomerTable extends PowerGridComponent
                 ->sortable()
                 ->visibleInExport(false),
 
-            // Columnas para Exportación
+            // Columnas para exportacion
             Column::make('Notas', 'notes')
                 ->hidden()
                 ->visibleInExport(true),
 
-            Column::action('Acción'),
         ];
     }
 
@@ -112,8 +113,8 @@ final class CustomerTable extends PowerGridComponent
                     'component' => 'customers.customer-table',
                     'method' => 'delete',
                     'params' => ['rowId' => $row->id],
-                    'title' => '¿Eliminar Cliente?',
-                    'description' => "¿Está seguro de que desea eliminar al cliente '{$row->name}'? Esta acción no se puede deshacer.",
+                    'title' => 'Eliminar cliente?',
+                    'description' => "Seguro que deseas eliminar al cliente '{$row->name}'? Esta accion no se puede deshacer.",
                 ])
                 ->tooltip('Eliminar Cliente'),
         ];
@@ -129,7 +130,7 @@ final class CustomerTable extends PowerGridComponent
                 $customerService->deleteCustomer($customer);
                 $this->dispatch('toast', message: 'Cliente eliminado correctamente.', type: 'success');
             } catch (\Exception $e) {
-                // Asegurar que capturamos nuestra excepción personalizada o recurrimos a una excepción general
+                // Asegurar que capturamos nuestra excepcion personalizada o recurrimos a una excepcion general
                 $message = $e instanceof CustomerException
                     ? $e->getMessage()
                     : 'Error al eliminar el cliente: ' . $e->getMessage();

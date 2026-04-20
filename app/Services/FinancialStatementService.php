@@ -13,7 +13,7 @@ class FinancialStatementService
     /**
      * @return array<string, mixed>
      */
-    public function build(string $dateFrom, string $dateTo): array
+    public function build(string $dateFrom, string $dateTo, bool $withTaxes = false): array
     {
         $from = Carbon::parse($dateFrom)->toDateString();
         $to = Carbon::parse($dateTo)->toDateString();
@@ -24,10 +24,16 @@ class FinancialStatementService
         $openingBalances = $this->calculateAccountBalances(null, $beforeFrom);
 
         $balanceGeneral = $this->buildBalanceGeneral($cumulativeBalances);
-        $estadoResultados = $this->buildIncomeStatement($periodBalances);
-        $estadoPatrimonio = $this->buildEquityStatement($openingBalances, $cumulativeBalances, $estadoResultados['net_result']);
+        $estadoResultados = $this->buildIncomeStatement($periodBalances, $withTaxes);
+        $netResultForEquity = $withTaxes
+            ? $estadoResultados['net_result_after_tax']
+            : $estadoResultados['net_result'];
+        $estadoPatrimonio = $this->buildEquityStatement($openingBalances, $cumulativeBalances, $netResultForEquity);
         $flujoEfectivo = $this->buildCashFlowStatement($from, $to);
-        $indicadoresInversion = $this->buildInvestmentIndicators($from, $to, $estadoResultados['net_result']);
+        $netResultForIndicators = $withTaxes
+            ? $estadoResultados['net_result_after_tax']
+            : $estadoResultados['net_result'];
+        $indicadoresInversion = $this->buildInvestmentIndicators($from, $to, $netResultForIndicators);
         $notas = $this->buildNotes($from, $to, $balanceGeneral, $estadoResultados, $flujoEfectivo, $indicadoresInversion);
 
         return [
@@ -38,6 +44,7 @@ class FinancialStatementService
             'estado_patrimonio' => $estadoPatrimonio,
             'flujo_efectivo' => $flujoEfectivo,
             'indicadores_inversion' => $indicadoresInversion,
+            'with_taxes' => $withTaxes,
             'notas' => $notas,
         ];
     }
@@ -108,7 +115,7 @@ class FinancialStatementService
      * @param Collection<int, object> $periodBalances
      * @return array<string, mixed>
      */
-    protected function buildIncomeStatement(Collection $periodBalances): array
+    protected function buildIncomeStatement(Collection $periodBalances, bool $withTaxes): array
     {
         $income = $periodBalances->where('account_type', 'income')->values();
         $costs = $periodBalances->where('account_type', 'cost')->values();
@@ -118,6 +125,7 @@ class FinancialStatementService
         $costTotal = (int) $costs->sum('balance');
         $expenseTotal = (int) $expenses->sum('balance');
         $netResult = $incomeTotal - $costTotal - $expenseTotal;
+        $taxes = $this->buildTaxBreakdown($incomeTotal, $costTotal, $expenseTotal, $withTaxes);
 
         return [
             'income_accounts' => $income,
@@ -127,6 +135,68 @@ class FinancialStatementService
             'cost_total' => $costTotal,
             'expense_total' => $expenseTotal,
             'net_result' => $netResult,
+            'with_taxes' => $withTaxes,
+            'taxes' => $taxes,
+            'net_result_after_tax' => $netResult - $taxes['total_tax'],
+        ];
+    }
+
+    /**
+     * @return array<string, int|float|bool>
+     */
+    protected function buildTaxBreakdown(int $incomeTotal, int $costTotal, int $expenseTotal, bool $withTaxes): array
+    {
+        $ivaRate = (float) Setting::get('tax_iva_rate', '13');
+        $itRate = (float) Setting::get('tax_it_rate', '3');
+        $includeIva = Setting::get('tax_include_iva', '1') === '1';
+        $includeIt = Setting::get('tax_include_it', '1') === '1';
+
+        if (! $withTaxes) {
+            return [
+                'include_iva' => $includeIva,
+                'include_it' => $includeIt,
+                'iva_rate' => $ivaRate,
+                'it_rate' => $itRate,
+                'taxable_sales_base' => 0,
+                'taxable_purchases_base' => 0,
+                'iva_debito' => 0,
+                'iva_credito' => 0,
+                'iva_determinado' => 0,
+                'it_base' => 0,
+                'it_amount' => 0,
+                'total_tax' => 0,
+            ];
+        }
+
+        $taxableSalesBase = max($incomeTotal, 0);
+        $taxablePurchasesBase = max($costTotal + $expenseTotal, 0);
+
+        $ivaDebito = $includeIva
+            ? (int) round($taxableSalesBase * ($ivaRate / 100))
+            : 0;
+        $ivaCredito = $includeIva
+            ? (int) round($taxablePurchasesBase * ($ivaRate / 100))
+            : 0;
+        $ivaDeterminado = max($ivaDebito - $ivaCredito, 0);
+
+        $itBase = max($incomeTotal, 0);
+        $itAmount = $includeIt
+            ? (int) round($itBase * ($itRate / 100))
+            : 0;
+
+        return [
+            'include_iva' => $includeIva,
+            'include_it' => $includeIt,
+            'iva_rate' => $ivaRate,
+            'it_rate' => $itRate,
+            'taxable_sales_base' => $taxableSalesBase,
+            'taxable_purchases_base' => $taxablePurchasesBase,
+            'iva_debito' => $ivaDebito,
+            'iva_credito' => $ivaCredito,
+            'iva_determinado' => $ivaDeterminado,
+            'it_base' => $itBase,
+            'it_amount' => $itAmount,
+            'total_tax' => $ivaDeterminado + $itAmount,
         ];
     }
 
@@ -254,7 +324,8 @@ class FinancialStatementService
             ->join('journal_entries as je', 'je.id', '=', 'jel.journal_entry_id')
             ->join('chart_of_accounts as coa', 'coa.id', '=', 'jel.chart_of_account_id')
             ->select('je.entry_date')
-            ->selectRaw('SUM(jel.debit_amount - jel.credit_amount) as day_net')
+            ->selectRaw('SUM(jel.debit_amount) as day_debit')
+            ->selectRaw('SUM(jel.credit_amount) as day_credit')
             ->where('je.status', 'posted')
             ->whereDate('je.entry_date', '>=', $from)
             ->whereDate('je.entry_date', '<=', $to)
@@ -266,7 +337,8 @@ class FinancialStatementService
         $raw = [];
         foreach ($dailyRows as $row) {
             $monthKey = Carbon::parse($row->entry_date)->format('Y-m');
-            $raw[$monthKey] = ($raw[$monthKey] ?? 0) + (float) $row->day_net;
+            $dayNet = ((float) $row->day_debit) - ((float) $row->day_credit);
+            $raw[$monthKey] = ($raw[$monthKey] ?? 0) + $dayNet;
         }
 
         $months = [];
@@ -450,7 +522,12 @@ class FinancialStatementService
             'Estado de Resultados: Ingresos ' . format_money($estadoResultados['income_total']) .
                 ', Costos ' . format_money($estadoResultados['cost_total']) .
                 ', Gastos ' . format_money($estadoResultados['expense_total']) .
-                ', Resultado neto ' . format_money($estadoResultados['net_result']) . '.',
+                ', Resultado neto ' . format_money($estadoResultados['net_result']) .
+                ($estadoResultados['with_taxes']
+                    ? ', Impuestos estimados ' . format_money($estadoResultados['taxes']['total_tax']) .
+                        ', Resultado neto con impuestos ' . format_money($estadoResultados['net_result_after_tax'])
+                    : '') .
+                '.',
             'Flujo de efectivo: Ingresos de caja/banco ' . format_money($flujoEfectivo['total_inflow']) .
                 ', Egresos de caja/banco ' . format_money($flujoEfectivo['total_outflow']) .
                 ', Variacion neta ' . format_money($flujoEfectivo['net_change']) . '.',

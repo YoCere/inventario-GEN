@@ -11,9 +11,10 @@ class FinancialStatementController extends Controller
     {
         $from = $request->input('from', now()->startOfMonth()->toDateString());
         $to = $request->input('to', now()->toDateString());
+        $withTaxes = $request->boolean('with_taxes');
 
-        $statements = $service->build($from, $to);
+        $statements = $service->build($from, $to, $withTaxes);
 
-        return view('finance-statements.index', compact('statements', 'from', 'to'));
+        return view('finance-statements.index', compact('statements', 'from', 'to', 'withTaxes'));
     }
 }

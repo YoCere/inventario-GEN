@@ -5,6 +5,7 @@ namespace App\Livewire\Dashboard;
 use Carbon\Carbon;
 use Livewire\Component;
 use App\Enums\DatePeriod;
+use App\Models\Setting;
 use App\Services\DashboardStatsService;
 
 class Dashboard extends Component
@@ -23,9 +24,15 @@ class Dashboard extends Component
     public array $salesChart = [];
     public array $cashFlowChart = [];
     public array $expenseChart = [];
+    public string $displayMode = 'percent';
+    public bool $showSalesTotals = false;
 
     public function mount(DashboardStatsService $service)
     {
+        $this->displayMode = Setting::get('dashboard_display_mode', 'percent') === 'amount'
+            ? 'amount'
+            : 'percent';
+
         $this->loadStats($service);
     }
 
@@ -100,6 +107,55 @@ class Dashboard extends Component
             'cashFlow' => $this->cashFlowChart,
             'expense' => $this->expenseChart,
         ]);
+    }
+
+    public function setDisplayMode(string $mode): void
+    {
+        if (! auth()->user()?->isAdmin()) {
+            return;
+        }
+
+        $this->displayMode = $mode === 'amount' ? 'amount' : 'percent';
+        Setting::set('dashboard_display_mode', $this->displayMode);
+    }
+
+    public function toggleSalesVisibility(): void
+    {
+        if (! auth()->user()?->isAdmin()) {
+            return;
+        }
+
+        $this->showSalesTotals = ! $this->showSalesTotals;
+    }
+
+    public function getSalesToIncomePercentProperty(): ?float
+    {
+        $income = (float) ($this->stats['income'] ?? 0);
+        if ($income <= 0) {
+            return null;
+        }
+
+        return round((((float) ($this->stats['total_sales'] ?? 0)) / $income) * 100, 2);
+    }
+
+    public function getNetCashFlowPercentProperty(): ?float
+    {
+        $income = (float) ($this->stats['income'] ?? 0);
+        if ($income <= 0) {
+            return null;
+        }
+
+        return round((((float) ($this->stats['net_cash_flow'] ?? 0)) / $income) * 100, 2);
+    }
+
+    public function getGrossProfitMarginPercentProperty(): ?float
+    {
+        $sales = (float) ($this->stats['total_sales'] ?? 0);
+        if ($sales <= 0) {
+            return null;
+        }
+
+        return round((((float) ($this->stats['gross_profit'] ?? 0)) / $sales) * 100, 2);
     }
 
     protected function getDateRange(): array

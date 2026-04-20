@@ -42,6 +42,12 @@ class FinanceModuleTest extends TestCase
             ->assertSeeText('TIR')
             ->assertSeeText('VAN')
             ->assertSeeText('Periodo de recuperacion');
+
+        $this->actingAs($user)
+            ->get(route('finance.statements.index', ['with_taxes' => 1]))
+            ->assertOk()
+            ->assertSeeText('Con impuestos (Bolivia)')
+            ->assertSeeText('Impuestos estimados Bolivia');
     }
 
     public function test_journal_entry_can_be_reversed_correctly(): void
@@ -88,5 +94,48 @@ class FinanceModuleTest extends TestCase
         $this->assertCount(2, $reverse->lines);
         $this->assertEquals(1000, $reverse->lines[0]->credit_amount + $reverse->lines[1]->credit_amount);
         $this->assertEquals(1000, $reverse->lines[0]->debit_amount + $reverse->lines[1]->debit_amount);
+    }
+
+    public function test_finance_statements_load_with_cash_outflow_entries(): void
+    {
+        $this->seed([
+            AccountingPeriodSeeder::class,
+            ChartOfAccountSeeder::class,
+        ]);
+
+        $user = User::factory()->create([
+            'email_verified_at' => now(),
+            'role' => 'admin',
+        ]);
+
+        $cash = ChartOfAccount::query()->where('code', '1.1.01')->firstOrFail();
+        $expense = ChartOfAccount::query()->where('code', '6.1')->firstOrFail();
+
+        $service = app(JournalEntryService::class);
+        $period = AccountingPeriod::query()->firstOrFail();
+
+        $service->createPostedEntry([
+            'entry_date' => now()->toDateString(),
+            'accounting_period_id' => $period->id,
+            'description' => 'Pago de compra contado',
+            'created_by' => $user->id,
+            'posted_by' => $user->id,
+        ], [
+            [
+                'chart_of_account_id' => $expense->id,
+                'debit_amount' => 1200,
+                'credit_amount' => 0,
+            ],
+            [
+                'chart_of_account_id' => $cash->id,
+                'debit_amount' => 0,
+                'credit_amount' => 1200,
+            ],
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('finance.statements.index'))
+            ->assertOk()
+            ->assertSeeText('Indicadores de Inversion');
     }
 }

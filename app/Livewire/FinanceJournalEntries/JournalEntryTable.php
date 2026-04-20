@@ -67,6 +67,8 @@ final class JournalEntryTable extends PowerGridComponent
     public function columns(): array
     {
         return [
+            Column::action('Accion'),
+
             Column::make('Asiento', 'entry_number')
                 ->sortable()
                 ->searchable(),
@@ -74,7 +76,7 @@ final class JournalEntryTable extends PowerGridComponent
             Column::make('Fecha', 'entry_date_formatted', 'entry_date')
                 ->sortable(),
 
-            Column::make('Descripción', 'description')
+            Column::make('Descripcion', 'description')
                 ->sortable()
                 ->searchable(),
 
@@ -95,7 +97,6 @@ final class JournalEntryTable extends PowerGridComponent
             Column::make('Creado por', 'creator_name')
                 ->sortable(),
 
-            Column::action('Acción'),
         ];
     }
 

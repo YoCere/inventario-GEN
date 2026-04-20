@@ -28,6 +28,28 @@
                         <option value="left">Izquierda (Ejemplo: Rp 10.000)</option>
                         <option value="right">Derecha (Ejemplo: 10.000 Rp)</option>
                     </select>
+                @elseif($key === 'dashboard_display_mode')
+                    <select id="value" wire:model="value" class="block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm">
+                        <option value="percent">Porcentajes (simple)</option>
+                        <option value="amount">Montos (tecnico)</option>
+                    </select>
+                @elseif($key === 'opening_balance_date')
+                    <input
+                        type="date"
+                        id="value"
+                        wire:model="value"
+                        class="block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm"
+                    >
+                @elseif(in_array($key, ['opening_balance_amount']))
+                    <input
+                        type="number"
+                        id="value"
+                        wire:model="value"
+                        min="0"
+                        step="0.01"
+                        class="block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm"
+                        placeholder="Ingresa un monto..."
+                    >
                 @elseif($key === 'currency_fraction_digits')
                     <input 
                         type="number" 
@@ -38,7 +60,7 @@
                         class="block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm" 
                         placeholder="0 para IDR, 2 para USD"
                     >
-                @elseif($key === 'discount_rate_annual')
+                @elseif(in_array($key, ['discount_rate_annual', 'tax_iva_rate', 'tax_it_rate']))
                     <input
                         type="number"
                         id="value"
@@ -47,8 +69,13 @@
                         max="200"
                         step="0.01"
                         class="block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm"
-                        placeholder="Ejemplo: 12 para 12%"
+                        placeholder="Ejemplo: 13"
                     >
+                @elseif(in_array($key, ['tax_include_iva', 'tax_include_it']))
+                    <select id="value" wire:model="value" class="block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm">
+                        <option value="1">Sí (activo)</option>
+                        <option value="0">No (inactivo)</option>
+                    </select>
                 @elseif(in_array($key, ['currency_thousand_separator', 'currency_decimal_separator']))
                     <select id="value" wire:model="value" class="block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm">
                         <option value=".">Punto (.)</option>
@@ -75,6 +102,21 @@
                 @endif
                 <x-input-error :messages="$errors->get('value')" />
             </div>
+
+            @if(in_array($key, ['opening_balance_date', 'opening_balance_amount']))
+                <div class="space-y-2 rounded-md border border-amber-200 bg-amber-50 p-3">
+                    <x-input-label for="admin_password" :value="'Confirmar contrasena de administrador'" />
+                    <input
+                        id="admin_password"
+                        type="password"
+                        wire:model="admin_password"
+                        class="block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm"
+                        placeholder="Ingresa tu contrasena"
+                    >
+                    <p class="text-xs text-amber-700">Este ajuste es sensible y requiere validacion de contrasena.</p>
+                    <x-input-error :messages="$errors->get('admin_password')" />
+                </div>
+            @endif
 
             <!-- Actions -->
             <div class="mt-6 flex justify-end gap-3 border-t border-gray-200 pt-4">
