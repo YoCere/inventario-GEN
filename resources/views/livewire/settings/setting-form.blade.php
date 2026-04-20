@@ -40,7 +40,14 @@
                         wire:model="value"
                         class="block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm"
                     >
-                @elseif(in_array($key, ['opening_balance_amount']))
+                @elseif(in_array($key, [
+                    'opening_balance_amount',
+                    'payroll_antiquity_base_amount',
+                    'payroll_rc_iva_minimum',
+                    'payroll_rc_iva_compensable',
+                    'payroll_solidarity_1_threshold',
+                    'payroll_solidarity_2_threshold',
+                ]))
                     <input
                         type="number"
                         id="value"
@@ -60,7 +67,19 @@
                         class="block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm" 
                         placeholder="0 para IDR, 2 para USD"
                     >
-                @elseif(in_array($key, ['discount_rate_annual', 'tax_iva_rate', 'tax_it_rate']))
+                @elseif(in_array($key, [
+                    'discount_rate_annual',
+                    'tax_iva_rate',
+                    'tax_it_rate',
+                    'payroll_border_bonus_rate',
+                    'payroll_labor_contribution_rate',
+                    'payroll_rc_iva_rate',
+                    'payroll_solidarity_1_rate',
+                    'payroll_solidarity_2_rate',
+                    'payroll_employer_contribution_rate',
+                    'payroll_aguinaldo_provision_rate',
+                    'payroll_indemnization_provision_rate',
+                ]))
                     <input
                         type="number"
                         id="value"

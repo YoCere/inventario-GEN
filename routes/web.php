@@ -4,6 +4,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SalesController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\KardexController;
+use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\FinanceReportController;
 use App\Http\Controllers\FinancialStatementController;
 
@@ -59,8 +61,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::view('transactions', 'finance-transactions.index')->name('transactions.index');
         Route::view('chart-of-accounts', 'finance-chart-of-accounts.index')->name('chart-of-accounts.index');
         Route::view('journal-entries', 'finance-journal-entries.index')->name('journal-entries.index');
+        Route::get('kardex', [KardexController::class, 'index'])->name('kardex.index');
         Route::get('statements', [FinancialStatementController::class, 'index'])->name('statements.index');
         Route::get('transactions/print/{printId}', [FinanceReportController::class, 'print'])->name('transactions.print');
+    });
+
+    Route::prefix('finance')->name('finance.')->middleware('admin')->group(function () {
+        Route::get('payroll', [PayrollController::class, 'index'])->name('payroll.index');
+        Route::get('payroll/create', [PayrollController::class, 'create'])->name('payroll.create');
+        Route::post('payroll', [PayrollController::class, 'store'])->name('payroll.store');
+        Route::get('payroll/{sheet}', [PayrollController::class, 'show'])->name('payroll.show');
+        Route::post('payroll/{sheet}/post', [PayrollController::class, 'post'])->name('payroll.post');
+        Route::get('payroll/{sheet}/print', [PayrollController::class, 'print'])->name('payroll.print');
     });
 
     // =========================================================================

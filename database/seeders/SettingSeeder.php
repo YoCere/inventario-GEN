@@ -28,5 +28,34 @@ class SettingSeeder extends Seeder
         Setting::set('currency_fraction_digits', '2');
         Setting::set('currency_thousand_separator', '.');
         Setting::set('currency_decimal_separator', ',');
+
+        // Nomina Bolivia
+        Setting::set('payroll_antiquity_base_amount', '7500');
+        Setting::set('payroll_border_bonus_rate', '20');
+        Setting::set('payroll_labor_contribution_rate', '12.71');
+        Setting::set('payroll_rc_iva_rate', '13');
+        Setting::set('payroll_rc_iva_minimum', '5000');
+        Setting::set('payroll_rc_iva_compensable', '5000');
+        Setting::set('payroll_solidarity_1_rate', '1');
+        Setting::set('payroll_solidarity_1_threshold', '13000');
+        Setting::set('payroll_solidarity_2_rate', '5');
+        Setting::set('payroll_solidarity_2_threshold', '25000');
+        Setting::set('payroll_employer_contribution_rate', '16.71');
+        Setting::set('payroll_aguinaldo_provision_rate', '8.33');
+        Setting::set('payroll_indemnization_provision_rate', '8.33');
+
+        // Cuentas contables para asiento de planilla
+        Setting::set('payroll_account_mod', '5.2');
+        Setting::set('payroll_account_moi', '5.3');
+        Setting::set('payroll_account_sales', '6.2');
+        Setting::set('payroll_account_admin', '6.1');
+        Setting::set('payroll_account_net_payable', '2.1.03');
+        Setting::set('payroll_account_employer_contribution', '2.1.04');
+        Setting::set('payroll_account_labor_contribution', '2.1.05');
+        Setting::set('payroll_account_aguinaldo_provision', '2.1.06');
+        Setting::set('payroll_account_indemnization_provision', '2.1.07');
+        Setting::set('payroll_account_rc_iva', '2.1.08');
+        Setting::set('payroll_account_solidarity', '2.1.09');
+        Setting::set('payroll_account_other_discounts', '2.1.10');
     }
 }
