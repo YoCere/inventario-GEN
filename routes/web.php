@@ -8,6 +8,10 @@ use App\Http\Controllers\KardexController;
 use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\FinanceReportController;
 use App\Http\Controllers\FinancialStatementController;
+use App\Http\Controllers\TelegramWebhookController;
+
+// Telegram webhook (no auth required, token validated internally)
+Route::post('/telegram/webhook', [TelegramWebhookController::class, 'handle']);
 
 Route::middleware(['auth', 'verified'])->group(function () {
     // =========================================================================

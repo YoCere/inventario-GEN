@@ -10,7 +10,9 @@ use App\Models\PurchaseItem;
 use App\Enums\PurchaseStatus;
 use App\Services\Accounting\PurchaseAccountingService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use App\Exceptions\PurchaseException;
+use App\Events\LowStockDetected;
 
 class PurchaseService
 {
@@ -173,6 +175,12 @@ class PurchaseService
                     }
 
                     $product->update($updateData);
+
+                    // Fire low stock alert if product is now below minimum
+                    $product->refresh();
+                    if ($product->quantity <= $product->min_stock) {
+                        Event::dispatch(new LowStockDetected($product));
+                    }
                 }
             }
 
