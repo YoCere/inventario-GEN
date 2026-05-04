@@ -5,6 +5,7 @@ namespace App\Livewire\Products;
 use App\DTOs\ProductData;
 use App\Models\Product;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use App\Models\Category;
 use App\Models\Unit;
 use Livewire\Attributes\On;
@@ -14,6 +15,7 @@ use App\Exceptions\ProductException;
 
 class ProductForm extends Component
 {
+    use WithFileUploads;
     public bool $isEditing = false;
     public ?Product $product = null;
 
@@ -29,6 +31,7 @@ class ProductForm extends Component
     public bool $is_active = true;
     public string $description = '';
     public string $notes = '';
+    public $photo = null;
 
     // Select Options (Removed for AJAX)
     public ?string $categoryName = null;
@@ -48,7 +51,7 @@ class ProductForm extends Component
     public function create(): void
     {
         abort_if(!auth()->user()->isAdmin(), 403);
-        $this->reset(['sku', 'name', 'category_id', 'unit_id', 'purchase_price', 'selling_price', 'quantity', 'min_stock', 'description', 'notes', 'product', 'isEditing', 'categoryName', 'unitName']);
+        $this->reset(['sku', 'name', 'category_id', 'unit_id', 'purchase_price', 'selling_price', 'quantity', 'min_stock', 'description', 'notes', 'product', 'isEditing', 'categoryName', 'unitName', 'photo']);
         $this->is_active = true;
 
         $this->dispatch('open-modal', name: 'product-form-modal');
@@ -70,6 +73,7 @@ class ProductForm extends Component
         $this->is_active = $product->is_active;
         $this->description = $product->description ?? '';
         $this->notes = $product->notes ?? '';
+        $this->photo = null;
 
         // Set initial labels for TomSelect
         $this->categoryName = $product->category ? $product->category->name : null;
@@ -99,6 +103,7 @@ class ProductForm extends Component
             'is_active' => ['boolean'],
             'description' => ['nullable', 'string'],
             'notes' => ['nullable', 'string'],
+            'photo' => ['nullable', 'image', 'max:1024', 'mimes:jpg,jpeg,png,webp'],
         ];
     }
 
@@ -107,6 +112,12 @@ class ProductForm extends Component
         abort_if(!auth()->user()->isAdmin(), 403);
         $validated = $this->validate();
 
+        $imagePath = null;
+        if ($this->photo) {
+            $imagePath = $this->photo->store('products', 'public');
+        }
+
+        $validated['image_path'] = $imagePath;
         $data = ProductData::fromArray($validated);
 
         try {

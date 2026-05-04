@@ -8,6 +8,7 @@ use Illuminate\Support\Str;
 use App\DTOs\ProductData;
 use App\Exceptions\ProductException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class ProductService
 {
@@ -32,6 +33,7 @@ class ProductService
                     'is_active' => $data->is_active,
                     'description' => $data->description,
                     'notes' => $data->notes,
+                    'image_path' => $data->image_path,
                 ]);
 
             } catch (Exception $e) {
@@ -50,6 +52,15 @@ class ProductService
     {
         return DB::transaction(function () use ($product, $data) {
             try {
+                $imagePath = $data->image_path ?? $product->image_path;
+
+                if ($data->image_path && $data->image_path !== $product->image_path) {
+                    if ($product->image_path && Storage::disk('public')->exists($product->image_path)) {
+                        Storage::disk('public')->delete($product->image_path);
+                    }
+                    $imagePath = $data->image_path;
+                }
+
                 $product->update([
                     'category_id' => $data->category_id,
                     'unit_id' => $data->unit_id,
@@ -62,6 +73,7 @@ class ProductService
                     'is_active' => $data->is_active,
                     'description' => $data->description,
                     'notes' => $data->notes,
+                    'image_path' => $imagePath,
                 ]);
 
                 return $product->refresh();
@@ -84,6 +96,10 @@ class ProductService
             try {
                 if ($product->purchaseItems()->exists() || $product->saleItems()->exists()) {
                     throw new Exception('No se puede eliminar producto porque está asociado a registros de compra o venta.');
+                }
+
+                if ($product->image_path && Storage::disk('public')->exists($product->image_path)) {
+                    Storage::disk('public')->delete($product->image_path);
                 }
 
                 $product->delete();

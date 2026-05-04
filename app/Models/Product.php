@@ -23,6 +23,7 @@ class Product extends Model
         'is_active',
         'description',
         'notes',
+        'image_path',
     ];
 
     protected $casts = [
@@ -51,5 +52,12 @@ class Product extends Model
     public function saleItems()
     {
         return $this->hasMany(SaleItem::class);
+    }
+
+    public function getImageUrlAttribute(): string
+    {
+        return $this->image_path
+            ? \Illuminate\Support\Facades\Storage::url($this->image_path)
+            : asset('images/placeholder-product.png');
     }
 }
