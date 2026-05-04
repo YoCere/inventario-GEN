@@ -20,6 +20,13 @@
                 </div>
             </div>
 
+            <!-- Product Image -->
+            @if($product->image_path)
+                <div class="flex justify-center">
+                    <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="h-64 w-64 object-cover rounded-lg border border-border shadow-sm">
+                </div>
+            @endif
+
             <div class="space-y-6">
                 <!-- Details -->
                 <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">

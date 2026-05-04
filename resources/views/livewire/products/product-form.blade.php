@@ -172,6 +172,42 @@
                 <x-input-error :messages="$errors->get('notes')" />
             </div>
 
+            <!-- Photo -->
+            <div class="space-y-4">
+                <div>
+                    <x-input-label for="photo" value="Foto del producto" />
+                    <div class="mt-2">
+                        <input
+                            type="file"
+                            wire:model="photo"
+                            id="photo"
+                            accept="image/jpeg,image/png,image/webp"
+                            class="block w-full text-sm text-gray-500
+                            file:mr-4 file:py-2 file:px-4
+                            file:rounded-md file:border-0
+                            file:text-sm file:font-semibold
+                            file:bg-indigo-50 file:text-indigo-700
+                            hover:file:bg-indigo-100"
+                        />
+                        <p class="text-xs text-gray-500 mt-1">JPG, PNG o WebP. Máximo 1MB.</p>
+                    </div>
+                    <x-input-error :messages="$errors->get('photo')" class="mt-2" />
+                </div>
+
+                <!-- Preview de imagen temporal -->
+                @if($photo)
+                    <div class="mt-4">
+                        <p class="text-sm font-medium text-gray-700 mb-2">Vista previa:</p>
+                        <img src="{{ $photo->temporaryUrl() }}" alt="Preview" class="h-48 w-48 object-cover rounded-md border border-gray-200">
+                    </div>
+                @elseif($isEditing && $product && $product->image_path)
+                    <div class="mt-4">
+                        <p class="text-sm font-medium text-gray-700 mb-2">Imagen actual:</p>
+                        <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="h-48 w-48 object-cover rounded-md border border-gray-200">
+                    </div>
+                @endif
+            </div>
+
             <!-- Actions -->
             <div class="mt-6 flex justify-end gap-3 border-t pt-4 border-gray-200">
                 <x-secondary-button type="button" x-on:click="$dispatch('close-modal', { name: 'product-form-modal' })">
