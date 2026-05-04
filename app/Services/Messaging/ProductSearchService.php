@@ -124,8 +124,8 @@ class ProductSearchService
         // Convert to lowercase
         $text = mb_strtolower($text, 'UTF-8');
 
-        // Remove accents using transliterator
-        $text = transliterator_transliterate('Any-Latin; Latin-ASCII', $text) ?: $text;
+        // Remove accents using iconv (portable, no intl extension needed)
+        $text = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $text) ?: $text;
 
         // Remove special characters, keep only alphanumeric and spaces
         $text = preg_replace('/[^a-z0-9\s]/i', '', $text);
