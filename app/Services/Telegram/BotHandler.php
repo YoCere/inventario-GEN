@@ -82,12 +82,14 @@ class BotHandler
     {
         $parts = explode(' ', $text, 2);
         $command = strtolower($parts[0]);
+        $args = $parts[1] ?? '';
 
         match ($command) {
             '/ayuda', '/help', '/start' => $this->cmdHelp($chatId),
             '/stock' => $this->cmdStock($chatId),
             '/ventas' => $this->cmdSales($chatId),
             '/nuevo' => $this->cmdNewProduct($chatId),
+            '/listar' => $this->cmdList($chatId, $args),
             default => $this->telegram->sendMessage($chatId, "❓ Comando no reconocido. Escribe /ayuda para ver opciones."),
         };
     }
@@ -97,10 +99,16 @@ class BotHandler
         $message = "<b>📚 Ayuda - Comandos disponibles</b>\n\n" .
             "/stock — Ver productos en stock crítico\n" .
             "/ventas — Resumen de ventas de hoy\n" .
-            "/nuevo — Registrar un nuevo producto\n\n" .
+            "/nuevo — Registrar un nuevo producto\n" .
+            "/listar — Listar productos (todas categorías o filtrar)\n\n" .
             "<b>💡 Búsqueda directa</b>\n" .
             "Escribe el nombre de un producto y te mostraré el precio y stock.\n\n" .
-            "Ej: <code>Redmi 14c</code>";
+            "Ej: <code>Redmi 14c</code>\n\n" .
+            "<b>Filtros en /listar</b>\n" .
+            "/listar — Todas\n" .
+            "/listar categoría — Por categoría\n" .
+            "/listar bajo — Stock bajo\n" .
+            "/listar activos — Solo activos";
 
         $this->telegram->sendMessage($chatId, $message);
     }
@@ -147,5 +155,50 @@ class BotHandler
     protected function cmdNewProduct(string $chatId): void
     {
         $this->productHandler->start($chatId);
+    }
+
+    protected function cmdList(string $chatId, string $filter): void
+    {
+        $filter = strtolower(trim($filter));
+
+        $query = \App\Models\Product::where('is_active', true);
+
+        // Aplicar filtro
+        if ($filter === 'bajo') {
+            $query->whereRaw('quantity <= min_stock');
+            $title = "⚠️ <b>Stock bajo</b>";
+        } elseif ($filter === 'activos') {
+            $title = "✅ <b>Productos activos</b>";
+        } elseif (!empty($filter)) {
+            // Filtro por categoría
+            $query->whereHas('category', function ($q) use ($filter) {
+                $q->whereRaw('LOWER(name) LIKE ?', ["%{$filter}%"]);
+            });
+            $title = "📦 <b>Categoría: {$filter}</b>";
+        } else {
+            $title = "📦 <b>Todos los productos</b>";
+        }
+
+        $products = $query->orderBy('name')->limit(15)->get();
+
+        if ($products->isEmpty()) {
+            $this->telegram->sendMessage($chatId, "❌ No hay productos con ese filtro");
+            return;
+        }
+
+        $message = "{$title}\n\n";
+        foreach ($products as $product) {
+            $unit = $product->unit?->symbol ?? 'uni';
+            $price = number_format($product->selling_price / 100, 2);
+            $badge = $product->quantity <= $product->min_stock ? '⚠️ ' : '✓ ';
+            $message .= "{$badge}<b>{$product->name}</b>\n" .
+                "   Precio: {$price} | Stock: {$product->quantity} {$unit}\n";
+        }
+
+        if ($products->count() >= 15) {
+            $message .= "\n... (mostrando 15 primeros)";
+        }
+
+        $this->telegram->sendMessage($chatId, $message);
     }
 }

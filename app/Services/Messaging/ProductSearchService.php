@@ -47,21 +47,39 @@ class ProductSearchService
     private function searchFuzzy(string $query): Collection
     {
         $normalized = $this->normalize($query);
-        $tokens = explode(' ', $normalized);
+        $tokens = array_filter(explode(' ', $normalized));
 
-        $query_builder = Product::where('is_active', true);
-
-        foreach ($tokens as $token) {
-            if (!empty($token)) {
-                $query_builder->where(function ($q) use ($token) {
-                    $q->whereRaw("LOWER(name) LIKE ?", ["%{$token}%"])
-                        ->orWhereRaw("LOWER(description) LIKE ?", ["%{$token}%"])
-                        ->orWhereRaw("LOWER(sku) LIKE ?", ["%{$token}%"]);
-                });
-            }
+        if (empty($tokens)) {
+            return collect();
         }
 
-        return $query_builder->limit(5)->get();
+        $products = Product::where('is_active', true)->get();
+
+        // Score cada producto por relevancia
+        $scored = $products->map(function ($product) use ($tokens) {
+            $name_lower = mb_strtolower($product->name);
+            $desc_lower = mb_strtolower($product->description ?? '');
+
+            $score = 0;
+            foreach ($tokens as $token) {
+                // Exact word match en nombre = score alto
+                if (str_contains($name_lower, $token)) {
+                    $score += 10;
+                }
+                // Match en descripción
+                if (str_contains($desc_lower, $token)) {
+                    $score += 3;
+                }
+            }
+
+            return ['product' => $product, 'score' => $score];
+        })
+        ->filter(fn ($item) => $item['score'] > 0)
+        ->sortByDesc('score')
+        ->take(5)
+        ->pluck('product');
+
+        return $scored;
     }
 
     private function searchWithAi(string $query): Collection

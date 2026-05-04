@@ -117,14 +117,41 @@ class BotProductHandler
             $category = Category::orderBy('name')->skip($num - 1)->first();
         }
 
-        // Try by name
+        // Try by name (fuzzy match)
         if (!$category) {
-            $category = Category::where('name', 'LIKE', "%{$input}%")->first();
+            $category = Category::whereRaw('LOWER(name) LIKE ?', ['%' . strtolower($input) . '%'])->first();
         }
 
+        // Si no existe, ofrecee crear
         if (!$category) {
-            $this->telegram->sendMessage($chatId, "❌ Categoría no encontrada. Intenta de nuevo.");
-            return;
+            // Checa si usuario quiere crear
+            if (str_starts_with(strtolower($input), '+') || strtolower($input) === 'crear') {
+                $newCatName = str_replace('+', '', $input);
+                $newCatName = trim($newCatName === 'crear' ? '' : $newCatName);
+
+                if (empty($newCatName)) {
+                    $this->telegram->sendMessage($chatId, "❓ Escribe el nombre de la categoría a crear.\n\nEj: +Electrónica o +Accesorios");
+                    return;
+                }
+
+                try {
+                    $category = Category::create(['name' => $newCatName]);
+                    $this->telegram->sendMessage($chatId, "✅ Categoría creada: <b>{$newCatName}</b>");
+                } catch (\Exception $e) {
+                    $this->telegram->sendMessage($chatId, "❌ Error al crear categoría. Intenta de nuevo.");
+                    return;
+                }
+            } else {
+                $this->telegram->sendMessage(
+                    $chatId,
+                    "❌ Categoría no encontrada.\n\n" .
+                    "Opciones:\n" .
+                    "- Escribe número de lista\n" .
+                    "- Escribe nombre existente\n" .
+                    "- Escribe +NombreNueva para crear"
+                );
+                return;
+            }
         }
 
         $data['categoria_id'] = $category->id;
@@ -254,7 +281,9 @@ class BotProductHandler
                 $this->showConfirm($chatId, $conversation, $data);
             } catch (\Exception $e) {
                 Log::error('Photo download error', ['error' => $e->getMessage()]);
-                $this->telegram->sendMessage($chatId, "❌ Error al descargar la foto. Intenta de nuevo.");
+                $data['foto_path'] = null;
+                $this->telegram->sendMessage($chatId, "⚠️ No se pudo descargar la foto. Continuando sin imagen...");
+                $this->showConfirm($chatId, $conversation, $data);
             }
             return;
         }
