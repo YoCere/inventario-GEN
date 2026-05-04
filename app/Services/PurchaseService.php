@@ -109,7 +109,7 @@ class PurchaseService
             }
 
             if ($purchase->items()->count() === 0) {
-                throw PurchaseException::updateFailed("Cannot order a purchase with no items.", ['id' => $purchase->id]);
+                throw PurchaseException::updateFailed("No se puede ordenar una compra sin artículos.", ['id' => $purchase->id]);
             }
 
             $purchase->update(['status' => PurchaseStatus::ORDERED]);
@@ -124,12 +124,12 @@ class PurchaseService
             }
 
             if (empty($purchase->invoice_number)) {
-                throw PurchaseException::missingReference('Invoice Number', ['id' => $purchase->id]);
+                throw PurchaseException::missingReference('Número de factura', ['id' => $purchase->id]);
             }
 
             // Enforce Proof Image
             if (empty($purchase->proof_image)) {
-                throw PurchaseException::missingReference('Proof Image', ['id' => $purchase->id]);
+                throw PurchaseException::missingReference('Comprobante de imagen', ['id' => $purchase->id]);
             }
 
             // Update Stock
@@ -150,7 +150,7 @@ class PurchaseService
                         $hasPriceChange = true;
                         $oldBuy = format_money($product->purchase_price ?? 0);
                         $newBuy = format_money($item->unit_price);
-                        $priceChangeLog .= "\n- Buying Price: {$oldBuy} -> {$newBuy}";
+                        $priceChangeLog .= "\n- Precio de compra: {$oldBuy} -> {$newBuy}";
                     }
 
                     // Check for Selling Price Change
@@ -160,15 +160,15 @@ class PurchaseService
                             $hasPriceChange = true;
                             $oldSell = format_money($product->selling_price ?? 0);
                             $newSell = format_money($item->selling_price);
-                            $priceChangeLog .= "\n- Selling Price: {$oldSell} -> {$newSell}";
+                            $priceChangeLog .= "\n- Precio de venta: {$oldSell} -> {$newSell}";
                         }
                     }
 
                     // Append to Notes if prices changed
                     if ($hasPriceChange) {
                         $timestamp = now()->format('Y-m-d H:i');
-                        $ref = $purchase->invoice_number ? "Invoice #{$purchase->invoice_number}" : "Purchase #{$purchase->id}";
-                        $logHeader = "\n\n[System Log - {$timestamp}] Price update via {$ref}:";
+                        $ref = $purchase->invoice_number ? "Factura #{$purchase->invoice_number}" : "Compra #{$purchase->id}";
+                        $logHeader = "\n\n[Registro de Sistema - {$timestamp}] Actualización de precio vía {$ref}:";
                         $updateData['notes'] = TRIM(($product->notes ?? '') . $logHeader . $priceChangeLog);
                     }
 

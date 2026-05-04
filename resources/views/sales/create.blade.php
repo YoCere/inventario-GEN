@@ -624,7 +624,7 @@
                         if (this.cart.length === 0) return;
                         if (this.payment.method === 'cash' && this.payment.cash_received < this.total) {
                             this.$dispatch('toast', {
-                                message: 'Insufficient payment!',
+                                message: '¡Pago insuficiente!',
                                 type: 'error'
                             });
                             return;
@@ -833,7 +833,7 @@
                     this.errors = {}; // Reset errors
 
                     if (!this.newCust.name.trim()) {
-                        this.errors.name = 'Nama wajib diisi.';
+                        this.errors.name = 'El nombre es obligatorio.';
                         return;
                     }
 

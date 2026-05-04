@@ -10,31 +10,31 @@ class PurchaseException extends Exception
     public static function creationFailed(string $message, array $context = []): self
     {
         Log::error("Purchase creation failed: {$message}", $context);
-        return new self("Failed to create purchase: {$message}");
+        return new self("Error al crear compra: {$message}");
     }
 
     public static function updateFailed(string $message, array $context = []): self
     {
         Log::error("Purchase update failed: {$message}", $context);
-        return new self("Failed to update purchase: {$message}");
+        return new self("Error al actualizar compra: {$message}");
     }
 
     public static function deletionFailed(string $message, array $context = []): self
     {
         Log::error("Purchase deletion failed: {$message}", $context);
-        return new self("Failed to delete purchase. {$message}");
+        return new self("Error al eliminar compra. {$message}");
     }
 
     public static function invalidStatus(string $action, string $status, array $context = []): self
     {
-        $message = "Cannot {$action} purchase with status '{$status}'.";
+        $message = "No se puede {$action} compra con estado '{$status}'.";
         Log::warning($message, $context);
         return new self($message);
     }
 
     public static function missingReference(string $reference, array $context = []): self
     {
-        $message = "Missing required reference: {$reference}.";
+        $message = "Referencia requerida faltante: {$reference}.";
         Log::warning($message, $context);
         return new self($message);
     }

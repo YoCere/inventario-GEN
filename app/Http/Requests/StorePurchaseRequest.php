@@ -32,9 +32,9 @@ class StorePurchaseRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'items.required' => 'Please add at least one item.',
-            'items.*.product_id.required' => 'Product is required.',
-            'items.*.quantity.min' => 'Quantity must be at least 1.',
+            'items.required' => 'Favor agrega al menos un artículo.',
+            'items.*.product_id.required' => 'El producto es requerido.',
+            'items.*.quantity.min' => 'La cantidad debe ser al menos 1.',
         ];
     }
 }

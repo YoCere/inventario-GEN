@@ -70,10 +70,10 @@ class CategoryForm extends Component
         try {
             if ($this->isEditing && $this->category) {
                 $service->updateCategory($this->category, $data);
-                $message = 'Category updated successfully.';
+                $message = 'Categoría actualizada correctamente.';
             } else {
                 $service->createCategory($data);
-                $message = 'Category created successfully.';
+                $message = 'Categoría creada correctamente.';
             }
 
             $this->dispatch('close-modal', name: 'category-form-modal');
@@ -82,7 +82,7 @@ class CategoryForm extends Component
         } catch (CategoryException $e) {
             $this->dispatch('toast', message: $e->getMessage(), type: 'error');
         } catch (\Throwable $e) {
-            $this->dispatch('toast', message: 'An unexpected error occurred.', type: 'error');
+            $this->dispatch('toast', message: 'Ocurrió un error inesperado.', type: 'error');
         }
     }
 }

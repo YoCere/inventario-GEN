@@ -20,7 +20,7 @@ class FinanceTransactionService
      */
     public function recordIncomeFromSale(Sale $sale): void
     {
-        $category = $this->getOrCreateCategory('Product Sales', FinanceCategoryType::Income);
+        $category = $this->getOrCreateCategory('Ventas de Productos', FinanceCategoryType::Income);
 
         FinanceTransaction::updateOrCreate(
             [
@@ -32,7 +32,7 @@ class FinanceTransactionService
                 'transaction_date' => $sale->sale_date,
                 'finance_category_id' => $category->id,
                 'amount' => $sale->total,
-                'description' => 'Sale Inv: ' . $sale->invoice_number . ' - ' . ($sale->customer->name ?? 'Guest'),
+                'description' => 'Factura Venta: ' . $sale->invoice_number . ' - ' . ($sale->customer->name ?? 'Invitado'),
                 'external_reference' => $sale->invoice_number,
                 'created_by' => $sale->created_by ?? Auth::id() ?? 1,
             ]
@@ -44,7 +44,7 @@ class FinanceTransactionService
      */
     public function recordExpenseFromPurchase(Purchase $purchase): void
     {
-        $category = $this->getOrCreateCategory('Product Purchases', FinanceCategoryType::Expense);
+        $category = $this->getOrCreateCategory('Compras de Productos', FinanceCategoryType::Expense);
 
         FinanceTransaction::updateOrCreate(
             [
@@ -56,7 +56,7 @@ class FinanceTransactionService
                 'transaction_date' => $purchase->purchase_date,
                 'finance_category_id' => $category->id,
                 'amount' => $purchase->total,
-                'description' => 'Purchase Inv: ' . $purchase->invoice_number . ' - ' . ($purchase->supplier->name ?? 'Unknown'),
+                'description' => 'Factura Compra: ' . $purchase->invoice_number . ' - ' . ($purchase->supplier->name ?? 'Desconocido'),
                 'external_reference' => $purchase->invoice_number,
                 'created_by' => $purchase->created_by ?? Auth::id() ?? 1,
             ]
@@ -91,7 +91,7 @@ class FinanceTransactionService
                 ]);
             });
         } catch (\Exception $e) {
-            throw new FinanceTransactionException('Failed to create transaction: ' . $e->getMessage());
+            throw new FinanceTransactionException('Error al crear transacción: ' . $e->getMessage());
         }
     }
 
@@ -101,7 +101,7 @@ class FinanceTransactionService
     public function updateTransaction(FinanceTransaction $transaction, FinanceTransactionData $data): FinanceTransaction
     {
         if ($transaction->reference_type) {
-            throw new FinanceTransactionException('Cannot update system-generated transaction (Sales/Purchases).');
+            throw new FinanceTransactionException('No se puede actualizar transacción generada por el sistema (Ventas/Compras).');
         }
 
         try {
@@ -116,7 +116,7 @@ class FinanceTransactionService
                 return $transaction;
             });
         } catch (\Exception $e) {
-            throw new FinanceTransactionException('Failed to update transaction: ' . $e->getMessage());
+            throw new FinanceTransactionException('Error al actualizar transacción: ' . $e->getMessage());
         }
     }
 
@@ -126,17 +126,17 @@ class FinanceTransactionService
     public function deleteTransaction(FinanceTransaction $transaction): void
     {
         if ($transaction->reference_type) {
-            throw new FinanceTransactionException('Cannot delete system-generated transaction (Sales/Purchases). Please void the source instead.');
+            throw new FinanceTransactionException('No se puede eliminar transacción generada por el sistema (Ventas/Compras). Favor cancela la fuente en su lugar.');
         }
 
-        if ($transaction->category && in_array($transaction->category->name, ['Product Sales', 'Product Purchases'])) {
-            throw new FinanceTransactionException('Cannot delete transactions belonging to protected categories (Product Sales/Product Purchases).');
+        if ($transaction->category && in_array($transaction->category->name, ['Ventas de Productos', 'Compras de Productos'])) {
+            throw new FinanceTransactionException('No se puede eliminar transacciones de categorías protegidas (Ventas de Productos/Compras de Productos).');
         }
 
         try {
             $transaction->delete();
         } catch (\Exception $e) {
-            throw new FinanceTransactionException('Failed to delete transaction: ' . $e->getMessage());
+            throw new FinanceTransactionException('Error al eliminar transacción: ' . $e->getMessage());
         }
     }
 

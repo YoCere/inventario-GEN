@@ -35,7 +35,7 @@ class SalesController extends Controller
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Sale created successfully',
+                    'message' => 'Venta creada correctamente',
                     'data' => $sale,
                     'print_url' => route('sales.print', $sale->id),
                     'redirect' => route('sales.create')
@@ -43,7 +43,7 @@ class SalesController extends Controller
             }
 
             return redirect()->route('sales.create')
-                ->with('success', 'Sale created successfully.');
+                ->with('success', 'Venta creada correctamente.');
 
         } catch (SaleException $e) {
             if ($request->wantsJson()) {
@@ -81,7 +81,7 @@ class SalesController extends Controller
         try {
             $reason = $request->input('reason');
             $saleService->cancelSale($sale, $reason);
-            return redirect()->route('sales.index')->with('success', 'Sale cancelled successfully.');
+            return redirect()->route('sales.index')->with('success', 'Venta cancelada correctamente.');
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }
@@ -112,7 +112,7 @@ class SalesController extends Controller
 
             $saleService->completeSale($sale, $paymentData);
 
-            return redirect()->back()->with('success', 'Sale marked as completed.');
+            return redirect()->back()->with('success', 'Venta marcada como completada.');
 
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());

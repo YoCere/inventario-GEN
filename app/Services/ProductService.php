@@ -83,7 +83,7 @@ class ProductService
         DB::transaction(function () use ($product) {
             try {
                 if ($product->purchaseItems()->exists() || $product->saleItems()->exists()) {
-                    throw new Exception('Cannot delete product because it is associated with purchase or sale records.');
+                    throw new Exception('No se puede eliminar producto porque está asociado a registros de compra o venta.');
                 }
 
                 $product->delete();

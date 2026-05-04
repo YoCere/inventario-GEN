@@ -221,7 +221,7 @@ class DashboardStatsService
                 ->get()
                 ->map(function ($item) {
                      return [
-                         'customer_name' => $item->customer->name ?? 'Unknown',
+                         'customer_name' => $item->customer->name ?? 'Desconocido',
                          'phone' => $item->customer->phone ?? '-',
                          'total_spent' => $item->total_spent
                      ];
@@ -249,7 +249,7 @@ class DashboardStatsService
                 ->get()
                 ->map(function ($item) {
                      return [
-                         'category_name' => $item->category->name ?? 'Uncategorized',
+                         'category_name' => $item->category->name ?? 'Sin categoría',
                          'total_amount' => $item->total_amount
                      ];
                 })

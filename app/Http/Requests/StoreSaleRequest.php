@@ -45,10 +45,10 @@ class StoreSaleRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'items.*.product_id.exists' => 'The selected product does not exist.',
-            'items.*.quantity.min' => 'Quantity must be at least 1.',
-            'items.*.unit_price.min' => 'Unit price must be at least 0.',
-            'items.*.discount.min' => 'Discount must be at least 0.',
+            'items.*.product_id.exists' => 'El producto seleccionado no existe.',
+            'items.*.quantity.min' => 'La cantidad debe ser al menos 1.',
+            'items.*.unit_price.min' => 'El precio unitario debe ser al menos 0.',
+            'items.*.discount.min' => 'El descuento debe ser al menos 0.',
         ];
     }
 }

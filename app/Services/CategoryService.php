@@ -71,7 +71,7 @@ class CategoryService
         DB::transaction(function () use ($category) {
             try {
                 if ($category->products()->exists()) {
-                    throw new Exception("Cannot delete category because it is associated with products.");
+                    throw new Exception("No se puede eliminar categoría porque está asociada a productos.");
                 }
 
                 $category->delete();

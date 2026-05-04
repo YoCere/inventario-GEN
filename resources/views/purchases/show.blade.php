@@ -41,23 +41,23 @@
                         </x-detail-item>
 
                         <!-- Invoice -->
-                        <x-detail-item label="Invoice Number" :value="$purchase->invoice_number ?? '-'">
+                        <x-detail-item label="Número de factura" :value="$purchase->invoice_number ?? '-'">
                             <x-heroicon-o-document-text class="w-4 h-4 text-gray-400" />
                         </x-detail-item>
 
                         <!-- Purchase Date -->
-                        <x-detail-item label="Purchase Date" :value="$purchase->purchase_date->format('d M Y')">
+                        <x-detail-item label="Fecha de compra" :value="$purchase->purchase_date->format('d M Y')">
                             <x-heroicon-o-calendar class="w-4 h-4 text-gray-400" />
                         </x-detail-item>
 
                         <!-- Due Date -->
-                        <x-detail-item label="Due Date" :value="$purchase->due_date ? $purchase->due_date->format('d M Y') : '-'">
+                        <x-detail-item label="Fecha de vencimiento" :value="$purchase->due_date ? $purchase->due_date->format('d M Y') : '-'">
                             <x-heroicon-o-calendar class="w-4 h-4 text-gray-400" />
                         </x-detail-item>
 
                         <!-- Status -->
                         <div>
-                            <label class="text-sm font-medium leading-none text-gray-500">Status</label>
+                            <label class="text-sm font-medium leading-none text-gray-500">Estado</label>
                             <div class="mt-1">
                                 <span class="px-2.5 py-0.5 rounded-full text-xs font-medium border {{ $purchase->status->color() }}">
                                     {{ $purchase->status->label() }}
@@ -66,7 +66,7 @@
                         </div>
 
                         <!-- Total Amount -->
-                        <x-detail-item label="Total Amount" :value="format_money($purchase->total)">
+                        <x-detail-item label="Monto total" :value="format_money($purchase->total)">
                             <x-heroicon-o-banknotes class="w-4 h-4 text-gray-400" />
                         </x-detail-item>
 
@@ -78,7 +78,7 @@
                         <!-- Proof Image -->
                         @if($purchase->proof_image)
                             <div>
-                                <label class="text-sm font-medium leading-none text-gray-500">Proof of Receipt</label>
+                                <label class="text-sm font-medium leading-none text-gray-500">Comprobante de recepción</label>
                                 <div class="mt-1">
                                     <a href="{{ Storage::url($purchase->proof_image) }}" target="_blank" class="text-indigo-600 hover:underline text-sm flex items-center gap-1">
                                         <x-heroicon-o-paper-clip class="w-4 h-4" />
@@ -87,7 +87,7 @@
                                 </div>
                             </div>
                         @else
-                            <x-detail-item label="Proof of Receipt" value="-" />
+                            <x-detail-item label="Comprobante de recepción" value="-" />
                         @endif
                     </div>
 
@@ -95,10 +95,10 @@
                     <div class="mt-6 pt-6 border-t border-gray-100">
                         <div class="space-y-1">
                             <label class="text-sm font-medium leading-none text-gray-500">
-                                Notes
+                                Notas
                             </label>
                             <div class="bg-gray-50 p-3 rounded-md border border-gray-100">
-                                <p class="text-sm text-slate-700 italic leading-relaxed">{{ $purchase->notes ?: 'No additional notes.' }}</p>
+                                <p class="text-sm text-slate-700 italic leading-relaxed">{{ $purchase->notes ?: 'Sin notas adicionales.' }}</p>
                             </div>
                         </div>
                     </div>
@@ -108,7 +108,7 @@
                         <table class="w-full text-sm text-left">
                             <thead class="text-xs text-gray-700 uppercase bg-gray-50">
                                 <tr>
-                                    <th class="px-6 py-3">Code</th>
+                                    <th class="px-6 py-3">Código</th>
                                     <th class="px-6 py-3">Producto</th>
                                     <th class="px-6 py-3">Unidad</th>
                                     <th class="px-6 py-3 text-center">Cantidad</th>
@@ -287,7 +287,7 @@
                                                         file:bg-indigo-50 file:text-indigo-700
                                                         hover:file:bg-indigo-100"
                                                 />
-                                                <p class="text-xs text-gray-500">Image (JPG, PNG) max 2MB.</p>
+                                                <p class="text-xs text-gray-500">Imagen (JPG, PNG) máximo 2MB.</p>
                                                 <x-input-error :messages="$errors->get('proof_image')" class="mt-2" />
                                             </div>
                                         @endif
@@ -295,7 +295,7 @@
                                         @if($purchase->invoice_number && $purchase->proof_image)
                                             <p class="text-xs text-green-600 mt-3 font-medium flex items-center">
                                                 <x-heroicon-o-check-circle class="w-4 h-4 mr-1" />
-                                                Data complete. Ready to receive.
+                                                Datos completos. Listo para recibir.
                                             </p>
                                         @endif
                                     </div>

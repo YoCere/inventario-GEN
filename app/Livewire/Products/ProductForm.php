@@ -124,7 +124,7 @@ class ProductForm extends Component
         } catch (ProductException $e) {
             $this->dispatch('toast', message: $e->getMessage(), type: 'error');
         } catch (\Throwable $e) {
-            $this->dispatch('toast', message: 'An unexpected error occurred.', type: 'error');
+            $this->dispatch('toast', message: 'Ocurrió un error inesperado.', type: 'error');
         }
     }
 }
