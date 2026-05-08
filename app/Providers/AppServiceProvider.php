@@ -9,6 +9,7 @@ use Illuminate\Console\Scheduling\Schedule;
 use App\Events\LowStockDetected;
 use App\Listeners\NotifyLowStock;
 use App\Console\Commands\SendDailySummaryCommand;
+use App\Services\AuditService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -17,7 +18,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(AuditService::class);
     }
 
     /**
@@ -28,9 +29,9 @@ class AppServiceProvider extends ServiceProvider
         Blade::directive('money', function ($expression) {
             return "<?php echo format_money($expression); ?>";
         });
-        if (env('APP_ENV') === 'production') {
-            \Illuminate\Support\Facades\URL::forceScheme('https');
-        }
+        //if (env('APP_ENV') === 'production') {
+          //  \Illuminate\Support\Facades\URL::forceScheme('https');
+        //}
 
         Event::listen(LowStockDetected::class, NotifyLowStock::class);
 
