@@ -269,20 +269,46 @@ class BotProductHandler
                 $photo = end($message['photo']); // Get best quality
                 $fileId = $photo['file_id'];
 
+                Log::info('Processing photo upload', ['file_id' => $fileId]);
+
                 // Download photo from Telegram
                 $filePath = $this->telegram->getFile($fileId);
                 $content = $this->telegram->downloadFile($filePath);
 
+                if (empty($content)) {
+                    throw new \Exception('Downloaded content is empty');
+                }
+
+                // Detect MIME type
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mimeType = finfo_buffer($finfo, $content);
+                finfo_close($finfo);
+
+                $extension = match($mimeType) {
+                    'image/jpeg' => 'jpg',
+                    'image/png' => 'png',
+                    'image/webp' => 'webp',
+                    default => 'jpg',
+                };
+
+                // Ensure directory exists
+                Storage::disk('public')->makeDirectory('products', 0755, true);
+
                 // Store in storage
-                $storagePath = 'products/' . Str::uuid() . '.jpg';
+                $storagePath = 'products/' . Str::uuid() . '.' . $extension;
                 Storage::disk('public')->put($storagePath, $content);
+
+                Log::info('Photo stored successfully', ['path' => $storagePath, 'mime' => $mimeType]);
 
                 $data['foto_path'] = $storagePath;
                 $this->showConfirm($chatId, $conversation, $data);
             } catch (\Exception $e) {
-                Log::error('Photo download error', ['error' => $e->getMessage()]);
+                Log::error('Photo download/storage error', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
                 $data['foto_path'] = null;
-                $this->telegram->sendMessage($chatId, "⚠️ No se pudo descargar la foto. Continuando sin imagen...");
+                $this->telegram->sendMessage($chatId, "⚠️ Error: " . $e->getMessage() . "\n\nContinuando sin imagen...");
                 $this->showConfirm($chatId, $conversation, $data);
             }
             return;

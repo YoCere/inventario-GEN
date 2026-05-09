@@ -75,11 +75,11 @@ class TelegramService
             throw new \Exception('Telegram bot token not configured');
         }
 
-        $url = "{$this->apiUrl}{$this->botToken}/file/{$filePath}";
-        $response = Http::get($url);
+        $url = "https://api.telegram.org/file/bot{$this->botToken}/{$filePath}";
+        $response = Http::timeout(30)->get($url);
 
         if ($response->failed()) {
-            throw new \Exception('Failed to download file from Telegram');
+            throw new \Exception('Failed to download file from Telegram: ' . $response->status());
         }
 
         return $response->body();
