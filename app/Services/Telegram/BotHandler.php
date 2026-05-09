@@ -16,6 +16,7 @@ class BotHandler
         protected ProductSearchService $searchService,
         protected BotProductHandler $productHandler,
         protected BotSaleHandler $saleHandler,
+        protected BotRefundHandler $refundHandler,
     ) {}
 
     public function dispatch(array $update): void
@@ -38,10 +39,44 @@ class BotHandler
                 // Route to appropriate handler based on conversation type
                 if (str_starts_with($conversation->step, 'nuevo:')) {
                     $this->productHandler->handle($chatId, $message);
+                    return;
                 } elseif (str_starts_with($conversation->step, 'venta_rapida:')) {
                     $this->saleHandler->handle($chatId, $message);
+                    return;
+                } elseif (str_starts_with($conversation->step, 'devolver:')) {
+                    // Handle refund flow
+                    $text = trim($message['text'] ?? '');
+                    if ($conversation->step === 'devolver:seleccionar') {
+                        $this->refundHandler->handle($chatId, $message);
+                    } elseif ($conversation->step === 'devolver:confirmar') {
+                        if ($text === '1') {
+                            $this->refundHandler->confirmRefund($chatId, $conversation);
+                        } else {
+                            $conversation->delete();
+                            $this->telegram->sendMessage($chatId, "❌ Devolución cancelada.");
+                        }
+                    }
+                    return;
+                } elseif ($conversation->step === 'busqueda:resultado') {
+                    // Handle options after single search result
+                    $text = trim($message['text'] ?? '');
+                    if ($text === '1' || strtolower($text) === 'vender') {
+                        Log::info('User selected option 1: vender', ['chatId' => $chatId]);
+                        $this->handleQuickSaleFromSearch($chatId);
+                        return;
+                    } elseif ($text === '2') {
+                        Log::info('User selected option 2: buscar otro', ['chatId' => $chatId]);
+                        $conversation->delete();
+                    } else {
+                        // Invalid option, treat as new search
+                        $conversation->delete();
+                    }
+                } elseif ($conversation->step === 'busqueda:multiple') {
+                    // Handle number selection from multiple results
+                    $text = trim($message['text'] ?? '');
+                    $this->handleMultipleResultSelection($chatId, $conversation, $text);
+                    return;
                 }
-                return;
             }
 
             if (empty($message['text'])) {
@@ -55,9 +90,11 @@ class BotHandler
             } else {
                 // Check if trying to sell from recent search
                 if (strtolower($text) === 'vender') {
+                    Log::info('User requested quick sale', ['chatId' => $chatId]);
                     $this->handleQuickSaleFromSearch($chatId);
                 } else {
                     // Fallback: free text = product search
+                    Log::info('Searching product', ['query' => $text, 'chatId' => $chatId]);
                     $this->handleSearch($chatId, $text);
                 }
             }
@@ -78,43 +115,107 @@ class BotHandler
         if (count($results) === 1) {
             // Single result - store product ID for quick sale
             $productId = $results[0]['id'] ?? null;
+            Log::info('Single result found', ['productId' => $productId, 'chatId' => $chatId]);
+
             if ($productId) {
                 $conversation = TelegramConversation::getOrCreate($chatId);
-                $conversation->update([
+                $updated = $conversation->update([
                     'step' => 'busqueda:resultado',
                     'data' => ['product_id' => $productId],
                     'expires_at' => now()->addMinutes(5),
+                ]);
+                Log::info('Conversation updated', [
+                    'updated' => $updated,
+                    'step' => $conversation->step,
+                    'data' => $conversation->data,
                 ]);
             }
 
             $message = $results[0]['message'] . "\n\n";
             $message .= "<b>Opciones:</b>\n";
-            $message .= "• Escribe <code>vender</code> para venta rápida\n";
-            $message .= "• O busca otro producto";
+            $message .= "1️⃣ Vender\n";
+            $message .= "2️⃣ Buscar otro producto";
             $this->telegram->sendMessage($chatId, $message);
         } else {
-            // Multiple results
+            // Multiple results - store in conversation for selection by number
+            $conversation = TelegramConversation::getOrCreate($chatId);
+            $conversation->update([
+                'step' => 'busqueda:multiple',
+                'data' => ['results' => $results],
+                'expires_at' => now()->addMinutes(5),
+            ]);
+
             $message = "📦 <b>Resultados de búsqueda para: {$text}</b>\n\n";
             foreach ($results as $idx => $result) {
                 $message .= ($idx + 1) . ". <b>{$result['name']}</b> - {$result['price']}\n";
             }
-            $message .= "\n<i>Escribe el nombre exacto para vender rápido o más detalles</i>";
+            $message .= "\n<i>Escribe el número para vender rápido (Ej: 1, 2, 3...)</i>";
             $this->telegram->sendMessage($chatId, $message);
         }
     }
 
+    protected function handleMultipleResultSelection(string $chatId, TelegramConversation $conversation, string $input): void
+    {
+        $results = $conversation->data['results'] ?? [];
+        $index = (int) $input - 1;
+
+        Log::info('User selected result', ['chatId' => $chatId, 'index' => $index, 'total' => count($results)]);
+
+        if ($index < 0 || $index >= count($results)) {
+            $this->telegram->sendMessage($chatId, "❌ Número inválido. Escribe un número entre 1 y " . count($results));
+            return;
+        }
+
+        $selectedResult = $results[$index];
+        $productId = $selectedResult['id'] ?? null;
+
+        if (!$productId) {
+            $this->telegram->sendMessage($chatId, "❌ Producto no encontrado.");
+            $conversation->delete();
+            return;
+        }
+
+        // Store selected product and show info with vender option
+        $conversation->update([
+            'step' => 'busqueda:resultado',
+            'data' => ['product_id' => $productId],
+            'expires_at' => now()->addMinutes(5),
+        ]);
+
+        $message = $selectedResult['message'] . "\n\n";
+        $message .= "<b>Opciones:</b>\n";
+        $message .= "1️⃣ Vender\n";
+        $message .= "2️⃣ Buscar otro producto";
+        $this->telegram->sendMessage($chatId, $message);
+    }
+
     protected function handleQuickSaleFromSearch(string $chatId): void
     {
+        Log::info('handleQuickSaleFromSearch called', ['chatId' => $chatId]);
+
         $conversation = TelegramConversation::where('chat_id', $chatId)
             ->where('step', 'busqueda:resultado')
             ->first();
 
+        Log::info('Looking for conversation', [
+            'chatId' => $chatId,
+            'found' => !!$conversation,
+            'step' => $conversation?->step,
+            'data' => $conversation?->data,
+        ]);
+
         if (!$conversation || empty($conversation->data['product_id'] ?? null)) {
+            Log::warning('No conversation or product_id found', ['chatId' => $chatId]);
             $this->telegram->sendMessage($chatId, "❌ Primero busca un producto con su nombre o SKU.");
             return;
         }
 
         $product = Product::find($conversation->data['product_id']);
+
+        Log::info('Product lookup', [
+            'product_id' => $conversation->data['product_id'],
+            'found' => !!$product,
+        ]);
 
         if (!$product) {
             $this->telegram->sendMessage($chatId, "❌ Producto no encontrado.");
@@ -122,7 +223,7 @@ class BotHandler
             return;
         }
 
-        // Start quick sale flow
+        Log::info('Starting quick sale', ['product_id' => $product->id, 'product_name' => $product->name]);
         $this->saleHandler->startQuickSale($chatId, $product);
     }
 
@@ -138,6 +239,7 @@ class BotHandler
             '/ventas' => $this->cmdSales($chatId),
             '/nuevo' => $this->cmdNewProduct($chatId),
             '/listar' => $this->cmdList($chatId, $args),
+            '/devolver' => $this->cmdRefund($chatId),
             default => $this->telegram->sendMessage($chatId, "❓ Comando no reconocido. Escribe /ayuda para ver opciones."),
         };
     }
@@ -148,7 +250,8 @@ class BotHandler
             "/stock — Ver productos en stock crítico\n" .
             "/ventas — Resumen de ventas de hoy\n" .
             "/nuevo — Registrar un nuevo producto\n" .
-            "/listar — Listar productos (todas categorías o filtrar)\n\n" .
+            "/listar — Listar productos (todas categorías o filtrar)\n" .
+            "/devolver — Procesar devoluciones\n\n" .
             "<b>💡 Búsqueda directa</b>\n" .
             "Escribe el nombre de un producto y te mostraré el precio y stock.\n\n" .
             "Ej: <code>Redmi 14c</code>\n\n" .
@@ -248,5 +351,10 @@ class BotHandler
         }
 
         $this->telegram->sendMessage($chatId, $message);
+    }
+
+    protected function cmdRefund(string $chatId): void
+    {
+        $this->refundHandler->start($chatId);
     }
 }

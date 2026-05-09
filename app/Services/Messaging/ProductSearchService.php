@@ -55,21 +55,40 @@ class ProductSearchService
 
         $products = Product::where('is_active', true)->get();
 
-        // Score cada producto por relevancia
-        $scored = $products->map(function ($product) use ($tokens) {
+        $scored = $products->map(function ($product) use ($tokens, $query, $normalized) {
             $name_lower = mb_strtolower($product->name);
+            $name_normalized = $this->normalize($name_lower);
+            $name_words = preg_split('/\s+/', $name_normalized, -1, PREG_SPLIT_NO_EMPTY);
             $desc_lower = mb_strtolower($product->description ?? '');
 
             $score = 0;
+
             foreach ($tokens as $token) {
-                // Exact word match en nombre = score alto
-                if (str_contains($name_lower, $token)) {
+                // Exact match en nombre normalizado
+                if (str_contains($name_normalized, $token)) {
                     $score += 10;
                 }
+
                 // Match en descripción
                 if (str_contains($desc_lower, $token)) {
                     $score += 3;
                 }
+
+                // Typo tolerance: Levenshtein por palabra
+                foreach ($name_words as $word) {
+                    if (strlen($word) >= 3 && strlen($token) >= 3) {
+                        $distance = levenshtein($token, $word);
+                        if ($distance <= 2) {
+                            // Distancia pequeña = match fuzzy
+                            $score += (3 - $distance) + 1;
+                        }
+                    }
+                }
+            }
+
+            // Bonus: substring match case-insensitive
+            if (stripos($name_lower, $query) !== false) {
+                $score += 5;
             }
 
             return ['product' => $product, 'score' => $score];

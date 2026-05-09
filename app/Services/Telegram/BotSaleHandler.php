@@ -128,8 +128,8 @@ class BotSaleHandler
                 $porcentaje = (float) str_replace('%', '', $input);
                 $descuento = (int) round(($data['subtotal'] * $porcentaje) / 100);
             } else {
-                // Asumir que es Bs, multiplicar por 100 para centavos
-                $descuento = (int) $input * 100;
+                // Asumir que es Bs, convertir a centavos (1.40 -> 140)
+                $descuento = (int) round(floatval($input) * 100);
             }
 
             // Validar que descuento no supere subtotal
@@ -163,7 +163,8 @@ class BotSaleHandler
         }
         $message .= "Total: <b>Bs {$totalFormated}</b>\n\n";
         $message .= "¿Método de pago?\n";
-        $message .= "Responde: <code>efectivo</code>, <code>tarjeta</code>, o <code>otro</code>";
+        $message .= "1️⃣ Efectivo\n";
+        $message .= "2️⃣ Transferencia";
 
         $this->telegram->sendMessage($chatId, $message);
     }
@@ -171,19 +172,18 @@ class BotSaleHandler
     private function askMetodoPago(string $chatId, TelegramConversation $conversation, string $input): void
     {
         $data = $conversation->data ?? [];
-        $metodo = strtolower(trim($input));
+        $input = strtolower(trim($input));
 
-        $metodoPago = match ($metodo) {
-            'efectivo', 'cash' => PaymentMethod::CASH,
-            'tarjeta', 'card' => PaymentMethod::CARD,
-            'otro', 'other' => PaymentMethod::OTHER,
+        $metodoPago = match ($input) {
+            '1', 'efectivo', 'cash' => PaymentMethod::CASH,
+            '2', 'transferencia', 'transfer', 'banco' => PaymentMethod::TRANSFER,
             default => null,
         };
 
         if (!$metodoPago) {
             $this->telegram->sendMessage(
                 $chatId,
-                "❌ Método inválido. Responde: efectivo, tarjeta, u otro"
+                "❌ Método inválido. Responde: 1️⃣ Efectivo o 2️⃣ Transferencia"
             );
             return;
         }
@@ -214,15 +214,18 @@ class BotSaleHandler
         }
         $message .= "Total: <b>Bs {$totalFormated}</b>\n";
         $message .= "Pago: {$data['metodo_pago']}\n\n";
-        $message .= "<b>¿Confirmar venta?</b>\n\n";
-        $message .= "Responde: 'sí' o 'no'";
+        $message .= "<b>¿Confirmar venta?</b>\n";
+        $message .= "1️⃣ Sí\n";
+        $message .= "2️⃣ No";
 
         $this->telegram->sendMessage($chatId, $message);
     }
 
     private function confirm(string $chatId, TelegramConversation $conversation, string $text): void
     {
-        if (strtolower($text) !== 'sí' && strtolower($text) !== 'si') {
+        $input = strtolower(trim($text));
+
+        if (!in_array($input, ['1', 'sí', 'si', 'yes'])) {
             $conversation->delete();
             $this->telegram->sendMessage($chatId, "❌ Venta cancelada.");
             return;
@@ -240,6 +243,7 @@ class BotSaleHandler
                     [
                         'product_id' => $data['product_id'],
                         'quantity' => $data['cantidad'],
+                        'unit_price' => $data['product_price'],
                         'discount' => 0,
                     ]
                 ],
