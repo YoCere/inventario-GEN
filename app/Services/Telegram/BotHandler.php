@@ -4,6 +4,7 @@ namespace App\Services\Telegram;
 
 use App\Models\Setting;
 use App\Models\TelegramConversation;
+use App\Models\Product;
 use App\Services\Messaging\TelegramService;
 use App\Services\Messaging\ProductSearchService;
 use Illuminate\Support\Facades\Log;
@@ -14,6 +15,7 @@ class BotHandler
         protected TelegramService $telegram,
         protected ProductSearchService $searchService,
         protected BotProductHandler $productHandler,
+        protected BotSaleHandler $saleHandler,
     ) {}
 
     public function dispatch(array $update): void
@@ -33,8 +35,12 @@ class BotHandler
                 ->first();
 
             if ($conversation) {
-                // User is in a conversation flow (e.g., /nuevo)
-                $this->productHandler->handle($chatId, $message);
+                // Route to appropriate handler based on conversation type
+                if (str_starts_with($conversation->step, 'nuevo:')) {
+                    $this->productHandler->handle($chatId, $message);
+                } elseif (str_starts_with($conversation->step, 'venta_rapida:')) {
+                    $this->saleHandler->handle($chatId, $message);
+                }
                 return;
             }
 
@@ -47,8 +53,13 @@ class BotHandler
             if (str_starts_with($text, '/')) {
                 $this->handleCommand($chatId, $text);
             } else {
-                // Fallback: free text = product search
-                $this->handleSearch($chatId, $text);
+                // Check if trying to sell from recent search
+                if (strtolower($text) === 'vender') {
+                    $this->handleQuickSaleFromSearch($chatId);
+                } else {
+                    // Fallback: free text = product search
+                    $this->handleSearch($chatId, $text);
+                }
             }
         } catch (\Exception $e) {
             Log::error('Bot dispatch error', ['error' => $e->getMessage()]);
@@ -65,17 +76,54 @@ class BotHandler
         }
 
         if (count($results) === 1) {
-            // Single result
-            $this->telegram->sendMessage($chatId, $results[0]['message']);
+            // Single result - store product ID for quick sale
+            $productId = $results[0]['id'] ?? null;
+            if ($productId) {
+                $conversation = TelegramConversation::getOrCreate($chatId);
+                $conversation->update([
+                    'step' => 'busqueda:resultado',
+                    'data' => ['product_id' => $productId],
+                    'expires_at' => now()->addMinutes(5),
+                ]);
+            }
+
+            $message = $results[0]['message'] . "\n\n";
+            $message .= "<b>Opciones:</b>\n";
+            $message .= "• Escribe <code>vender</code> para venta rápida\n";
+            $message .= "• O busca otro producto";
+            $this->telegram->sendMessage($chatId, $message);
         } else {
             // Multiple results
             $message = "📦 <b>Resultados de búsqueda para: {$text}</b>\n\n";
             foreach ($results as $idx => $result) {
                 $message .= ($idx + 1) . ". <b>{$result['name']}</b> - {$result['price']}\n";
             }
-            $message .= "\n<i>Escribe el nombre exacto para más detalles</i>";
+            $message .= "\n<i>Escribe el nombre exacto para vender rápido o más detalles</i>";
             $this->telegram->sendMessage($chatId, $message);
         }
+    }
+
+    protected function handleQuickSaleFromSearch(string $chatId): void
+    {
+        $conversation = TelegramConversation::where('chat_id', $chatId)
+            ->where('step', 'busqueda:resultado')
+            ->first();
+
+        if (!$conversation || empty($conversation->data['product_id'] ?? null)) {
+            $this->telegram->sendMessage($chatId, "❌ Primero busca un producto con su nombre o SKU.");
+            return;
+        }
+
+        $product = Product::find($conversation->data['product_id']);
+
+        if (!$product) {
+            $this->telegram->sendMessage($chatId, "❌ Producto no encontrado.");
+            $conversation->delete();
+            return;
+        }
+
+        // Start quick sale flow
+        $this->saleHandler->startQuickSale($chatId, $product);
     }
 
     protected function handleCommand(string $chatId, string $text): void
