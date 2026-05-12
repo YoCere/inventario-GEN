@@ -12,6 +12,11 @@ use Illuminate\Support\Facades\Storage;
 
 class ProductService
 {
+    public function __construct(
+        protected AuditService $auditService
+    ) {
+    }
+
     /**
      * Create a new product.
      */
@@ -21,7 +26,7 @@ class ProductService
             try {
                 $sku = $data->sku ?? $this->generateUniqueSku();
 
-                return Product::create([
+                $product = Product::create([
                     'category_id' => $data->category_id,
                     'unit_id' => $data->unit_id,
                     'sku' => $sku,
@@ -35,6 +40,21 @@ class ProductService
                     'notes' => $data->notes,
                     'image_path' => $data->image_path,
                 ]);
+
+                $this->auditService->log(
+                    'producto.creado',
+                    $product,
+                    null,
+                    [
+                        'nombre' => $product->name,
+                        'sku' => $product->sku,
+                        'precio_compra' => $product->purchase_price,
+                        'precio_venta' => $product->selling_price,
+                        'stock_inicial' => $product->quantity,
+                    ]
+                );
+
+                return $product;
 
             } catch (Exception $e) {
                 throw ProductException::creationFailed($e->getMessage(), [
@@ -52,6 +72,19 @@ class ProductService
     {
         return DB::transaction(function () use ($product, $data) {
             try {
+                // Lock to prevent race condition on quantity edits
+                $product = Product::where('id', $product->id)->lockForUpdate()->first();
+
+                $oldValues = [
+                    'name' => $product->name,
+                    'sku' => $product->sku,
+                    'purchase_price' => $product->purchase_price,
+                    'selling_price' => $product->selling_price,
+                    'quantity' => $product->quantity,
+                    'min_stock' => $product->min_stock,
+                    'is_active' => $product->is_active,
+                ];
+
                 $imagePath = $data->image_path ?? $product->image_path;
 
                 if ($data->image_path && $data->image_path !== $product->image_path) {
@@ -76,6 +109,49 @@ class ProductService
                     'image_path' => $imagePath,
                 ]);
 
+                $newValues = [
+                    'name' => $product->name,
+                    'sku' => $product->sku,
+                    'purchase_price' => $product->purchase_price,
+                    'selling_price' => $product->selling_price,
+                    'quantity' => $product->quantity,
+                    'min_stock' => $product->min_stock,
+                    'is_active' => $product->is_active,
+                ];
+
+                // Compute diff (only changed fields)
+                $changedOld = [];
+                $changedNew = [];
+                foreach ($newValues as $key => $value) {
+                    if ($oldValues[$key] != $value) {
+                        $changedOld[$key] = $oldValues[$key];
+                        $changedNew[$key] = $value;
+                    }
+                }
+
+                if (!empty($changedNew)) {
+                    // If quantity changed manually, audit as ajuste manual
+                    if (array_key_exists('quantity', $changedNew)) {
+                        $this->auditService->log(
+                            'stock.ajuste_manual',
+                            $product,
+                            ['quantity' => $changedOld['quantity']],
+                            [
+                                'quantity' => $changedNew['quantity'],
+                                'diferencia' => $changedNew['quantity'] - $changedOld['quantity'],
+                                'origen' => 'edicion_directa_producto',
+                            ]
+                        );
+                    }
+
+                    $this->auditService->log(
+                        'producto.actualizado',
+                        $product,
+                        $changedOld,
+                        $changedNew
+                    );
+                }
+
                 return $product->refresh();
 
             } catch (Exception $e) {
@@ -97,6 +173,19 @@ class ProductService
                 if ($product->purchaseItems()->exists() || $product->saleItems()->exists()) {
                     throw new Exception('No se puede eliminar producto porque está asociado a registros de compra o venta.');
                 }
+
+                $this->auditService->log(
+                    'producto.eliminado',
+                    $product,
+                    [
+                        'nombre' => $product->name,
+                        'sku' => $product->sku,
+                        'precio_compra' => $product->purchase_price,
+                        'precio_venta' => $product->selling_price,
+                        'stock_final' => $product->quantity,
+                    ],
+                    null
+                );
 
                 if ($product->image_path && Storage::disk('public')->exists($product->image_path)) {
                     Storage::disk('public')->delete($product->image_path);

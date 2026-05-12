@@ -9,6 +9,7 @@ use App\Models\PurchaseItem;
 use App\Models\SaleItem;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class KardexService
 {
@@ -100,14 +101,20 @@ class KardexService
                 $exitUnit = $averageCost;
                 $exitTotal = $movement['qty'] * $exitUnit;
 
+                // CRITICAL: Mantener negativos visibles para auditoría
+                // Resetear a 0 oculta overselling y rompe trazabilidad financiera
                 $balanceQty -= $movement['qty'];
-                if ($balanceQty < 0) {
-                    $balanceQty = 0;
-                }
-
                 $balanceValue -= $exitTotal;
-                if ($balanceValue < 0) {
-                    $balanceValue = 0.0;
+
+                $oversold = $balanceQty < 0;
+
+                if ($oversold) {
+                    Log::warning('Kardex oversold detected', [
+                        'product_id' => $productId,
+                        'date' => $date->toDateString(),
+                        'reference' => $movement['reference'],
+                        'balance_qty_negative' => $balanceQty,
+                    ]);
                 }
 
                 $averageCost = $balanceQty > 0 ? ($balanceValue / $balanceQty) : 0.0;
@@ -118,7 +125,7 @@ class KardexService
 
                     $rows[] = [
                         'date' => $date->format('d/m/Y'),
-                        'detail' => 'Salida por venta',
+                        'detail' => $oversold ? 'Salida por venta ⚠️ OVERSOLD' : 'Salida por venta',
                         'reference' => $movement['reference'],
                         'entry_qty' => 0,
                         'entry_unit' => 0.0,
@@ -129,6 +136,7 @@ class KardexService
                         'balance_qty' => $balanceQty,
                         'balance_unit' => $averageCost,
                         'balance_total' => $balanceValue,
+                        'oversold' => $oversold,
                     ];
                 }
             }
@@ -140,6 +148,22 @@ class KardexService
                     'avg' => $averageCost,
                 ];
             }
+        }
+
+        // INTEGRITY CHECK: comparar kardex calculado vs stock actual en BD
+        $actualDbQty = (int) $product->quantity;
+        $integrityOk = $balanceQty === $actualDbQty;
+        $integrityDiff = $actualDbQty - $balanceQty;
+
+        if (!$integrityOk) {
+            Log::warning('Kardex integrity mismatch', [
+                'product_id' => $productId,
+                'product_sku' => $product->sku,
+                'kardex_calculated' => $balanceQty,
+                'db_actual' => $actualDbQty,
+                'difference' => $integrityDiff,
+                'period_to' => $toDate->toDateString(),
+            ]);
         }
 
         return [
@@ -155,6 +179,12 @@ class KardexService
                 'exit_total' => $exitValueTotal,
                 'closing_qty' => $balanceQty,
                 'closing_total' => $balanceValue,
+            ],
+            'integrity' => [
+                'ok' => $integrityOk,
+                'kardex_qty' => $balanceQty,
+                'db_qty' => $actualDbQty,
+                'difference' => $integrityDiff,
             ],
         ];
     }

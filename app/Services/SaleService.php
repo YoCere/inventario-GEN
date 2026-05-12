@@ -16,7 +16,8 @@ class SaleService
 {
     public function __construct(
         protected FinanceTransactionService $financeService,
-        protected SaleAccountingService $saleAccountingService
+        protected SaleAccountingService $saleAccountingService,
+        protected AuditService $auditService
     ) {
     }
 
@@ -72,8 +73,22 @@ class SaleService
                     }
 
                     // Update stock
+                    $oldQuantity = $product->quantity;
                     $product->quantity -= $itemData->quantity;
                     $product->save();
+
+                    $this->auditService->log(
+                        'stock.decremento.venta',
+                        $product,
+                        ['quantity' => $oldQuantity],
+                        [
+                            'quantity' => $product->quantity,
+                            'cantidad_vendida' => $itemData->quantity,
+                            'sale_invoice' => $sale->invoice_number,
+                            'sale_id' => $sale->id,
+                        ],
+                        $data->created_by ?? null
+                    );
 
                     $unitPrice = $product->selling_price;
                     $quantity = $itemData->quantity;
@@ -166,7 +181,21 @@ class SaleService
 
                     foreach ($sale->items as $item) {
                         if ($item->product) {
+                            $oldQuantity = $item->product->quantity;
                             $item->product->increment('quantity', $item->quantity);
+
+                            $this->auditService->log(
+                                'stock.incremento.cancelacion',
+                                $item->product,
+                                ['quantity' => $oldQuantity],
+                                [
+                                    'quantity' => $item->product->quantity,
+                                    'cantidad_restaurada' => $item->quantity,
+                                    'sale_invoice' => $sale->invoice_number,
+                                    'sale_id' => $sale->id,
+                                    'motivo' => $reason,
+                                ]
+                            );
                         }
                     }
                 }
@@ -258,7 +287,20 @@ class SaleService
                     );
                 }
 
+                $oldQuantity = $product->quantity;
                 $product->decrement('quantity', $item->quantity);
+
+                $this->auditService->log(
+                    'stock.decremento.restauracion',
+                    $product,
+                    ['quantity' => $oldQuantity],
+                    [
+                        'quantity' => $oldQuantity - $item->quantity,
+                        'cantidad_descontada' => $item->quantity,
+                        'sale_invoice' => $sale->invoice_number,
+                        'sale_id' => $sale->id,
+                    ]
+                );
             }
 
             // Restore to PENDING
@@ -294,22 +336,34 @@ class SaleService
     }
 
     /**
-     * Generate unique invoice number.
+     * Generate unique invoice number atomically.
      * Format: INV.YYMMDD.0001
+     * Uses lockForUpdate to prevent race condition on concurrent sales.
+     * Retries up to 5 times if unique constraint collision still occurs.
      */
     private function generateInvoiceNumber(): string
     {
         $prefix = 'INV.' . date('ymd') . '.';
 
-        $latest = Sale::where('invoice_number', 'like', $prefix . '%')
-            ->orderBy('id', 'desc')
-            ->first();
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            // lockForUpdate prevents two concurrent transactions from reading same lastNumber
+            $latest = Sale::where('invoice_number', 'like', $prefix . '%')
+                ->orderBy('id', 'desc')
+                ->lockForUpdate()
+                ->first();
 
-        if (!$latest) {
-            return $prefix . '0001';
+            $lastNumber = $latest ? (int) substr($latest->invoice_number, -4) : 0;
+            $candidate = $prefix . str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
+
+            // Defensive check: ensure candidate not already taken (covers gap edge cases)
+            if (!Sale::where('invoice_number', $candidate)->exists()) {
+                return $candidate;
+            }
         }
 
-        $lastNumber = (int) substr($latest->invoice_number, -4);
-        return $prefix . str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
+        throw SaleException::creationFailed(
+            'No se pudo generar número de factura único tras múltiples intentos.',
+            ['prefix' => $prefix]
+        );
     }
 }

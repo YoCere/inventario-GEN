@@ -558,57 +558,33 @@
                     unformatNumber(value) {
                         if (typeof value !== 'string') return value || 0;
 
-                        // Let's strip out the thousand separator safely
-                        // e.g. "1,000.50" with thousand="," -> "1000.50"
+                        // Strip thousand separators and normalize decimal
                         let raw = value;
                         if (window.thousandSeparator) {
                             raw = raw.split(window.thousandSeparator).join('');
                         }
-
-                        // Replace the designated decimal separator with a standard dot for JS parsing
                         if (window.decimalSeparator && window.decimalSeparator !== '.') {
                             raw = raw.replace(window.decimalSeparator, '.');
                         }
-
-                        // Remove any characters that aren't numbers, dot, or minus sign
                         raw = raw.replace(/[^0-9\.-]/g, '');
 
-                        // If it ends with a dot or dot-zero(s), we don't want to parse it yet 
-                        // as it breaks the user's typing experience (e.g. typing "10." becomes "10" instantly)
-                        // However, for pure JS calculation, we must return a number.
-                        // The trick here is handled in the formatNumber/binding, but unformat must return string if it ends with dot
-
                         if (raw === '' || raw === '-') return 0;
-                        // Return the raw string if the user is actively typing a decimal
-                        if (raw.endsWith('.')) return raw;
 
-                        return parseFloat(raw) || 0;
+                        // Input is Bs decimal; storage is cents (×100)
+                        let bs = parseFloat(raw) || 0;
+                        return Math.round(bs * 100);
                     },
 
                     formatNumber(value) {
-                        // If the user is mid-typing a decimal (e.g "10."), just return as is
-                        // to prevent the cursor from jumping and erasing the dot.
-                        if (typeof value === 'string' && value.endsWith('.')) {
-                            return value.replace('.', window.decimalSeparator);
-                        }
+                        // value is cents; display as Bs decimal with separators
+                        let cents = parseInt(value) || 0;
+                        let isNegative = cents < 0;
+                        let bs = Math.abs(cents) / 100;
 
-                        let amount = parseFloat(value) || 0;
-                        let isNegative = amount < 0;
-                        amount = Math.abs(amount);
-
-                        // Only force fraction digits if we are NOT actively typing
-                        // Because formatting actively typing "0.5" might force "0.50" immediately.
-                        // We will just let `Math.abs` Handle it unless formatting for display.
-
-                        let strAmount = amount.toString();
-                        // if we want to force fraction, use toFixed here. 
-                        // But for active input fields, forcing .toFixed(2) while typing is bad UX.
-                        // For display fields (Total), it's fine. 
-                        // Since this is used in BOTH, we check if it's an integer.
-
+                        let strAmount = bs.toFixed(2);
                         let parts = strAmount.split('.');
                         let integerPart = parts[0];
-                        let decimalPart = parts.length > 1 ? window.decimalSeparator + parts[1] : '';
+                        let decimalPart = window.decimalSeparator + parts[1];
 
                         let rgx = /(\d+)(\d{3})/;
                         while (rgx.test(integerPart)) {

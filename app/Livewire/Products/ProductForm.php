@@ -114,7 +114,20 @@ class ProductForm extends Component
 
         $imagePath = null;
         if ($this->photo) {
-            $imagePath = $this->photo->store('products', 'public');
+            try {
+                $imagePath = $this->photo->store('products', 'public');
+                \Log::info('Product photo stored', ['path' => $imagePath, 'product_id' => $this->product?->id]);
+            } catch (\Throwable $e) {
+                \Log::error('Product photo store failed', [
+                    'error' => $e->getMessage(),
+                    'product_id' => $this->product?->id,
+                ]);
+                $this->dispatch('toast', message: 'Error al guardar imagen: ' . $e->getMessage(), type: 'error');
+                return;
+            }
+        } elseif ($this->isEditing && $this->product) {
+            // Preserve existing image when no new photo uploaded
+            $imagePath = $this->product->image_path;
         }
 
         $validated['image_path'] = $imagePath;

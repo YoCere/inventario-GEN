@@ -68,12 +68,13 @@
             window.decimalSeparator = "{{ \App\Models\Setting::get('currency_decimal_separator', ',') }}";
 
             window.formatMoney = function(val) {
-                let amount = parseFloat(val) || 0;
-                let isNegative = amount < 0;
-                amount = Math.abs(amount);
+                // val is stored in cents; divide ÷100 to display Bs
+                let cents = parseFloat(val) || 0;
+                let isNegative = cents < 0;
+                let amount = Math.abs(cents) / 100;
 
-                // Calculate fraction
-                let strAmount = amount.toFixed(window.currencyFraction);
+                // Force 2 fraction digits (cents storage)
+                let strAmount = amount.toFixed(2);
                 let parts = strAmount.split('.');
                 let integerPart = parts[0];
                 let decimalPart = parts.length > 1 ? window.decimalSeparator + parts[1] : '';

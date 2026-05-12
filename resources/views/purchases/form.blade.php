@@ -175,29 +175,23 @@
                                         if(window.thousandSeparator) raw = raw.split(window.thousandSeparator).join('');
                                         if(window.decimalSeparator && window.decimalSeparator !== '.') raw = raw.replace(window.decimalSeparator, '.');
                                         raw = raw.replace(/[^0-9\.-]/g, '');
-                                        
-                                        if (raw.endsWith('.')) {
-                                            item.unit_price = raw; 
-                                        } else {
-                                            item.unit_price = raw ? parseFloat(raw) : 0;
-                                        }
-                                        
-                                        this.display = this.formatNumber(item.unit_price);
+
+                                        // Input is Bs decimal, storage is cents (×100)
+                                        let bs = raw ? parseFloat(raw) : 0;
+                                        item.unit_price = isNaN(bs) ? 0 : Math.round(bs * 100);
+
                                         calculateLine(index);
                                     },
                                     formatNumber(value) {
-                                        if (typeof value === 'string' && value.endsWith('.')) {
-                                             return value.replace('.', window.decimalSeparator);
-                                        }
-                                        
-                                        let amount = parseFloat(value) || 0;
-                                        let isNegative = amount < 0;
-                                        amount = Math.abs(amount);
+                                        // value is cents; display as Bs decimal with separators
+                                        let cents = parseInt(value) || 0;
+                                        let isNegative = cents < 0;
+                                        let bs = Math.abs(cents) / 100;
 
-                                        let strAmount = amount.toString();
+                                        let strAmount = bs.toFixed(2);
                                         let parts = strAmount.split('.');
                                         let integerPart = parts[0];
-                                        let decimalPart = parts.length > 1 ? window.decimalSeparator + parts[1] : '';
+                                        let decimalPart = window.decimalSeparator + parts[1];
 
                                         let rgx = /(\d+)(\d{3})/;
                                         while (rgx.test(integerPart)) {
@@ -237,28 +231,19 @@
                                         if(window.thousandSeparator) raw = raw.split(window.thousandSeparator).join('');
                                         if(window.decimalSeparator && window.decimalSeparator !== '.') raw = raw.replace(window.decimalSeparator, '.');
                                         raw = raw.replace(/[^0-9\.-]/g, '');
-                                        
-                                        if (raw.endsWith('.')) {
-                                            item.selling_price = raw; 
-                                        } else {
-                                            item.selling_price = raw ? parseFloat(raw) : 0;
-                                        }
-                                        
-                                        this.display = this.formatNumber(item.selling_price);
+
+                                        let bs = raw ? parseFloat(raw) : 0;
+                                        item.selling_price = isNaN(bs) ? 0 : Math.round(bs * 100);
                                     },
                                     formatNumber(value) {
-                                        if (typeof value === 'string' && value.endsWith('.')) {
-                                             return value.replace('.', window.decimalSeparator);
-                                        }
-                                        
-                                        let amount = parseFloat(value) || 0;
-                                        let isNegative = amount < 0;
-                                        amount = Math.abs(amount);
+                                        let cents = parseInt(value) || 0;
+                                        let isNegative = cents < 0;
+                                        let bs = Math.abs(cents) / 100;
 
-                                        let strAmount = amount.toString();
+                                        let strAmount = bs.toFixed(2);
                                         let parts = strAmount.split('.');
                                         let integerPart = parts[0];
-                                        let decimalPart = parts.length > 1 ? window.decimalSeparator + parts[1] : '';
+                                        let decimalPart = window.decimalSeparator + parts[1];
 
                                         let rgx = /(\d+)(\d{3})/;
                                         while (rgx.test(integerPart)) {

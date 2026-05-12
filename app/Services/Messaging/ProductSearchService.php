@@ -185,6 +185,7 @@ class ProductSearchService
                 'quantity' => $product->quantity,
                 'unit' => $unit,
                 'min_stock' => $product->min_stock,
+                'image_path' => $product->image_path,
                 'message' => "📦 <b>{$product->name}</b>\n" .
                     "💰 Precio: {$price}\n" .
                     "📊 Stock: {$stock}{$product->quantity} {$unit}\n" .

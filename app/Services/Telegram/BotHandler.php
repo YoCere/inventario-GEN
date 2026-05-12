@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Services\Messaging\TelegramService;
 use App\Services\Messaging\ProductSearchService;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class BotHandler
 {
@@ -17,6 +18,7 @@ class BotHandler
         protected BotProductHandler $productHandler,
         protected BotSaleHandler $saleHandler,
         protected BotRefundHandler $refundHandler,
+        protected BotAuthHandler $authHandler,
     ) {}
 
     public function dispatch(array $update): void
@@ -30,10 +32,25 @@ class BotHandler
 
             $chatId = (string) $message['from']['id'];
 
-            // Check for active conversation first
+            // CHECK AUTHENTICATION FIRST
             $conversation = TelegramConversation::where('chat_id', $chatId)
                 ->where('step', '!=', 'idle')
                 ->first();
+
+            // Handle auth conversations
+            if ($conversation && str_starts_with($conversation->step, 'auth:')) {
+                $this->authHandler->handle($chatId, $message);
+                return;
+            }
+
+            // Check if user is authenticated
+            if (!$this->authHandler->isAuthenticated($chatId)) {
+                // Not authenticated - start login
+                $this->authHandler->startLogin($chatId);
+                return;
+            }
+
+            // USER IS AUTHENTICATED - continue with bot logic
 
             if ($conversation) {
                 // Route to appropriate handler based on conversation type
@@ -135,7 +152,7 @@ class BotHandler
             $message .= "<b>Opciones:</b>\n";
             $message .= "1️⃣ Vender\n";
             $message .= "2️⃣ Buscar otro producto";
-            $this->telegram->sendMessage($chatId, $message);
+            $this->sendProductCard($chatId, $results[0], $message);
         } else {
             // Multiple results - store in conversation for selection by number
             $conversation = TelegramConversation::getOrCreate($chatId);
@@ -157,12 +174,25 @@ class BotHandler
     protected function handleMultipleResultSelection(string $chatId, TelegramConversation $conversation, string $input): void
     {
         $results = $conversation->data['results'] ?? [];
-        $index = (int) $input - 1;
+        $trimmed = trim($input);
+
+        // Si input no es entero puro, tratarlo como nueva búsqueda
+        if (!ctype_digit($trimmed)) {
+            Log::info('Non-numeric input in multi-results, treating as new search', [
+                'chatId' => $chatId,
+                'input' => $trimmed,
+            ]);
+            $conversation->delete();
+            $this->handleSearch($chatId, $trimmed);
+            return;
+        }
+
+        $index = (int) $trimmed - 1;
 
         Log::info('User selected result', ['chatId' => $chatId, 'index' => $index, 'total' => count($results)]);
 
         if ($index < 0 || $index >= count($results)) {
-            $this->telegram->sendMessage($chatId, "❌ Número inválido. Escribe un número entre 1 y " . count($results));
+            $this->telegram->sendMessage($chatId, "❌ Número inválido. Escribe un número entre 1 y " . count($results) . " o escribe otro nombre para buscar.");
             return;
         }
 
@@ -186,7 +216,40 @@ class BotHandler
         $message .= "<b>Opciones:</b>\n";
         $message .= "1️⃣ Vender\n";
         $message .= "2️⃣ Buscar otro producto";
-        $this->telegram->sendMessage($chatId, $message);
+        $this->sendProductCard($chatId, $selectedResult, $message);
+    }
+
+    /**
+     * Send product card with image if available, fallback to text-only message.
+     * Telegram photo caption limit: 1024 chars. If exceeds, splits photo + follow-up text.
+     */
+    protected function sendProductCard(string $chatId, array $product, string $message): void
+    {
+        $imagePath = $product['image_path'] ?? null;
+
+        // No image → plain text
+        if (!$imagePath || !Storage::disk('public')->exists($imagePath)) {
+            $this->telegram->sendMessage($chatId, $message);
+            return;
+        }
+
+        try {
+            // Telegram photo caption max 1024 chars
+            if (mb_strlen($message) <= 1024) {
+                $this->telegram->sendPhoto($chatId, $imagePath, $message);
+            } else {
+                // Photo with truncated caption + full text follow-up
+                $this->telegram->sendPhoto($chatId, $imagePath, $product['name'] ?? '');
+                $this->telegram->sendMessage($chatId, $message);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Failed to send product photo, fallback to text', [
+                'chat_id' => $chatId,
+                'image_path' => $imagePath,
+                'error' => $e->getMessage(),
+            ]);
+            $this->telegram->sendMessage($chatId, $message);
+        }
     }
 
     protected function handleQuickSaleFromSearch(string $chatId): void

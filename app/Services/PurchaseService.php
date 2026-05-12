@@ -18,7 +18,8 @@ class PurchaseService
 {
     public function __construct(
         protected FinanceTransactionService $financeService,
-        protected PurchaseAccountingService $purchaseAccountingService
+        protected PurchaseAccountingService $purchaseAccountingService,
+        protected AuditService $auditService
     ) {
     }
 
@@ -140,41 +141,73 @@ class PurchaseService
                 $product = Product::where('id', $item->product_id)->lockForUpdate()->first();
 
                 if ($product) {
+                    $oldQuantity = $product->quantity;
+                    $oldPurchasePrice = $product->purchase_price;
+                    $oldSellingPrice = $product->selling_price;
+
                     $product->increment('quantity', $item->quantity);
+
+                    // Audit stock movement
+                    $this->auditService->log(
+                        'stock.incremento.compra',
+                        $product,
+                        ['quantity' => $oldQuantity],
+                        [
+                            'quantity' => $oldQuantity + $item->quantity,
+                            'cantidad_recibida' => $item->quantity,
+                            'purchase_invoice' => $purchase->invoice_number,
+                            'purchase_id' => $purchase->id,
+                        ],
+                        $purchase->created_by
+                    );
 
                     // Update latest purchase price and selling price
                     $updateData = ['purchase_price' => $item->unit_price];
-                    $priceChangeLog = "";
-                    $hasPriceChange = false;
+                    $priceChanges = [];
 
                     // Check for Purchase Price Change
-                    if ((float) $product->purchase_price !== (float) $item->unit_price) {
-                        $hasPriceChange = true;
-                        $oldBuy = format_money($product->purchase_price ?? 0);
-                        $newBuy = format_money($item->unit_price);
-                        $priceChangeLog .= "\n- Precio de compra: {$oldBuy} -> {$newBuy}";
+                    if ((int) $oldPurchasePrice !== (int) $item->unit_price) {
+                        $priceChanges['purchase_price'] = [
+                            'old' => $oldPurchasePrice,
+                            'new' => $item->unit_price,
+                        ];
                     }
 
                     // Check for Selling Price Change
                     if ($item->selling_price) {
                         $updateData['selling_price'] = $item->selling_price;
-                        if ((float) $product->selling_price !== (float) $item->selling_price) {
-                            $hasPriceChange = true;
-                            $oldSell = format_money($product->selling_price ?? 0);
-                            $newSell = format_money($item->selling_price);
-                            $priceChangeLog .= "\n- Precio de venta: {$oldSell} -> {$newSell}";
+                        if ((int) $oldSellingPrice !== (int) $item->selling_price) {
+                            $priceChanges['selling_price'] = [
+                                'old' => $oldSellingPrice,
+                                'new' => $item->selling_price,
+                            ];
                         }
                     }
 
-                    // Append to Notes if prices changed
-                    if ($hasPriceChange) {
-                        $timestamp = now()->format('Y-m-d H:i');
-                        $ref = $purchase->invoice_number ? "Factura #{$purchase->invoice_number}" : "Compra #{$purchase->id}";
-                        $logHeader = "\n\n[Registro de Sistema - {$timestamp}] Actualización de precio vía {$ref}:";
-                        $updateData['notes'] = TRIM(($product->notes ?? '') . $logHeader . $priceChangeLog);
-                    }
-
                     $product->update($updateData);
+
+                    // Audit price changes via audit_logs (no longer in notes field)
+                    if (!empty($priceChanges)) {
+                        $this->auditService->log(
+                            'producto.precio_actualizado_por_compra',
+                            $product,
+                            array_combine(
+                                array_keys($priceChanges),
+                                array_map(fn ($c) => $c['old'], $priceChanges)
+                            ),
+                            array_merge(
+                                array_combine(
+                                    array_keys($priceChanges),
+                                    array_map(fn ($c) => $c['new'], $priceChanges)
+                                ),
+                                [
+                                    'purchase_invoice' => $purchase->invoice_number,
+                                    'purchase_id' => $purchase->id,
+                                ]
+                            ),
+                            $purchase->created_by
+                        );
+                    }
 
                     // Fire low stock alert if product is now below minimum
                     $product->refresh();
