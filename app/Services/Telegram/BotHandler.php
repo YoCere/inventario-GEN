@@ -19,6 +19,7 @@ class BotHandler
         protected BotSaleHandler $saleHandler,
         protected BotRefundHandler $refundHandler,
         protected BotAuthHandler $authHandler,
+        protected BotReportHandler $reportHandler,
     ) {}
 
     public function dispatch(array $update): void
@@ -92,6 +93,9 @@ class BotHandler
                     // Handle number selection from multiple results
                     $text = trim($message['text'] ?? '');
                     $this->handleMultipleResultSelection($chatId, $conversation, $text);
+                    return;
+                } elseif ($conversation->step === 'reportes:menu') {
+                    $this->reportHandler->handle($chatId, $message);
                     return;
                 }
             }
@@ -303,6 +307,7 @@ class BotHandler
             '/nuevo' => $this->cmdNewProduct($chatId),
             '/listar' => $this->cmdList($chatId, $args),
             '/devolver' => $this->cmdRefund($chatId),
+            '/reportes' => $this->reportHandler->showMenu($chatId),
             default => $this->telegram->sendMessage($chatId, "❓ Comando no reconocido. Escribe /ayuda para ver opciones."),
         };
     }
@@ -314,7 +319,8 @@ class BotHandler
             "/ventas — Resumen de ventas de hoy\n" .
             "/nuevo — Registrar un nuevo producto\n" .
             "/listar — Listar productos (todas categorías o filtrar)\n" .
-            "/devolver — Procesar devoluciones\n\n" .
+            "/devolver — Procesar devoluciones\n" .
+            "/reportes — Reportes del negocio (libro diario, top ventas, ganancia, etc.)\n\n" .
             "<b>💡 Búsqueda directa</b>\n" .
             "Escribe el nombre de un producto y te mostraré el precio y stock.\n\n" .
             "Ej: <code>Redmi 14c</code>\n\n" .
