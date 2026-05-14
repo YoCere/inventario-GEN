@@ -177,6 +177,21 @@ class ProductSearchService
             $price = number_format($product->selling_price / 100, 2);
             $stock = $product->quantity <= $product->min_stock ? '⚠️ ' : '';
 
+            // Build location info
+            $stocks = $product->stocks()->with('location.warehouse')->where('quantity', '>', 0)->get();
+            $locationLine = '';
+            if ($stocks->count() === 1) {
+                $loc = $stocks->first()->location;
+                $locationLine = "\n📍 Ubicación: " . ($loc?->warehouse?->name ?? '') . ' › ' . ($loc?->name ?? '');
+            } elseif ($stocks->count() > 1) {
+                $parts = $stocks->map(function ($s) use ($unit) {
+                    $loc = $s->location;
+                    $whName = $loc?->warehouse?->name ?? '';
+                    return "  • {$whName} › {$loc?->name}: {$s->quantity} {$unit}";
+                })->implode("\n");
+                $locationLine = "\n📍 Ubicaciones:\n{$parts}";
+            }
+
             return [
                 'id' => $product->id,
                 'name' => $product->name,
@@ -189,7 +204,8 @@ class ProductSearchService
                 'message' => "📦 <b>{$product->name}</b>\n" .
                     "💰 Precio: {$price}\n" .
                     "📊 Stock: {$stock}{$product->quantity} {$unit}\n" .
-                    "SKU: {$product->sku}",
+                    "SKU: {$product->sku}" .
+                    $locationLine,
             ];
         })->values()->toArray();
     }

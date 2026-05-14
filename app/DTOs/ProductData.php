@@ -17,6 +17,7 @@ class ProductData
         public readonly ?string $description,
         public readonly ?string $notes,
         public readonly ?string $image_path = null,
+        public readonly ?int $location_id = null,
     ) {}
 
     public static function fromArray(array $data): self
@@ -34,6 +35,7 @@ class ProductData
             description: empty($data['description']) ? null : $data['description'],
             notes: empty($data['notes']) ? null : $data['notes'],
             image_path: empty($data['image_path']) ? null : $data['image_path'],
+            location_id: empty($data['location_id']) ? null : (int) $data['location_id'],
         );
     }
 
@@ -52,6 +54,7 @@ class ProductData
             'description' => $this->description,
             'notes' => $this->notes,
             'image_path' => $this->image_path,
+            'location_id' => $this->location_id,
         ];
     }
 }

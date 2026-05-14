@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use Exception;
+use App\Models\Location;
 use App\Models\Product;
+use App\Models\ProductStock;
 use Illuminate\Support\Str;
 use App\DTOs\ProductData;
 use App\Exceptions\ProductException;
@@ -41,6 +43,16 @@ class ProductService
                     'image_path' => $data->image_path,
                 ]);
 
+                // Create ProductStock row for selected (or default) location
+                $locationId = $data->location_id ?? Location::default()?->id;
+                if ($locationId) {
+                    ProductStock::create([
+                        'product_id' => $product->id,
+                        'location_id' => $locationId,
+                        'quantity' => $data->quantity,
+                    ]);
+                }
+
                 $this->auditService->log(
                     'producto.creado',
                     $product,
@@ -51,6 +63,7 @@ class ProductService
                         'precio_compra' => $product->purchase_price,
                         'precio_venta' => $product->selling_price,
                         'stock_inicial' => $product->quantity,
+                        'location_id' => $locationId,
                     ]
                 );
 
@@ -129,8 +142,33 @@ class ProductService
                     }
                 }
 
+                // Sync product_stocks when quantity or location changes
+                $stocks = $product->stocks()->lockForUpdate()->get();
+                $targetLocationId = $data->location_id ?? Location::default()?->id;
+
+                if ($stocks->count() <= 1 && $targetLocationId) {
+                    // Simple case: product has 0 or 1 stock row. Safe to manage from form.
+                    $stock = $stocks->first();
+
+                    if ($stock) {
+                        // Update existing stock row (location and/or quantity)
+                        $stock->update([
+                            'location_id' => $targetLocationId,
+                            'quantity' => $data->quantity,
+                        ]);
+                    } else {
+                        // No stock row yet (legacy product): create one
+                        ProductStock::create([
+                            'product_id' => $product->id,
+                            'location_id' => $targetLocationId,
+                            'quantity' => $data->quantity,
+                        ]);
+                    }
+                }
+                // If product has multi-location stock (>1 rows), skip auto-sync to avoid corrupting.
+                // User must manage stock per location via Locations UI (FASE 3+).
+
                 if (!empty($changedNew)) {
-                    // If quantity changed manually, audit as ajuste manual
                     if (array_key_exists('quantity', $changedNew)) {
                         $this->auditService->log(
                             'stock.ajuste_manual',
@@ -140,6 +178,7 @@ class ProductService
                                 'quantity' => $changedNew['quantity'],
                                 'diferencia' => $changedNew['quantity'] - $changedOld['quantity'],
                                 'origen' => 'edicion_directa_producto',
+                                'location_id' => $targetLocationId,
                             ]
                         );
                     }

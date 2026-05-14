@@ -127,6 +127,12 @@
                                 <x-dropdown-link :href="route('units.index')" :active="request()->routeIs('units.*')">
                                     Unidades
                                 </x-dropdown-link>
+                                <x-dropdown-link :href="route('warehouses.index')" :active="request()->routeIs('warehouses.*')">
+                                    Almacenes
+                                </x-dropdown-link>
+                                <x-dropdown-link :href="route('locations.index')" :active="request()->routeIs('locations.*')">
+                                    Ubicaciones
+                                </x-dropdown-link>
                             </x-slot>
                         </x-nav-dropdown>
                     </div>
@@ -290,6 +296,8 @@
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('products.index') ? 'text-primary' : '' }}" href="{{ route('products.index') }}">Productos</a>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('categories.index') ? 'text-primary' : '' }}" href="{{ route('categories.index') }}">Categorias</a>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('units.index') ? 'text-primary' : '' }}" href="{{ route('units.index') }}">Unidades</a>
+                                    <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('warehouses.index') ? 'text-primary' : '' }}" href="{{ route('warehouses.index') }}">Almacenes</a>
+                                    <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('locations.index') ? 'text-primary' : '' }}" href="{{ route('locations.index') }}">Ubicaciones</a>
                                 </div>
                             </div>
                         </div>

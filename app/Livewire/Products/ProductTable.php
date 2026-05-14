@@ -77,6 +77,15 @@ final class ProductTable extends PowerGridComponent
             })
             ->add('quantity')
             ->add('min_stock')
+            ->add('locations_label', function (Product $model) {
+                $stocks = $model->stocks()->with('location.warehouse')->where('quantity', '>', 0)->get();
+                if ($stocks->isEmpty()) return '<span class="text-gray-400 text-xs">—</span>';
+                if ($stocks->count() === 1) {
+                    $loc = $stocks->first()->location;
+                    return '<span class="text-xs">' . e($loc?->warehouse?->name) . ' › ' . e($loc?->name) . '</span>';
+                }
+                return '<span class="text-xs text-blue-600">' . $stocks->count() . ' ubicaciones</span>';
+            })
             ->add('is_active_label', function(Product $model) {
                 return $model->is_active
                     ? '<div class="flex items-center justify-center text-green-500"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg></div>'
@@ -136,6 +145,9 @@ final class ProductTable extends PowerGridComponent
             Column::make('Cantidad', 'quantity')
                 ->sortable()
                 ->bodyAttribute('text-center'),
+
+            Column::make('Ubicación', 'locations_label')
+                ->visibleInExport(false),
 
             Column::make('Stock minimo', 'min_stock')
                 ->sortable()

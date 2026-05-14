@@ -54,6 +54,23 @@ class Product extends Model
         return $this->hasMany(SaleItem::class);
     }
 
+    public function stocks()
+    {
+        return $this->hasMany(ProductStock::class);
+    }
+
+    public function locations()
+    {
+        return $this->belongsToMany(Location::class, 'product_stocks')
+            ->withPivot('quantity', 'min_stock')
+            ->withTimestamps();
+    }
+
+    public function totalStock(): int
+    {
+        return (int) $this->stocks()->sum('quantity');
+    }
+
     public function getImageUrlAttribute(): string
     {
         return $this->image_path

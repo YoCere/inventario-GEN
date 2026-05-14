@@ -118,6 +118,7 @@
                     min="0"
                     placeholder="0"
                     required
+                    :disabled="$hasMultiLocationStock"
                 />
 
                 <!-- Min Stock -->
@@ -144,6 +145,30 @@
                         </span>
                     </label>
                 </div>
+            </div>
+
+            <!-- Ubicación -->
+            <div class="space-y-2">
+                <x-input-label for="location_id" value="Ubicación en almacén" />
+                @if($hasMultiLocationStock)
+                    <div class="rounded-md bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
+                        ⚠️ Este producto tiene stock en múltiples ubicaciones. Gestiona stock por ubicación desde
+                        <a href="{{ route('locations.index') }}" class="underline font-semibold">Ubicaciones</a>.
+                        No se puede editar cantidad ni ubicación desde aquí.
+                    </div>
+                @else
+                    <select id="location_id" wire:model="location_id"
+                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                        <option value="">— Ubicación default —</option>
+                        @foreach($locations as $loc)
+                            <option value="{{ $loc->id }}">
+                                {{ $loc->warehouse?->name }} › {{ $loc->name }}{{ $loc->is_default ? ' (default)' : '' }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <p class="text-xs text-gray-500">Dónde se almacena físicamente el producto.</p>
+                    <x-input-error :messages="$errors->get('location_id')" />
+                @endif
             </div>
 
             <!-- Description -->

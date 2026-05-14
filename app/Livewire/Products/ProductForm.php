@@ -7,7 +7,9 @@ use App\Models\Product;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use App\Models\Category;
+use App\Models\Location;
 use App\Models\Unit;
+use App\Models\Warehouse;
 use Livewire\Attributes\On;
 use Illuminate\Validation\Rule;
 use App\Services\ProductService;
@@ -32,6 +34,8 @@ class ProductForm extends Component
     public string $description = '';
     public string $notes = '';
     public $photo = null;
+    public ?int $location_id = null;
+    public bool $hasMultiLocationStock = false;
 
     // Select Options (Removed for AJAX)
     public ?string $categoryName = null;
@@ -42,17 +46,13 @@ class ProductForm extends Component
         // No options to load
     }
 
-    public function render()
-    {
-        return view('livewire.products.product-form');
-    }
-
     #[On('create-product')]
     public function create(): void
     {
         abort_if(!auth()->user()->isAdmin(), 403);
-        $this->reset(['sku', 'name', 'category_id', 'unit_id', 'purchase_price', 'selling_price', 'quantity', 'min_stock', 'description', 'notes', 'product', 'isEditing', 'categoryName', 'unitName', 'photo']);
+        $this->reset(['sku', 'name', 'category_id', 'unit_id', 'purchase_price', 'selling_price', 'quantity', 'min_stock', 'description', 'notes', 'product', 'isEditing', 'categoryName', 'unitName', 'photo', 'location_id', 'hasMultiLocationStock']);
         $this->is_active = true;
+        $this->location_id = Location::default()?->id;
 
         $this->dispatch('open-modal', name: 'product-form-modal');
     }
@@ -74,6 +74,11 @@ class ProductForm extends Component
         $this->description = $product->description ?? '';
         $this->notes = $product->notes ?? '';
         $this->photo = null;
+
+        // Load product stock(s) info
+        $stocks = $product->stocks()->get();
+        $this->hasMultiLocationStock = $stocks->count() > 1;
+        $this->location_id = $stocks->first()?->location_id ?? Location::default()?->id;
 
         // Set initial labels for TomSelect
         $this->categoryName = $product->category ? $product->category->name : null;
@@ -104,7 +109,19 @@ class ProductForm extends Component
             'description' => ['nullable', 'string'],
             'notes' => ['nullable', 'string'],
             'photo' => ['nullable', 'image', 'max:1024', 'mimes:jpg,jpeg,png,webp'],
+            'location_id' => ['nullable', 'exists:locations,id'],
         ];
+    }
+
+    public function render()
+    {
+        return view('livewire.products.product-form', [
+            'locations' => Location::with('warehouse')
+                ->where('is_active', true)
+                ->orderBy('warehouse_id')
+                ->orderBy('name')
+                ->get(),
+        ]);
     }
 
     public function save(ProductService $service): void
