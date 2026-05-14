@@ -23,6 +23,7 @@ COPY . .
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # Instalar dependencias JS y compilar
+RUN npm install -g pnpm
 RUN pnpm install && pnpm run build
 
 # Storage link (no necesita DB)
