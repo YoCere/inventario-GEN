@@ -19,7 +19,8 @@ class PurchaseService
     public function __construct(
         protected FinanceTransactionService $financeService,
         protected PurchaseAccountingService $purchaseAccountingService,
-        protected AuditService $auditService
+        protected AuditService $auditService,
+        protected StockService $stockService
     ) {
     }
 
@@ -135,26 +136,39 @@ class PurchaseService
                 throw PurchaseException::missingReference('Comprobante de imagen', ['id' => $purchase->id]);
             }
 
+            // Default location for received stock (FASE 3 decision: auto-assign to default)
+            $defaultLocationId = $this->stockService->defaultLocationId();
+
             // Update Stock
             foreach ($purchase->items as $item) {
                 // Lock the product row for update to prevent race conditions
                 $product = Product::where('id', $item->product_id)->lockForUpdate()->first();
 
                 if ($product) {
-                    $oldQuantity = $product->quantity;
                     $oldPurchasePrice = $product->purchase_price;
                     $oldSellingPrice = $product->selling_price;
 
-                    $product->increment('quantity', $item->quantity);
+                    // Increment stock at default location (creates stock row if missing)
+                    $this->stockService->incrementAt(
+                        $product->id,
+                        $defaultLocationId,
+                        $item->quantity
+                    );
+
+                    // Persist receipt destination on the purchase_item
+                    $item->update(['location_id' => $defaultLocationId]);
+
+                    $product->refresh();
 
                     // Audit stock movement
                     $this->auditService->log(
                         'stock.incremento.compra',
                         $product,
-                        ['quantity' => $oldQuantity],
+                        null,
                         [
-                            'quantity' => $oldQuantity + $item->quantity,
+                            'quantity_actual' => $product->quantity,
                             'cantidad_recibida' => $item->quantity,
+                            'location_id' => $defaultLocationId,
                             'purchase_invoice' => $purchase->invoice_number,
                             'purchase_id' => $purchase->id,
                         ],

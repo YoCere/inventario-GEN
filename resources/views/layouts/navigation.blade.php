@@ -133,6 +133,9 @@
                                 <x-dropdown-link :href="route('locations.index')" :active="request()->routeIs('locations.*')">
                                     Ubicaciones
                                 </x-dropdown-link>
+                                <x-dropdown-link :href="route('transfers.index')" :active="request()->routeIs('transfers.*')">
+                                    Transferencias
+                                </x-dropdown-link>
                             </x-slot>
                         </x-nav-dropdown>
                     </div>
@@ -298,6 +301,7 @@
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('units.index') ? 'text-primary' : '' }}" href="{{ route('units.index') }}">Unidades</a>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('warehouses.index') ? 'text-primary' : '' }}" href="{{ route('warehouses.index') }}">Almacenes</a>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('locations.index') ? 'text-primary' : '' }}" href="{{ route('locations.index') }}">Ubicaciones</a>
+                                    <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('transfers.index') ? 'text-primary' : '' }}" href="{{ route('transfers.index') }}">Transferencias</a>
                                 </div>
                             </div>
                         </div>

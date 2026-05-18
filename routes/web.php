@@ -34,6 +34,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::view('products', 'products.index')->name('products.index');
         Route::view('warehouses', 'warehouses.index')->name('warehouses.index');
         Route::view('locations', 'locations.index')->name('locations.index');
+        Route::view('transfers', 'transfers.index')->name('transfers.index');
     });
 
     // =========================================================================
@@ -61,6 +62,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // =========================================================================
     // Finance
     // =========================================================================
+    // =========================================================================
+    // Reports
+    // =========================================================================
+    Route::prefix('reports')->name('reports.')->group(function () {
+        Route::view('stock-by-location', 'reports.stock-by-location')->name('stock-by-location');
+    });
+
     Route::prefix('finance')->name('finance.')->group(function () {
         Route::view('/', 'finance.index')->name('index');
         Route::view('categories', 'finance-categories.index')->name('categories.index');

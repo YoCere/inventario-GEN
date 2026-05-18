@@ -4,10 +4,13 @@ namespace App\Services\Telegram;
 
 use App\Models\AuditLog;
 use App\Models\Product;
+use App\Models\ProductStock;
 use App\Models\Purchase;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Models\StockTransfer;
 use App\Models\TelegramConversation;
+use App\Models\Warehouse;
 use App\Services\Messaging\TelegramService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -36,7 +39,9 @@ class BotReportHandler
         $message .= "5️⃣ Ganancia del mes\n";
         $message .= "6️⃣ Libro diario (últimas 10 acciones)\n";
         $message .= "7️⃣ Flujo de caja del mes\n";
-        $message .= "8️⃣ Cuentas por pagar (compras pendientes)\n\n";
+        $message .= "8️⃣ Cuentas por pagar (compras pendientes)\n";
+        $message .= "9️⃣ Stock por almacén\n";
+        $message .= "🔟 Transferencias recientes\n\n";
         $message .= "<i>Escribe el número o /cancelar para salir</i>";
 
         $this->telegram->sendMessage($chatId, $message);
@@ -62,11 +67,13 @@ class BotReportHandler
             '6' => $this->libroDiario($chatId),
             '7' => $this->flujoCajaMes($chatId),
             '8' => $this->cuentasPorPagar($chatId),
-            default => $this->telegram->sendMessage($chatId, "❌ Opción inválida. Escribe un número del 1 al 8 o /cancelar."),
+            '9' => $this->stockPorAlmacen($chatId),
+            '10' => $this->transferenciasRecientes($chatId),
+            default => $this->telegram->sendMessage($chatId, "❌ Opción inválida. Escribe un número del 1 al 10 o /cancelar."),
         };
 
         // Keep menu alive after each report
-        if (in_array($text, ['1','2','3','4','5','6','7','8'])) {
+        if (\in_array($text, ['1','2','3','4','5','6','7','8','9','10'])) {
             $conversation->update([
                 'step' => 'reportes:menu',
                 'expires_at' => now()->addMinutes(5),
@@ -266,6 +273,66 @@ class BotReportHandler
         $msg .= "⬆️ Ingresos (ventas): " . format_money($ingresos) . "\n";
         $msg .= "⬇️ Egresos (compras pagadas): " . format_money($egresos) . "\n\n";
         $msg .= ($flujo >= 0 ? "✅" : "⚠️") . " <b>Flujo neto:</b> " . format_money($flujo);
+
+        $this->telegram->sendMessage($chatId, $msg);
+    }
+
+    protected function stockPorAlmacen(string $chatId): void
+    {
+        $rows = ProductStock::query()
+            ->join('locations', 'locations.id', '=', 'product_stocks.location_id')
+            ->join('warehouses', 'warehouses.id', '=', 'locations.warehouse_id')
+            ->join('products', 'products.id', '=', 'product_stocks.product_id')
+            ->selectRaw('warehouses.name as wh, COUNT(DISTINCT product_stocks.product_id) as productos, SUM(product_stocks.quantity) as unidades, SUM(product_stocks.quantity * products.purchase_price) as valor')
+            ->where('product_stocks.quantity', '>', 0)
+            ->groupBy('warehouses.id', 'warehouses.name')
+            ->orderByDesc('valor')
+            ->get();
+
+        if ($rows->isEmpty()) {
+            $this->telegram->sendMessage($chatId, "📭 No hay stock registrado en ningún almacén.");
+            return;
+        }
+
+        $msg = "🏭 <b>Stock por almacén</b>\n\n";
+        $totalValor = 0;
+        foreach ($rows as $r) {
+            $msg .= "📦 <b>{$r->wh}</b>\n";
+            $msg .= "   Productos: {$r->productos}\n";
+            $msg .= "   Unidades: " . number_format($r->unidades) . "\n";
+            $msg .= "   Valor: " . format_money($r->valor) . "\n\n";
+            $totalValor += $r->valor;
+        }
+        $msg .= "💰 <b>Valor total inventario:</b> " . format_money($totalValor);
+
+        $this->telegram->sendMessage($chatId, $msg);
+    }
+
+    protected function transferenciasRecientes(string $chatId): void
+    {
+        $transfers = StockTransfer::with(['fromLocation.warehouse', 'toLocation.warehouse', 'creator'])
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->get();
+
+        if ($transfers->isEmpty()) {
+            $this->telegram->sendMessage($chatId, "📭 No hay transferencias registradas.");
+            return;
+        }
+
+        $msg = "🔄 <b>Transferencias recientes</b>\n\n";
+        foreach ($transfers as $t) {
+            $statusEmoji = match ($t->status) {
+                'completed' => '✅',
+                'cancelled' => '❌',
+                default => '📝',
+            };
+            $from = ($t->fromLocation?->warehouse?->name ?? '') . ' › ' . ($t->fromLocation?->name ?? '-');
+            $to = ($t->toLocation?->warehouse?->name ?? '') . ' › ' . ($t->toLocation?->name ?? '-');
+            $msg .= "{$statusEmoji} <b>{$t->reference}</b>\n";
+            $msg .= "   {$from} → {$to}\n";
+            $msg .= "   <i>{$t->creator?->name} - " . $t->created_at->format('d/m H:i') . "</i>\n\n";
+        }
 
         $this->telegram->sendMessage($chatId, $msg);
     }

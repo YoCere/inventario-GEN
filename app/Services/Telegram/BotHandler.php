@@ -20,6 +20,7 @@ class BotHandler
         protected BotRefundHandler $refundHandler,
         protected BotAuthHandler $authHandler,
         protected BotReportHandler $reportHandler,
+        protected BotAgentHandler $agentHandler,
     ) {}
 
     public function dispatch(array $update): void
@@ -52,6 +53,13 @@ class BotHandler
             }
 
             // USER IS AUTHENTICATED - continue with bot logic
+
+            // Check if bot is paused (admin can still use all commands)
+            $adminChatId = Setting::get('telegram_admin_chat_id', '');
+            if (Setting::get('telegram_bot_paused', '0') === '1' && $chatId !== $adminChatId) {
+                $this->telegram->sendMessage($chatId, "🔴 Bot temporalmente detenido.");
+                return;
+            }
 
             if ($conversation) {
                 // Route to appropriate handler based on conversation type
@@ -113,6 +121,10 @@ class BotHandler
                 if (strtolower($text) === 'vender') {
                     Log::info('User requested quick sale', ['chatId' => $chatId]);
                     $this->handleQuickSaleFromSearch($chatId);
+                } elseif (\App\Models\Setting::get('ai_chatbot_enabled') === '1') {
+                    // Free text → IA agent if enabled
+                    Log::info('Dispatching to agent', ['chatId' => $chatId]);
+                    $this->agentHandler->handle($chatId, $text);
                 } else {
                     // Fallback: free text = product search
                     Log::info('Searching product', ['query' => $text, 'chatId' => $chatId]);
@@ -308,6 +320,8 @@ class BotHandler
             '/listar' => $this->cmdList($chatId, $args),
             '/devolver' => $this->cmdRefund($chatId),
             '/reportes' => $this->reportHandler->showMenu($chatId),
+            '/detener' => $this->cmdDetener($chatId),
+            '/activar' => $this->cmdActivar($chatId),
             default => $this->telegram->sendMessage($chatId, "❓ Comando no reconocido. Escribe /ayuda para ver opciones."),
         };
     }
@@ -425,5 +439,27 @@ class BotHandler
     protected function cmdRefund(string $chatId): void
     {
         $this->refundHandler->start($chatId);
+    }
+
+    protected function cmdDetener(string $chatId): void
+    {
+        $adminChatId = Setting::get('telegram_admin_chat_id', '');
+        if ($chatId !== $adminChatId) {
+            $this->telegram->sendMessage($chatId, "⛔ Solo el administrador puede usar este comando.");
+            return;
+        }
+        Setting::set('telegram_bot_paused', '1');
+        $this->telegram->sendMessage($chatId, "🔴 Bot detenido. Los usuarios verán mensaje de pausa.\n\nEscribe /activar para reanudar.");
+    }
+
+    protected function cmdActivar(string $chatId): void
+    {
+        $adminChatId = Setting::get('telegram_admin_chat_id', '');
+        if ($chatId !== $adminChatId) {
+            $this->telegram->sendMessage($chatId, "⛔ Solo el administrador puede usar este comando.");
+            return;
+        }
+        Setting::set('telegram_bot_paused', '0');
+        $this->telegram->sendMessage($chatId, "✅ Bot activado y listo.");
     }
 }

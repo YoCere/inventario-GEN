@@ -17,7 +17,8 @@ class SaleService
     public function __construct(
         protected FinanceTransactionService $financeService,
         protected SaleAccountingService $saleAccountingService,
-        protected AuditService $auditService
+        protected AuditService $auditService,
+        protected StockService $stockService
     ) {
     }
 
@@ -64,26 +65,41 @@ class SaleService
                         throw SaleException::productNotFound($itemData->product_id);
                     }
 
-                    if ($product->quantity < $itemData->quantity) {
+                    // FIFO pick: find a single location with enough stock (lowest id first)
+                    $pickedStock = $this->stockService->pickFifoLocationForSale(
+                        $product->id,
+                        $itemData->quantity
+                    );
+
+                    if (!$pickedStock) {
+                        $totalAvailable = $this->stockService->totalStock($product->id);
                         throw SaleException::insufficientStock(
                             $product->name,
                             $itemData->quantity,
-                            $product->quantity
+                            $totalAvailable
                         );
                     }
 
-                    // Update stock
-                    $oldQuantity = $product->quantity;
-                    $product->quantity -= $itemData->quantity;
-                    $product->save();
+                    $oldLocationQty = $pickedStock->quantity;
+                    $sourceLocationId = $pickedStock->location_id;
+
+                    // Decrement at the picked location (also syncs products.quantity)
+                    $this->stockService->decrementAt(
+                        $product->id,
+                        $sourceLocationId,
+                        $itemData->quantity
+                    );
+
+                    $product->refresh();
 
                     $this->auditService->log(
                         'stock.decremento.venta',
                         $product,
-                        ['quantity' => $oldQuantity],
+                        ['quantity_location' => $oldLocationQty],
                         [
-                            'quantity' => $product->quantity,
+                            'quantity_location' => $oldLocationQty - $itemData->quantity,
                             'cantidad_vendida' => $itemData->quantity,
+                            'location_id' => $sourceLocationId,
                             'sale_invoice' => $sale->invoice_number,
                             'sale_id' => $sale->id,
                         ],
@@ -104,6 +120,7 @@ class SaleService
                     $saleItems[] = [
                         'sale_id' => $sale->id,
                         'product_id' => $product->id,
+                        'location_id' => $sourceLocationId,
                         'quantity' => $quantity,
                         'cost_price' => $product->purchase_price,
                         'unit_price' => $unitPrice,
@@ -180,23 +197,34 @@ class SaleService
                     $sale->loadMissing('items.product');
 
                     foreach ($sale->items as $item) {
-                        if ($item->product) {
-                            $oldQuantity = $item->product->quantity;
-                            $item->product->increment('quantity', $item->quantity);
-
-                            $this->auditService->log(
-                                'stock.incremento.cancelacion',
-                                $item->product,
-                                ['quantity' => $oldQuantity],
-                                [
-                                    'quantity' => $item->product->quantity,
-                                    'cantidad_restaurada' => $item->quantity,
-                                    'sale_invoice' => $sale->invoice_number,
-                                    'sale_id' => $sale->id,
-                                    'motivo' => $reason,
-                                ]
-                            );
+                        if (!$item->product) {
+                            continue;
                         }
+
+                        // Restore to original location (or default for legacy data with NULL)
+                        $targetLocationId = $item->location_id ?? $this->stockService->defaultLocationId();
+
+                        $this->stockService->incrementAt(
+                            $item->product_id,
+                            $targetLocationId,
+                            $item->quantity
+                        );
+
+                        $item->product->refresh();
+
+                        $this->auditService->log(
+                            'stock.incremento.cancelacion',
+                            $item->product,
+                            null,
+                            [
+                                'quantity_actual' => $item->product->quantity,
+                                'cantidad_restaurada' => $item->quantity,
+                                'location_id' => $targetLocationId,
+                                'sale_invoice' => $sale->invoice_number,
+                                'sale_id' => $sale->id,
+                                'motivo' => $reason,
+                            ]
+                        );
                     }
                 }
 
@@ -269,34 +297,43 @@ class SaleService
                 throw SaleException::invalidStatus('restore', $sale->status->label(), ['id' => $sale->id]);
             }
 
-            // Must re-deduct stock
+            // Must re-deduct stock from the original location (or default if legacy)
             $sale->loadMissing('items.product');
 
             foreach ($sale->items as $item) {
-                $product = $item->product()->lockForUpdate()->find($item->product_id);
+                $product = $item->product;
 
                 if (!$product) {
                     throw SaleException::productNotFound($item->product_id);
                 }
 
-                if ($product->quantity < $item->quantity) {
+                $targetLocationId = $item->location_id ?? $this->stockService->defaultLocationId();
+
+                // decrementAt will throw if insufficient at that specific location
+                try {
+                    $this->stockService->decrementAt(
+                        $item->product_id,
+                        $targetLocationId,
+                        $item->quantity
+                    );
+                } catch (\RuntimeException $e) {
                     throw SaleException::insufficientStock(
                         $product->name,
                         $item->quantity,
-                        $product->quantity
+                        $this->stockService->totalStock($item->product_id)
                     );
                 }
 
-                $oldQuantity = $product->quantity;
-                $product->decrement('quantity', $item->quantity);
+                $product->refresh();
 
                 $this->auditService->log(
                     'stock.decremento.restauracion',
                     $product,
-                    ['quantity' => $oldQuantity],
+                    null,
                     [
-                        'quantity' => $oldQuantity - $item->quantity,
+                        'quantity_actual' => $product->quantity,
                         'cantidad_descontada' => $item->quantity,
+                        'location_id' => $targetLocationId,
                         'sale_invoice' => $sale->invoice_number,
                         'sale_id' => $sale->id,
                     ]

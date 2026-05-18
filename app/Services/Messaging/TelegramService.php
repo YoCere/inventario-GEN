@@ -16,6 +16,20 @@ class TelegramService
         $this->botToken = Setting::get('telegram_bot_token', '');
     }
 
+    public function sendChatAction(string $chatId, string $action = 'typing'): array
+    {
+        if (!$this->botToken) {
+            return [];
+        }
+
+        $response = Http::post("{$this->apiUrl}{$this->botToken}/sendChatAction", [
+            'chat_id' => $chatId,
+            'action' => $action,
+        ]);
+
+        return $response->json() ?? [];
+    }
+
     public function sendMessage(string $chatId, string $text, string $parseMode = 'HTML'): array
     {
         if (!$this->botToken) {

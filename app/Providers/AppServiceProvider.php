@@ -10,6 +10,12 @@ use App\Events\LowStockDetected;
 use App\Listeners\NotifyLowStock;
 use App\Console\Commands\SendDailySummaryCommand;
 use App\Services\AuditService;
+use App\Services\Agent\ToolRegistry;
+use App\Services\Agent\Tools\SearchProductsTool;
+use App\Services\Agent\Tools\GetStockTool;
+use App\Services\Agent\Tools\GetSalesTodayTool;
+use App\Services\Agent\Tools\GetTopSellersTool;
+use App\Services\Agent\Tools\ListLocationsTool;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -19,6 +25,16 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(AuditService::class);
+
+        $this->app->singleton(ToolRegistry::class, function ($app) {
+            $registry = new ToolRegistry();
+            $registry->register($app->make(SearchProductsTool::class));
+            $registry->register($app->make(GetStockTool::class));
+            $registry->register($app->make(GetSalesTodayTool::class));
+            $registry->register($app->make(GetTopSellersTool::class));
+            $registry->register($app->make(ListLocationsTool::class));
+            return $registry;
+        });
     }
 
     /**

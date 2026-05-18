@@ -43,13 +43,13 @@ class KardexService
      *   }
      * }
      */
-    public function build(int $productId, string $from, string $to): array
+    public function build(int $productId, string $from, string $to, ?int $locationId = null): array
     {
         $fromDate = Carbon::parse($from)->startOfDay();
         $toDate = Carbon::parse($to)->endOfDay();
 
         $product = Product::query()->findOrFail($productId);
-        $movements = $this->loadMovements($productId, $toDate);
+        $movements = $this->loadMovements($productId, $toDate, $locationId);
 
         $balanceQty = 0;
         $balanceValue = 0.0;
@@ -192,11 +192,12 @@ class KardexService
     /**
      * @return Collection<int, array{date:string,type:string,qty:int,unit_cost:float,reference:string,sort_time:string}>
      */
-    protected function loadMovements(int $productId, Carbon $toDate): Collection
+    protected function loadMovements(int $productId, Carbon $toDate, ?int $locationId = null): Collection
     {
         $entries = PurchaseItem::query()
             ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
             ->where('purchase_items.product_id', $productId)
+            ->when($locationId, fn ($q) => $q->where('purchase_items.location_id', $locationId))
             ->whereIn('purchases.status', [PurchaseStatus::RECEIVED->value, PurchaseStatus::PAID->value])
             ->whereDate('purchases.purchase_date', '<=', $toDate->toDateString())
             ->select([
@@ -219,6 +220,7 @@ class KardexService
         $exits = SaleItem::query()
             ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
             ->where('sale_items.product_id', $productId)
+            ->when($locationId, fn ($q) => $q->where('sale_items.location_id', $locationId))
             ->whereIn('sales.status', [SaleStatus::PENDING->value, SaleStatus::COMPLETED->value])
             ->whereDate('sales.sale_date', '<=', $toDate->toDateString())
             ->select([
