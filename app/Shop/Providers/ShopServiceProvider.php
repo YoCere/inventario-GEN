@@ -2,7 +2,10 @@
 
 namespace App\Shop\Providers;
 
+use App\Shop\Events\WebReservationCreated;
+use App\Shop\Listeners\NotifyAdminViaTelegram;
 use App\Shop\Services\ShopFeatureFlag;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
 class ShopServiceProvider extends ServiceProvider
@@ -29,5 +32,7 @@ class ShopServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(base_path('routes/shop.php'));
         $this->loadRoutesFrom(base_path('routes/shop-admin.php'));
         $this->loadViewsFrom(resource_path('views/shop'), 'shop');
+
+        Event::listen(WebReservationCreated::class, NotifyAdminViaTelegram::class);
     }
 }

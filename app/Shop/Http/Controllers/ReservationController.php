@@ -3,10 +3,12 @@
 namespace App\Shop\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Shop\Events\WebReservationCreated;
 use App\Shop\Services\ReservationService;
 use App\Shop\Services\WhatsAppLinkBuilder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
@@ -63,6 +65,12 @@ class ReservationController extends Controller
             );
 
             $whatsappUrl = $this->waLinkBuilder->build($sale);
+
+            // Notifica al admin vía Telegram (si está configurado) + ganchos futuros.
+            WebReservationCreated::dispatch($sale);
+
+            // Invalida contador del badge admin para que aparezca al instante.
+            Cache::forget('shop.pending_web_count');
 
             return response()->json([
                 'ok' => true,

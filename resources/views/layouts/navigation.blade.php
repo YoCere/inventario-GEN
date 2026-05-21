@@ -40,8 +40,24 @@
                                 </x-dropdown-link>
                                 @if(app(\App\Shop\Services\ShopFeatureFlag::class)->enabled() && \Illuminate\Support\Facades\Route::has('shop.admin.reservations'))
                                     <div class="my-1 border-t border-border"></div>
+                                    @php
+                                        // Pending count cacheado 30s: invalidación natural por TTL.
+                                        // Suficiente para badge informativo, no requiere tiempo real.
+                                        $pendingWebReservations = \Illuminate\Support\Facades\Cache::remember(
+                                            'shop.pending_web_count',
+                                            30,
+                                            fn () => \App\Models\Sale::where('source', 'web')
+                                                ->where('status', \App\Enums\SaleStatus::PENDING)
+                                                ->count()
+                                        );
+                                    @endphp
                                     <x-dropdown-link :href="route('shop.admin.reservations')" :active="request()->routeIs('shop.admin.*')">
-                                        Reservas Web
+                                        <span class="flex items-center justify-between w-full">
+                                            <span>Reservas Web</span>
+                                            @if($pendingWebReservations > 0)
+                                                <span class="ml-2 inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-xs font-bold bg-amber-500 text-white">{{ $pendingWebReservations }}</span>
+                                            @endif
+                                        </span>
                                     </x-dropdown-link>
                                 @endif
                             </x-slot>
@@ -248,7 +264,21 @@
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('sales.create') ? 'text-primary' : '' }}" href="{{ route('sales.create') }}">Vender</a>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('customers.index') ? 'text-primary' : '' }}" href="{{ route('customers.index') }}">Clientes</a>
                                     @if(app(\App\Shop\Services\ShopFeatureFlag::class)->enabled() && \Illuminate\Support\Facades\Route::has('shop.admin.reservations'))
-                                        <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('shop.admin.*') ? 'text-primary' : '' }}" href="{{ route('shop.admin.reservations') }}">Reservas Web</a>
+                                        @php
+                                            $pendingWebReservationsMobile = \Illuminate\Support\Facades\Cache::remember(
+                                                'shop.pending_web_count',
+                                                30,
+                                                fn () => \App\Models\Sale::where('source', 'web')
+                                                    ->where('status', \App\Enums\SaleStatus::PENDING)
+                                                    ->count()
+                                            );
+                                        @endphp
+                                        <a class="text-sm font-medium hover:underline py-1 flex items-center justify-between {{ request()->routeIs('shop.admin.*') ? 'text-primary' : '' }}" href="{{ route('shop.admin.reservations') }}">
+                                            <span>Reservas Web</span>
+                                            @if($pendingWebReservationsMobile > 0)
+                                                <span class="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-xs font-bold bg-amber-500 text-white">{{ $pendingWebReservationsMobile }}</span>
+                                            @endif
+                                        </a>
                                     @endif
                                 </div>
                             </div>
