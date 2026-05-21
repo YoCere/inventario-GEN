@@ -228,10 +228,14 @@
                     {{-- Input bindea a newUpload (buffer) + updatedNewUpload hook appendea a $gallery
                          para acumular entre selecciones. Sin esto, cada nueva selección reemplazaría
                          las anteriores (comportamiento default de wire:model con file input). --}}
+                    {{-- data-heic-aware engancha resources/js/heic-converter.js — convierte
+                         HEIC/HEIF a JPEG en el navegador antes que Livewire suba. Transparente
+                         para el usuario: solo ve un toast "Convirtiendo…" mientras pasa. --}}
                     <input id="gallery-upload"
                            type="file"
                            wire:model="newUpload"
                            multiple
+                           data-heic-aware
                            accept="image/jpeg,image/png,image/webp,image/gif,image/bmp,image/avif,image/heic,image/heif,.heic,.heif"
                            class="hidden">
 
