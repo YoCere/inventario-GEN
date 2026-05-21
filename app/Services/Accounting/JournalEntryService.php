@@ -2,6 +2,7 @@
 
 namespace App\Services\Accounting;
 
+use App\Enums\AccountingPeriodStatus;
 use App\Enums\JournalEntryStatus;
 use App\Models\AccountingPeriod;
 use App\Models\JournalEntry;
@@ -36,6 +37,19 @@ class JournalEntryService
         $this->validateLines($lines);
 
         return DB::transaction(function () use ($payload, $lines) {
+            // Garantizar que no se posteen asientos a periodos cerrados.
+            // Callers (Sale/Purchase services) pasan accounting_period_id directo,
+            // sin pasar por resolveOpenPeriod() — validar aquí cubre todos los paths.
+            $period = AccountingPeriod::find($payload['accounting_period_id']);
+            if (!$period) {
+                throw new RuntimeException("Periodo contable {$payload['accounting_period_id']} no existe.");
+            }
+            if ($period->status !== AccountingPeriodStatus::Open) {
+                throw new RuntimeException(
+                    "No se puede postear al periodo '{$period->name}' (status: {$period->status->label()})."
+                );
+            }
+
             $entry = JournalEntry::create([
                 'entry_number' => $payload['entry_number'] ?? $this->generateEntryNumber(),
                 'entry_date' => $payload['entry_date'],
@@ -176,7 +190,7 @@ class JournalEntryService
         $period = AccountingPeriod::query()
             ->whereDate('start_date', '<=', $date)
             ->whereDate('end_date', '>=', $date)
-            ->where('status', 'open')
+            ->where('status', AccountingPeriodStatus::Open->value)
             ->orderBy('start_date')
             ->first();
 

@@ -3,6 +3,7 @@
 namespace App\Services\Accounting;
 
 use App\Models\Sale;
+use App\Models\Setting;
 use App\Models\ChartOfAccount;
 use App\Models\JournalEntry;
 use App\Models\AccountingPeriod;
@@ -36,15 +37,15 @@ class SaleAccountingService
         $period = $this->resolveOpenPeriod($entryDate);
 
         $debitAccountCode = match ($sale->payment_method?->value ?? (string) $sale->payment_method) {
-            'cash' => '1.1.01',
-            'transfer' => '1.1.02',
-            default => '1.1.03',
+            'cash' => Setting::get('accounting_sale_cash_code', '1.1.01'),
+            'transfer' => Setting::get('accounting_sale_transfer_code', '1.1.02'),
+            default => Setting::get('accounting_sale_other_code', '1.1.03'),
         };
 
         $debitAccount = $this->findPostingAccount($debitAccountCode);
-        $salesIncomeAccount = $this->findPostingAccount('4.1');
-        $costOfSalesAccount = $this->findPostingAccount('5.1');
-        $inventoryAccount = $this->findPostingAccount('1.1.04');
+        $salesIncomeAccount = $this->findPostingAccount(Setting::get('accounting_sale_income_code', '4.1'));
+        $costOfSalesAccount = $this->findPostingAccount(Setting::get('accounting_cogs_code', '5.1'));
+        $inventoryAccount = $this->findPostingAccount(Setting::get('accounting_inventory_code', '1.1.04'));
 
         $cogs = (int) $sale->items->sum(fn ($item) => (int) $item->quantity * (int) $item->cost_price);
 

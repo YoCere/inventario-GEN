@@ -3,6 +3,7 @@
 namespace App\Services\Accounting;
 
 use App\Models\Purchase;
+use App\Models\Setting;
 use App\Models\ChartOfAccount;
 use App\Models\JournalEntry;
 use App\Models\AccountingPeriod;
@@ -33,8 +34,8 @@ class PurchaseAccountingService
         $entryDate = Carbon::parse($purchase->purchase_date)->toDateString();
         $period = $this->resolveOpenPeriod($entryDate);
 
-        $inventoryAccount = $this->findPostingAccount('1.1.04');
-        $cashAccount = $this->findPostingAccount('1.1.01');
+        $inventoryAccount = $this->findPostingAccount(Setting::get('accounting_inventory_code', '1.1.04'));
+        $cashAccount = $this->findPostingAccount(Setting::get('accounting_purchase_cash_code', '1.1.01'));
 
         $total = (int) $purchase->total;
 

@@ -192,6 +192,9 @@ class SaleService
                     throw SaleException::invalidStatus('cancel', $sale->status->label(), ['id' => $sale->id]);
                 }
 
+                // Capturar status original ANTES de mutar — necesario para decidir si revertir GL.
+                $wasCompleted = $sale->status === SaleStatus::COMPLETED;
+
                 // Restore stock for completed or pending sales
                 if (in_array($sale->status, [SaleStatus::COMPLETED, SaleStatus::PENDING])) {
                     $sale->loadMissing('items.product');
@@ -238,7 +241,23 @@ class SaleService
 
                 // Void Finance
                 $this->financeService->voidTransaction($sale);
-                $this->saleAccountingService->reverseSaleEntry($sale, (int) (auth()->id() ?? $sale->created_by ?? 1), $reason);
+
+                // Solo revertir GL si la venta estaba COMPLETED (PENDING no genera asiento).
+                // Si reverseSaleEntry devuelve null estando COMPLETED → asiento contable ausente
+                // = corrupción de datos. Abortar para evitar inconsistencia GL vs estado venta.
+                if ($wasCompleted) {
+                    $reversal = $this->saleAccountingService->reverseSaleEntry(
+                        $sale,
+                        (int) (auth()->id() ?? $sale->created_by ?? 1),
+                        $reason
+                    );
+                    if (!$reversal) {
+                        throw SaleException::cancellationFailed(
+                            'No se encontró asiento contable activo para revertir.',
+                            ['id' => $sale->id, 'invoice' => $sale->invoice_number]
+                        );
+                    }
+                }
 
                 return $sale;
 
