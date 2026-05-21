@@ -4,8 +4,7 @@
     </x-slot>
 
     @php
-        use App\Models\Setting;
-        $currencySymbol = Setting::get('currency_symbol', 'Bs');
+        $currencySymbol = \App\Models\Setting::get('currency_symbol', 'Bs');
     @endphp
 
     <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6">
