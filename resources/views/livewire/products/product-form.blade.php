@@ -225,17 +225,23 @@
                             <p class="text-xs text-muted-foreground mt-0.5">Se generan automáticamente versiones optimizadas (WebP).</p>
                         </div>
                     </label>
+                    {{-- Input bindea a newUpload (buffer) + updatedNewUpload hook appendea a $gallery
+                         para acumular entre selecciones. Sin esto, cada nueva selección reemplazaría
+                         las anteriores (comportamiento default de wire:model con file input). --}}
                     <input id="gallery-upload"
                            type="file"
-                           wire:model="gallery"
+                           wire:model="newUpload"
                            multiple
                            accept="image/jpeg,image/png,image/webp,image/gif,image/bmp,image/avif,image/heic,image/heif,.heic,.heif"
                            class="hidden">
 
-                    <div wire:loading wire:target="gallery" class="text-xs text-blue-600 mt-2 flex items-center gap-1.5">
+                    <div wire:loading wire:target="newUpload" class="text-xs text-blue-600 mt-2 flex items-center gap-1.5">
                         <svg class="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
                         Subiendo imágenes…
                     </div>
+                    @error('newUpload.*')
+                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                    @enderror
                     @error('gallery.*')
                         <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
                     @enderror

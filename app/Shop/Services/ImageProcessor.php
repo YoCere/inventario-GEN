@@ -5,6 +5,7 @@ namespace App\Shop\Services;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Intervention\Image\Encoders\WebpEncoder;
 use Intervention\Image\Laravel\Facades\Image;
 
 /**
@@ -13,17 +14,10 @@ use Intervention\Image\Laravel\Facades\Image;
  *   - card  (600px) — para grids del catálogo
  *   - full  (1200px) — para detalle producto / lightbox
  *
- * Toda la entrega es WebP @ 82 quality (ratio compresión / calidad bueno
- * para fotos producto). Si el upload es <= al tamaño objetivo, NO upscalea
- * (scaleDown solo reduce).
+ * API Intervention/Image v4.1: decode(source) + encode(WebpEncoder).
+ * scaleDown solo reduce (no upscalea si la imagen original ya es chica).
  *
- * Output: array con paths relativos al disk public:
- *   [
- *     'path' => 'products/{id}/uuid_full.webp',  // canonical
- *     'path_thumb' => 'products/{id}/uuid_thumb.webp',
- *     'path_card'  => 'products/{id}/uuid_card.webp',
- *     'path_full'  => 'products/{id}/uuid_full.webp',
- *   ]
+ * Output: array con paths relativos al disk public.
  */
 class ImageProcessor
 {
@@ -38,55 +32,34 @@ class ImageProcessor
     /**
      * Procesa un upload Livewire/HTTP y persiste las 3 variantes en el disk public.
      *
-     * @param UploadedFile $file
-     * @param int $productId
      * @return array{path:string,path_thumb:string,path_card:string,path_full:string}
+     *
+     * @throws \RuntimeException con mensaje friendly si formato no soportado
      */
     public function processForProduct(UploadedFile $file, int $productId): array
     {
-        $basePath = "products/{$productId}";
-        $filename = (string) Str::uuid();
-        $paths = [];
         $extension = strtolower($file->getClientOriginalExtension());
 
-        foreach (self::VARIANTS as $variant => $width) {
-            try {
-                $img = Image::read($file->getRealPath())
-                    ->scaleDown(width: $width)
-                    ->toWebp(quality: self::WEBP_QUALITY);
-            } catch (\Throwable $e) {
-                // HEIC/HEIF requieren Imagick con HEIF support. GD no los soporta.
-                if (in_array($extension, ['heic', 'heif'], true) && ! extension_loaded('imagick')) {
-                    throw new \RuntimeException(
-                        "Formato HEIC/HEIF no soportado en este servidor. " .
-                        "Instala la extensión PHP Imagick o convierte la imagen a JPG/PNG antes de subir."
-                    );
-                }
+        try {
+            $source = Image::decode($file->getRealPath());
+        } catch (\Throwable $e) {
+            if (\in_array($extension, ['heic', 'heif'], true) && ! extension_loaded('imagick')) {
                 throw new \RuntimeException(
-                    "No se pudo procesar la imagen ({$extension}): " . $e->getMessage()
+                    "Formato HEIC/HEIF no soportado en este servidor. " .
+                    "Instala la extensión PHP Imagick o convierte la imagen a JPG/PNG antes de subir."
                 );
             }
-
-            $relativePath = "{$basePath}/{$filename}_{$variant}.webp";
-            Storage::disk('public')->put($relativePath, (string) $img);
-            $paths["path_{$variant}"] = $relativePath;
+            throw new \RuntimeException("No se pudo leer la imagen ({$extension}): {$e->getMessage()}");
         }
 
-        return [
-            'path' => $paths['path_full'], // canonical
-            ...$paths,
-        ];
+        return $this->encodeVariants($source, $productId);
     }
 
     /**
      * Re-procesa una imagen YA almacenada (no upload) para generar variantes faltantes.
      * Usado por el comando shop:regenerate-images para backfill de imágenes legacy.
      *
-     * @param string $existingPath path relativo al disk public (ej. 'products/12/foo.jpg')
-     * @param int $productId
      * @return array{path:string,path_thumb:string,path_card:string,path_full:string}
-     *
-     * @throws \RuntimeException si el archivo no existe en el disk
      */
     public function processExisting(string $existingPath, int $productId): array
     {
@@ -95,22 +68,35 @@ class ImageProcessor
         }
 
         $absolutePath = Storage::disk('public')->path($existingPath);
+        $source = Image::decode($absolutePath);
+
+        return $this->encodeVariants($source, $productId);
+    }
+
+    /**
+     * Genera las 3 variantes WebP a partir de un Image::decode() ya hecho.
+     * Reutilizado por processForProduct y processExisting.
+     *
+     * @param \Intervention\Image\Interfaces\ImageInterface $source
+     */
+    private function encodeVariants($source, int $productId): array
+    {
         $basePath = "products/{$productId}";
         $filename = (string) Str::uuid();
         $paths = [];
 
         foreach (self::VARIANTS as $variant => $width) {
-            $img = Image::read($absolutePath)
-                ->scaleDown(width: $width)
-                ->toWebp(quality: self::WEBP_QUALITY);
+            // clone evita mutar el source entre variantes (si scaleDown muta).
+            $variantImg = (clone $source)->scaleDown(width: $width);
+            $encoded = $variantImg->encode(new WebpEncoder(quality: self::WEBP_QUALITY));
 
             $relativePath = "{$basePath}/{$filename}_{$variant}.webp";
-            Storage::disk('public')->put($relativePath, (string) $img);
+            Storage::disk('public')->put($relativePath, (string) $encoded);
             $paths["path_{$variant}"] = $relativePath;
         }
 
         return [
-            'path' => $paths['path_full'],
+            'path' => $paths['path_full'], // canonical
             ...$paths,
         ];
     }

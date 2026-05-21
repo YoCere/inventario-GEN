@@ -47,9 +47,16 @@ class ProductForm extends Component
 
     /**
      * Uploads múltiples nuevos. Cada item es un TemporaryUploadedFile.
+     * Acumulado a través de múltiples selecciones (no se reemplaza al añadir más).
      * @var array
      */
     public array $gallery = [];
+
+    /**
+     * Buffer temporal: input file bindea acá, updatedNewUpload appendea al $gallery.
+     * Sin esto, cada nueva selección reemplazaría las anteriores.
+     */
+    public $newUpload = null;
 
     /**
      * IDs de ProductImage existentes a eliminar al guardar.
@@ -80,7 +87,7 @@ class ProductForm extends Component
             'sku', 'name', 'category_id', 'unit_id', 'purchase_price', 'selling_price',
             'quantity', 'min_stock', 'description', 'notes', 'product', 'isEditing',
             'categoryName', 'unitName', 'photo', 'location_id', 'hasMultiLocationStock',
-            'is_public', 'featured', 'gallery', 'imagesToDelete', 'primaryImageId',
+            'is_public', 'featured', 'gallery', 'newUpload', 'imagesToDelete', 'primaryImageId',
         ]);
         $this->is_active = true;
         $this->is_public = false;
@@ -110,6 +117,7 @@ class ProductForm extends Component
         $this->notes = $product->notes ?? '';
         $this->photo = null;
         $this->gallery = [];
+        $this->newUpload = null;
         $this->imagesToDelete = [];
         $this->primaryImageId = $product->images->firstWhere('is_primary', true)?->id;
 
@@ -161,7 +169,42 @@ class ProductForm extends Component
                 'max:8192',
                 'mimes:jpg,jpeg,png,webp,gif,bmp,avif,heic,heif',
             ],
+            // newUpload es buffer temporal; mismas reglas que gallery.* para que
+            // Livewire valide al subir y muestre error inmediato si el archivo es muy
+            // grande o de tipo no permitido (antes del hook que appendea a $gallery).
+            'newUpload.*' => [
+                'file',
+                'max:8192',
+                'mimes:jpg,jpeg,png,webp,gif,bmp,avif,heic,heif',
+            ],
         ];
+    }
+
+    /**
+     * Hook Livewire: cuando el input file dispara una nueva selección
+     * (newUpload bindea acá), appendear al $gallery acumulado en vez de
+     * reemplazar. Permite al usuario añadir imágenes en múltiples pasos.
+     */
+    public function updatedNewUpload(): void
+    {
+        if (is_array($this->newUpload)) {
+            foreach ($this->newUpload as $upload) {
+                if ($upload) {
+                    $this->gallery[] = $upload;
+                }
+            }
+        } elseif ($this->newUpload) {
+            $this->gallery[] = $this->newUpload;
+        }
+
+        // Tope defensivo: no permitir más de 10 en gallery aunque el cliente
+        // intente forzarlo (la validación rules() también lo bloquea).
+        if (count($this->gallery) > 10) {
+            $this->gallery = array_slice($this->gallery, 0, 10);
+            $this->dispatch('toast', message: 'Máximo 10 imágenes por producto.', type: 'warning');
+        }
+
+        $this->newUpload = null;
     }
 
     /**
