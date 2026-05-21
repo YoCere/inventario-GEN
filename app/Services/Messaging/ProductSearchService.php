@@ -9,6 +9,24 @@ use Illuminate\Support\Facades\Log;
 
 class ProductSearchService
 {
+    /** Si true, restringir todas las capas al scope público (Shop module). */
+    private bool $publicOnly = false;
+
+    /**
+     * Versión pública para el catálogo: filtra is_public=true (vía scope public()
+     * del Product, que también respeta shop_show_out_of_stock). Útil para
+     * exponer el buscador inteligente en /tienda sin filtrar resultados internos.
+     */
+    public function searchPublic(string $query): array
+    {
+        $this->publicOnly = true;
+        try {
+            return $this->search($query);
+        } finally {
+            $this->publicOnly = false;
+        }
+    }
+
     public function search(string $query): array
     {
         // Layer 1: Exact match (SKU or normalized name)
@@ -34,14 +52,26 @@ class ProductSearchService
         return [];
     }
 
+    /**
+     * Constrain a query builder to the active scope (public-only vs. internal).
+     */
+    private function applyScope($query)
+    {
+        if ($this->publicOnly) {
+            // Product::scopePublic() filtra is_public + opcionalmente quantity>0.
+            return $query->public();
+        }
+        return $query->where('is_active', true);
+    }
+
     private function searchExact(string $query): Collection
     {
-        return Product::where('is_active', true)
+        return $this->applyScope(Product::query())
             ->where(function ($q) use ($query) {
                 $q->where('sku', $query)
                     ->orWhereRaw("LOWER(name) = LOWER(?)", [$query]);
             })
-            ->with(['unit', 'category', 'stocks.location.warehouse'])
+            ->with(['unit', 'category', 'stocks.location.warehouse', 'primaryImage'])
             ->get();
     }
 
@@ -58,9 +88,9 @@ class ProductSearchService
         // contenga AL MENOS un token. Evita full-table scan PHP.
         // NOTA: LIKE en SQLite es binary y NO ignora acentos. Usuario que busca "cafe"
         // sin acento puede no matchear "Café" en DB. Para esos casos cae fallback abajo.
-        $relations = ['unit', 'category', 'stocks.location.warehouse'];
+        $relations = ['unit', 'category', 'stocks.location.warehouse', 'primaryImage'];
 
-        $products = Product::where('is_active', true)
+        $products = $this->applyScope(Product::query())
             ->where(function ($q) use ($tokens) {
                 foreach ($tokens as $token) {
                     $like = '%' . $token . '%';
@@ -77,7 +107,7 @@ class ProductSearchService
         // para que el scoring fuzzy PHP (levenshtein) tenga oportunidad. Cap a 500 para
         // evitar OOM. Si tienes >500 productos activos considera columna normalized_name.
         if ($products->isEmpty()) {
-            $products = Product::where('is_active', true)
+            $products = $this->applyScope(Product::query())
                 ->with($relations)
                 ->limit(500)
                 ->get();
@@ -137,7 +167,7 @@ class ProductSearchService
         }
 
         try {
-            $products = Product::where('is_active', true)
+            $products = $this->applyScope(Product::query())
                 ->select(['id', 'name', 'sku'])
                 ->limit(50)
                 ->get();

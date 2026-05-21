@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Variables de tema inyectadas inline desde el layout (shop/layouts/app.blade.php).
+   --shop-primary, --shop-secondary, --shop-accent, --shop-text-on-primary */
+
+@layer base {
+    html {
+        scroll-behavior: smooth;
+    }
+    body {
+        font-feature-settings: "cv11", "ss03";
+    }
+}
+
+@layer components {
+    .shop-btn-primary {
+        @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all hover:opacity-90 hover:shadow-md active:scale-95;
+        background-color: var(--shop-primary);
+        color: var(--shop-text-on-primary);
+    }
+
+    .shop-btn-secondary {
+        @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm border border-zinc-300 bg-white hover:bg-zinc-50 active:scale-95 transition-all;
+    }
+
+    .shop-card {
+        @apply bg-white rounded-2xl border border-zinc-100 overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 hover:border-zinc-200;
+    }
+
+    .shop-input {
+        @apply w-full px-4 py-2.5 rounded-lg border border-zinc-200 bg-white text-sm placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:border-transparent;
+    }
+    .shop-input:focus {
+        --tw-ring-color: var(--shop-primary);
+    }
+
+    .shop-badge-accent {
+        @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold;
+        background-color: var(--shop-accent);
+        color: var(--shop-text-on-primary);
+    }
+
+    .shop-link {
+        color: var(--shop-primary);
+        @apply hover:underline;
+    }
+}
+
+[x-cloak] {
+    display: none !important;
+}
