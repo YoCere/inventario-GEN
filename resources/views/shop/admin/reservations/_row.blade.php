@@ -14,9 +14,9 @@
                 {{ $sale->invoice_number }}
             </a>
             <span class="text-xs px-2 py-0.5 rounded-full
-                {{ $sale->status->value === 'PENDING' ? 'bg-amber-100 text-amber-800' : '' }}
-                {{ $sale->status->value === 'COMPLETED' ? 'bg-green-100 text-green-800' : '' }}
-                {{ $sale->status->value === 'CANCELLED' ? 'bg-zinc-200 text-zinc-700' : '' }}">
+                {{ $sale->status === \App\Enums\SaleStatus::PENDING ? 'bg-amber-100 text-amber-800' : '' }}
+                {{ $sale->status === \App\Enums\SaleStatus::COMPLETED ? 'bg-green-100 text-green-800' : '' }}
+                {{ $sale->status === \App\Enums\SaleStatus::CANCELLED ? 'bg-zinc-200 text-zinc-700' : '' }}">
                 {{ $sale->status->label() }}
             </span>
             <span class="text-xs text-muted-foreground">

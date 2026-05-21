@@ -21,19 +21,37 @@ class ProductFactory extends Factory
         $categories = Category::pluck('id')->toArray();
         $units = Unit::pluck('id')->toArray();
 
+        $name = fake()->words(3, true);
+
         return [
             'category_id' => !empty($categories) ? fake()->randomElement($categories) : Category::factory(),
             'unit_id' => !empty($units) ? fake()->randomElement($units) : Unit::factory(),
             'sku' => 'P.' . date('ymd') . '.' . strtoupper(fake()->unique()->lexify('????')),
-            'name' => fake()->words(3, true),
+            'name' => $name,
+            'slug' => \Illuminate\Support\Str::slug($name) . '-' . fake()->unique()->randomNumber(6),
             'description' => fake()->sentence(),
             'purchase_price' => fake()->numberBetween(10000, 500000),
             'selling_price' => fake()->numberBetween(550000, 1000000),
             'quantity' => fake()->numberBetween(0, 100),
             'min_stock' => fake()->numberBetween(5, 20),
             'is_active' => fake()->boolean(90),
+            'is_public' => false,
+            'featured' => false,
+            'sort_order' => 0,
             'created_at' => fake()->dateTimeBetween('-1 year', 'now'),
             'updated_at' => fake()->dateTimeBetween('-1 year', 'now'),
         ];
+    }
+
+    /**
+     * Marca el producto como visible en el catálogo público con stock disponible.
+     */
+    public function public(int $quantity = 10): static
+    {
+        return $this->state(fn () => [
+            'is_public' => true,
+            'is_active' => true,
+            'quantity' => $quantity,
+        ]);
     }
 }
