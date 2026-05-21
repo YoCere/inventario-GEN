@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Finance;
 
+use App\Enums\AccountingPeriodStatus;
 use App\Models\AccountingPeriod;
 use App\Models\ChartOfAccount;
 use App\Models\User;
@@ -9,6 +10,7 @@ use App\Services\Accounting\JournalEntryService;
 use Database\Seeders\AccountingPeriodSeeder;
 use Database\Seeders\ChartOfAccountSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use RuntimeException;
 use Tests\TestCase;
 
 class FinanceModuleTest extends TestCase
@@ -94,6 +96,49 @@ class FinanceModuleTest extends TestCase
         $this->assertCount(2, $reverse->lines);
         $this->assertEquals(1000, $reverse->lines[0]->credit_amount + $reverse->lines[1]->credit_amount);
         $this->assertEquals(1000, $reverse->lines[0]->debit_amount + $reverse->lines[1]->debit_amount);
+    }
+
+    public function test_posting_to_closed_period_is_rejected(): void
+    {
+        $this->seed([
+            AccountingPeriodSeeder::class,
+            ChartOfAccountSeeder::class,
+        ]);
+
+        $user = User::factory()->create([
+            'email_verified_at' => now(),
+            'role' => 'admin',
+        ]);
+
+        $cash = ChartOfAccount::query()->where('code', '1.1.01')->firstOrFail();
+        $sales = ChartOfAccount::query()->where('code', '4.1')->firstOrFail();
+
+        $period = AccountingPeriod::query()->firstOrFail();
+        $period->update(['status' => AccountingPeriodStatus::Closed]);
+
+        $service = app(JournalEntryService::class);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageMatches('/periodo.*status: Cerrado/i');
+
+        $service->createPostedEntry([
+            'entry_date' => now()->toDateString(),
+            'accounting_period_id' => $period->id,
+            'description' => 'Intento de posteo en periodo cerrado',
+            'created_by' => $user->id,
+            'posted_by' => $user->id,
+        ], [
+            [
+                'chart_of_account_id' => $cash->id,
+                'debit_amount' => 500,
+                'credit_amount' => 0,
+            ],
+            [
+                'chart_of_account_id' => $sales->id,
+                'debit_amount' => 0,
+                'credit_amount' => 500,
+            ],
+        ]);
     }
 
     public function test_finance_statements_load_with_cash_outflow_entries(): void
