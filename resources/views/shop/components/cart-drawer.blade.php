@@ -87,7 +87,7 @@
                 {{ $currencySymbol }} <span x-text="$store.cart.totalFormatted()"></span>
             </span>
         </div>
-        <a href="#" class="shop-btn-primary w-full" @click.prevent="alert('Checkout disponible en próxima fase')">
+        <a href="{{ route('shop.checkout') }}" class="shop-btn-primary w-full">
             Reservar pedido →
         </a>
         <button @click="$store.cart.clear()" class="w-full text-xs text-zinc-400 hover:text-red-600">

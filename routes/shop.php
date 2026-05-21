@@ -1,5 +1,6 @@
 <?php
 
+use App\Shop\Http\Controllers\ReservationController;
 use App\Shop\Http\Controllers\ShopController;
 use Illuminate\Support\Facades\Route;
 
@@ -13,4 +14,10 @@ Route::prefix('tienda')->name('shop.')->group(function () {
     Route::get('/', [ShopController::class, 'index'])->name('index');
     Route::get('/api/search', [ShopController::class, 'search'])->name('search');
     Route::get('/producto/{slug}', [ShopController::class, 'show'])->name('product');
+
+    // Checkout + reserva.
+    Route::get('/checkout', [ReservationController::class, 'checkout'])->name('checkout');
+    Route::post('/reservar', [ReservationController::class, 'store'])
+        ->middleware('throttle:5,1') // 5 reservas / IP / minuto, anti-spam básico
+        ->name('reservar');
 });
