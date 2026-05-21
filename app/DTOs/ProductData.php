@@ -18,6 +18,8 @@ class ProductData
         public readonly ?string $notes,
         public readonly ?string $image_path = null,
         public readonly ?int $location_id = null,
+        public readonly bool $is_public = false,
+        public readonly bool $featured = false,
     ) {}
 
     public static function fromArray(array $data): self
@@ -36,6 +38,8 @@ class ProductData
             notes: empty($data['notes']) ? null : $data['notes'],
             image_path: empty($data['image_path']) ? null : $data['image_path'],
             location_id: empty($data['location_id']) ? null : (int) $data['location_id'],
+            is_public: (bool) ($data['is_public'] ?? false),
+            featured: (bool) ($data['featured'] ?? false),
         );
     }
 
@@ -55,6 +59,8 @@ class ProductData
             'notes' => $this->notes,
             'image_path' => $this->image_path,
             'location_id' => $this->location_id,
+            'is_public' => $this->is_public,
+            'featured' => $this->featured,
         ];
     }
 }

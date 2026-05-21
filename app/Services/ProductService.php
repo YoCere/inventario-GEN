@@ -33,11 +33,14 @@ class ProductService
                     'unit_id' => $data->unit_id,
                     'sku' => $sku,
                     'name' => $data->name,
+                    'slug' => $this->generateUniqueSlug($data->name),
                     'purchase_price' => $data->purchase_price,
                     'selling_price' => $data->selling_price,
                     'quantity' => $data->quantity,
                     'min_stock' => $data->min_stock,
                     'is_active' => $data->is_active,
+                    'is_public' => $data->is_public,
+                    'featured' => $data->featured,
                     'description' => $data->description,
                     'notes' => $data->notes,
                     'image_path' => $data->image_path,
@@ -117,6 +120,8 @@ class ProductService
                     'quantity' => $data->quantity,
                     'min_stock' => $data->min_stock,
                     'is_active' => $data->is_active,
+                    'is_public' => $data->is_public,
+                    'featured' => $data->featured,
                     'description' => $data->description,
                     'notes' => $data->notes,
                     'image_path' => $imagePath,
@@ -256,5 +261,21 @@ class ProductService
         } while (Product::where('sku', $sku)->exists());
 
         return $sku;
+    }
+
+    /**
+     * Generate a unique URL-safe slug from product name. Appends -<n> suffix
+     * if collision detected. Used for /tienda/producto/{slug} routes.
+     */
+    private function generateUniqueSlug(string $name): string
+    {
+        $base = Str::slug($name) ?: 'producto';
+        $candidate = $base;
+        $n = 1;
+        while (Product::where('slug', $candidate)->exists()) {
+            $n++;
+            $candidate = "{$base}-{$n}";
+        }
+        return $candidate;
     }
 }

@@ -14,6 +14,14 @@ class ShopServiceProvider extends ServiceProvider
 
     public function boot(ShopFeatureFlag $flag): void
     {
+        // Comandos artisan se registran SIEMPRE (no gated por flag) — admin puede
+        // querer regenerar imágenes antes de activar la tienda.
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                \App\Shop\Console\Commands\RegenerateImagesCommand::class,
+            ]);
+        }
+
         if (! $flag->enabled()) {
             return;
         }
