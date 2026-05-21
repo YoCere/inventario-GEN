@@ -24,3 +24,7 @@ Homestead.yaml
 Thumbs.db
 /.claude
 /docs
+unlighthouse.config.ts
+/.unlighthouse
+/storage/framework/telegram-poll.pid
+/storage/framework/telegram-poll.stop
