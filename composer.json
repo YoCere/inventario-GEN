@@ -11,7 +11,8 @@
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
         "openspout/openspout": "^4.0",
-        "power-components/livewire-powergrid": "^6.0"
+        "power-components/livewire-powergrid": "^6.0",
+        "simplesoftwareio/simple-qrcode": "^4.2"
     },
     "require-dev": {
         "barryvdh/laravel-debugbar": "^3.16",

@@ -3,10 +3,13 @@
 namespace App\Livewire\Settings;
 
 use App\Models\Setting;
+use App\Shop\Services\ShopFeatureFlag;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class SettingGroups extends Component
 {
@@ -75,6 +78,14 @@ class SettingGroups extends Component
             'tts_binary_path',
             'tts_model_path',
         ],
+        'tienda' => [
+            'shop_enabled',
+            'shop_whatsapp_number',
+            'shop_business_name',
+            'shop_currency_symbol',
+            'shop_welcome_message',
+            'shop_show_out_of_stock',
+        ],
         'nomina' => [
             'payroll_antiquity_base_amount',
             'payroll_border_bonus_rate',
@@ -114,6 +125,7 @@ class SettingGroups extends Component
         'impuestos' => 'Impuestos Bolivia',
         'mensajeria' => 'Telegram y notificaciones',
         'ia' => 'Agente IA y voz',
+        'tienda' => 'Tienda en línea',
         'nomina' => 'Nomina y sueldos',
         'otros' => 'Otros ajustes',
     ];
@@ -150,6 +162,12 @@ class SettingGroups extends Component
         'ai_provider' => 'anthropic',
         'ai_api_base_url' => '',
         'whisper_model' => '',
+        'shop_enabled' => '0',
+        'shop_whatsapp_number' => '',
+        'shop_business_name' => '',
+        'shop_currency_symbol' => 'Bs.',
+        'shop_welcome_message' => '',
+        'shop_show_out_of_stock' => '0',
         'payroll_antiquity_base_amount' => '7500',
         'payroll_border_bonus_rate' => '20',
         'payroll_labor_contribution_rate' => '12.71',
@@ -177,15 +195,51 @@ class SettingGroups extends Component
         'payroll_account_other_discounts' => '2.1.10',
     ];
 
+    public bool $shopEnabled = false;
+
     public function mount(): void
     {
         abort_if(! auth()->user()?->isAdmin(), 403);
+
+        $this->shopEnabled = Setting::get('shop_enabled') === '1';
     }
 
     #[On('settings-updated')]
     public function refreshList(): void
     {
         // Trigger re-render after settings update.
+        $this->shopEnabled = Setting::get('shop_enabled') === '1';
+    }
+
+    /**
+     * Toggle del módulo Tienda — wire:model.live en el switch dispara updatedShopEnabled.
+     * Persiste el flag, invalida el cache del feature flag para que ShopServiceProvider
+     * lo refleje en el próximo request.
+     */
+    public function updatedShopEnabled(bool $value): void
+    {
+        Setting::set('shop_enabled', $value ? '1' : '0');
+        app(ShopFeatureFlag::class)->invalidate();
+        $this->dispatch('settings-updated');
+    }
+
+    #[Computed]
+    public function shopPublicUrl(): string
+    {
+        return rtrim(config('app.url'), '/') . '/';
+    }
+
+    /**
+     * Render del QR como SVG inline. simple-qrcode usa el backend bacon-qr-code por
+     * defecto y produce SVG sin necesidad de extensión imagick.
+     */
+    #[Computed]
+    public function shopQrSvg(): string
+    {
+        return (string) QrCode::size(200)
+            ->margin(1)
+            ->errorCorrection('H')
+            ->generate($this->shopPublicUrl());
     }
 
     public function editSetting(string $key): void
@@ -292,6 +346,12 @@ class SettingGroups extends Component
             'tts_voice' => 'Voz TTS',
             'tts_binary_path' => 'Ruta binario Piper',
             'tts_model_path' => 'Ruta modelo Piper .onnx',
+            'shop_enabled' => 'Tienda en línea activa',
+            'shop_whatsapp_number' => 'Número WhatsApp (formato internacional sin +)',
+            'shop_business_name' => 'Nombre del negocio',
+            'shop_currency_symbol' => 'Símbolo de moneda (tienda)',
+            'shop_welcome_message' => 'Mensaje de bienvenida',
+            'shop_show_out_of_stock' => 'Mostrar productos sin stock',
             'payroll_antiquity_base_amount' => 'Base bono antiguedad',
             'payroll_border_bonus_rate' => 'Bono frontera (%)',
             'payroll_labor_contribution_rate' => 'Aporte laboral (%)',
@@ -330,7 +390,8 @@ class SettingGroups extends Component
             },
             'currency_position' => $value === 'right' ? 'Derecha' : 'Izquierda',
             'tax_include_iva', 'tax_include_it', 'telegram_enabled', 'telegram_notify_low_stock', 'telegram_notify_daily', 'ai_search_enabled',
-            'ai_chatbot_enabled', 'ai_voice_enabled', 'ai_voice_reply' => $value === '1' ? 'Activo' : 'Inactivo',
+            'ai_chatbot_enabled', 'ai_voice_enabled', 'ai_voice_reply',
+            'shop_enabled', 'shop_show_out_of_stock' => $value === '1' ? 'Activo' : 'Inactivo',
             'telegram_bot_paused' => $value === '1' ? '🔴 Pausado' : '✅ Activo',
             'dashboard_display_mode' => $value === 'amount' ? 'Montos' : 'Porcentajes',
             'tax_iva_rate', 'tax_it_rate', 'discount_rate_annual',

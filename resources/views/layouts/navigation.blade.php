@@ -38,6 +38,12 @@
                                 <x-dropdown-link :href="route('customers.index')" :active="request()->routeIs('customers.*')">
                                     Clientes
                                 </x-dropdown-link>
+                                @if(app(\App\Shop\Services\ShopFeatureFlag::class)->enabled() && \Illuminate\Support\Facades\Route::has('shop.admin.reservations'))
+                                    <div class="my-1 border-t border-border"></div>
+                                    <x-dropdown-link :href="route('shop.admin.reservations')" :active="request()->routeIs('shop.admin.*')">
+                                        Reservas Web
+                                    </x-dropdown-link>
+                                @endif
                             </x-slot>
                         </x-nav-dropdown>
 
@@ -241,6 +247,9 @@
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs(['sales.index', 'sales.show']) ? 'text-primary' : '' }}" href="{{ route('sales.index') }}">Ventas</a>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('sales.create') ? 'text-primary' : '' }}" href="{{ route('sales.create') }}">Vender</a>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('customers.index') ? 'text-primary' : '' }}" href="{{ route('customers.index') }}">Clientes</a>
+                                    @if(app(\App\Shop\Services\ShopFeatureFlag::class)->enabled() && \Illuminate\Support\Facades\Route::has('shop.admin.reservations'))
+                                        <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('shop.admin.*') ? 'text-primary' : '' }}" href="{{ route('shop.admin.reservations') }}">Reservas Web</a>
+                                    @endif
                                 </div>
                             </div>
                         </div>
