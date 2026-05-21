@@ -149,10 +149,18 @@ class ProductForm extends Component
             'description' => ['nullable', 'string'],
             'notes' => ['nullable', 'string'],
             'location_id' => ['nullable', 'exists:locations,id'],
-            // Galería: array de uploads. Cada uno máximo 4MB (más que single porque ahora
-            // genera 3 variantes WebP optimizadas — input original puede ser pesado).
+            // Galería: array de uploads. Cada uno máximo 8MB (HEIC de iPhone ~5MB, AVIF
+            // moderno también puede ser grande). Output siempre WebP optimizado.
+            //
+            // Formatos aceptados: JPG/JPEG/PNG/WebP/GIF/BMP/AVIF (todos soportados por GD).
+            // HEIC/HEIF requieren extensión Imagick en el servidor — sin ella, la upload
+            // pasa validación de extensión pero falla en el procesamiento con mensaje claro.
             'gallery' => ['nullable', 'array', 'max:10'],
-            'gallery.*' => ['image', 'max:4096', 'mimes:jpg,jpeg,png,webp'],
+            'gallery.*' => [
+                'file',
+                'max:8192',
+                'mimes:jpg,jpeg,png,webp,gif,bmp,avif,heic,heif',
+            ],
         ];
     }
 

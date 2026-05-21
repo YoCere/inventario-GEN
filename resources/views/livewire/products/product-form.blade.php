@@ -229,7 +229,7 @@
                            type="file"
                            wire:model="gallery"
                            multiple
-                           accept="image/jpeg,image/png,image/webp"
+                           accept="image/jpeg,image/png,image/webp,image/gif,image/bmp,image/avif,image/heic,image/heif,.heic,.heif"
                            class="hidden">
 
                     <div wire:loading wire:target="gallery" class="text-xs text-blue-600 mt-2 flex items-center gap-1.5">

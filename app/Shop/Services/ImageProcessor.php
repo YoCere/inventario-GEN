@@ -47,11 +47,25 @@ class ImageProcessor
         $basePath = "products/{$productId}";
         $filename = (string) Str::uuid();
         $paths = [];
+        $extension = strtolower($file->getClientOriginalExtension());
 
         foreach (self::VARIANTS as $variant => $width) {
-            $img = Image::read($file->getRealPath())
-                ->scaleDown(width: $width)
-                ->toWebp(quality: self::WEBP_QUALITY);
+            try {
+                $img = Image::read($file->getRealPath())
+                    ->scaleDown(width: $width)
+                    ->toWebp(quality: self::WEBP_QUALITY);
+            } catch (\Throwable $e) {
+                // HEIC/HEIF requieren Imagick con HEIF support. GD no los soporta.
+                if (in_array($extension, ['heic', 'heif'], true) && ! extension_loaded('imagick')) {
+                    throw new \RuntimeException(
+                        "Formato HEIC/HEIF no soportado en este servidor. " .
+                        "Instala la extensión PHP Imagick o convierte la imagen a JPG/PNG antes de subir."
+                    );
+                }
+                throw new \RuntimeException(
+                    "No se pudo procesar la imagen ({$extension}): " . $e->getMessage()
+                );
+            }
 
             $relativePath = "{$basePath}/{$filename}_{$variant}.webp";
             Storage::disk('public')->put($relativePath, (string) $img);
