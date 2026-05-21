@@ -3,6 +3,7 @@
 namespace App\Livewire\Components;
 
 use Livewire\Component;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 
 class DeleteModal extends Component
@@ -12,8 +13,16 @@ class DeleteModal extends Component
     public string $description = 'This action cannot be undone. This will permanently delete your data.';
     public string $confirmButtonText = 'Continue';
     public string $confirmButtonClass = '';
+
+    // Locked: el cliente NUNCA debe poder modificar el método/componente/params destino.
+    // Sin esto, attacker podría invocar cualquier método público de cualquier componente.
+    #[Locked]
     public string $component = '';
+
+    #[Locked]
     public string $method = '';
+
+    #[Locked]
     public array $params = [];
 
     #[On('open-delete-modal')]

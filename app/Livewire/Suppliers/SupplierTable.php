@@ -125,6 +125,8 @@ final class SupplierTable extends PowerGridComponent
     #[\Livewire\Attributes\On('delete')]
     public function delete($rowId, SupplierService $supplierService): void
     {
+        abort_if(!auth()->user()->isAdmin(), 403);
+
         $supplier = Supplier::find($rowId);
 
         if ($supplier) {

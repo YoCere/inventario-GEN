@@ -215,6 +215,8 @@ final class SalesTable extends PowerGridComponent
     #[\Livewire\Attributes\On('delete')]
     public function delete($rowId, SaleService $saleService): void
     {
+        abort_if(!auth()->user()->isAdmin(), 403);
+
         $sale = Sale::find($rowId);
         if ($sale) {
             try {

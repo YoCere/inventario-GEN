@@ -270,6 +270,8 @@ final class FinanceTransactionTable extends PowerGridComponent
     #[\Livewire\Attributes\On('delete')]
     public function delete($rowId, FinanceTransactionService $service): void
     {
+        abort_if(!auth()->user()->isAdmin(), 403);
+
         $transaction = FinanceTransaction::find($rowId);
 
         if ($transaction) {

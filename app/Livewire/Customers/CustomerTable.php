@@ -123,6 +123,8 @@ final class CustomerTable extends PowerGridComponent
     #[\Livewire\Attributes\On('delete')]
     public function delete($rowId, CustomerService $customerService): void
     {
+        abort_if(!auth()->user()->isAdmin(), 403);
+
         $customer = Customer::find($rowId);
 
         if ($customer) {

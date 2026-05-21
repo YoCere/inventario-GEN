@@ -153,6 +153,8 @@ final class FinanceCategoryTable extends PowerGridComponent
     #[\Livewire\Attributes\On('delete')]
     public function delete($rowId, FinanceCategoryService $service): void
     {
+        abort_if(!auth()->user()->isAdmin(), 403);
+
         $category = FinanceCategory::find($rowId);
 
         if ($category) {

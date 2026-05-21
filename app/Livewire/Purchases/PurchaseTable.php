@@ -216,6 +216,8 @@ final class PurchaseTable extends PowerGridComponent
     #[\Livewire\Attributes\On('delete')]
     public function delete($rowId, PurchaseService $purchaseService): void
     {
+        abort_if(!auth()->user()->isAdmin(), 403);
+
         $purchase = Purchase::find($rowId);
 
         if ($purchase) {
