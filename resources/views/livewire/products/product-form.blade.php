@@ -257,14 +257,41 @@
                         <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-2">
                             @foreach($gallery as $idx => $upload)
                                 @if($upload)
-                                    <div class="relative aspect-square rounded-lg overflow-hidden border-2 border-dashed border-green-400">
-                                        <img src="{{ $upload->temporaryUrl() }}" alt="Preview" class="w-full h-full object-cover">
+                                    @php
+                                        // temporaryUrl() puede lanzar FileNotPreviewableException si el mime
+                                        // no está en livewire.preview_mimes. Defensivo: capturamos y mostramos
+                                        // un placeholder con el nombre + extensión para HEIC/raros.
+                                        $previewUrl = null;
+                                        $previewError = false;
+                                        try {
+                                            $previewUrl = $upload->temporaryUrl();
+                                        } catch (\Throwable $e) {
+                                            $previewError = true;
+                                        }
+                                        $ext = strtoupper(pathinfo($upload->getClientOriginalName(), PATHINFO_EXTENSION) ?: 'IMG');
+                                    @endphp
+                                    <div class="relative aspect-square rounded-lg overflow-hidden border-2 border-dashed border-green-400 bg-zinc-50">
+                                        @if($previewUrl && !$previewError)
+                                            <img src="{{ $previewUrl }}" alt="Preview" class="w-full h-full object-cover"
+                                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                            <div class="hidden absolute inset-0 flex-col items-center justify-center bg-zinc-100 text-zinc-500 p-2">
+                                                <x-heroicon-o-photo class="h-8 w-8" />
+                                                <span class="text-xs font-mono mt-1">{{ $ext }}</span>
+                                                <span class="text-[10px] text-zinc-400 text-center truncate w-full">{{ \Illuminate\Support\Str::limit($upload->getClientOriginalName(), 18) }}</span>
+                                            </div>
+                                        @else
+                                            <div class="absolute inset-0 flex flex-col items-center justify-center bg-zinc-100 text-zinc-500 p-2">
+                                                <x-heroicon-o-photo class="h-8 w-8" />
+                                                <span class="text-xs font-mono mt-1">{{ $ext }}</span>
+                                                <span class="text-[10px] text-zinc-400 text-center truncate w-full">{{ \Illuminate\Support\Str::limit($upload->getClientOriginalName(), 18) }}</span>
+                                            </div>
+                                        @endif
                                         <button type="button" wire:click="removeNewUpload({{ $idx }})"
                                                 title="Quitar"
-                                                class="absolute top-1 right-1 w-6 h-6 rounded-full bg-white/95 text-red-500 hover:bg-white shadow flex items-center justify-center text-xs">
+                                                class="absolute top-1 right-1 w-6 h-6 rounded-full bg-white/95 text-red-500 hover:bg-white shadow flex items-center justify-center text-xs z-10">
                                             ✕
                                         </button>
-                                        <span class="absolute bottom-1 left-1 bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">NUEVO</span>
+                                        <span class="absolute bottom-1 left-1 bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded z-10">NUEVO</span>
                                     </div>
                                 @endif
                             @endforeach
