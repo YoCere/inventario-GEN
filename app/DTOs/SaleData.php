@@ -22,6 +22,9 @@ readonly class SaleData
         public int $cash_received = 0,
         public int $change = 0,
         public int $global_discount = 0,
+        public ?string $buyer_name = null,
+        public ?string $buyer_phone = null,
+        public string $source = 'pos',
     ) {}
 
     public static function fromArray(array $data): self
@@ -37,6 +40,9 @@ readonly class SaleData
             cash_received: (int) ($data['cash_received'] ?? 0),
             change: (int) ($data['change'] ?? 0),
             global_discount: (int) ($data['global_discount'] ?? 0),
+            buyer_name: $data['buyer_name'] ?? null,
+            buyer_phone: $data['buyer_phone'] ?? null,
+            source: $data['source'] ?? 'pos',
         );
     }
 
@@ -53,6 +59,9 @@ readonly class SaleData
             'cash_received' => $this->cash_received,
             'change' => $this->change,
             'global_discount' => $this->global_discount,
+            'buyer_name' => $this->buyer_name,
+            'buyer_phone' => $this->buyer_phone,
+            'source' => $this->source,
         ];
     }
 }

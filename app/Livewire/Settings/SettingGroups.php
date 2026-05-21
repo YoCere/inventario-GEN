@@ -6,13 +6,17 @@ use App\Models\Setting;
 use App\Shop\Services\ShopFeatureFlag;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class SettingGroups extends Component
 {
+    use WithFileUploads;
+
     /**
      * @var array<string, array<int, string>>
      */
@@ -85,6 +89,12 @@ class SettingGroups extends Component
             'shop_currency_symbol',
             'shop_welcome_message',
             'shop_show_out_of_stock',
+            // Personalización visual (se editan inline en el panel, no via modal).
+            'shop_logo_path',
+            'shop_primary_color',
+            'shop_secondary_color',
+            'shop_accent_color',
+            'shop_text_on_primary',
         ],
         'nomina' => [
             'payroll_antiquity_base_amount',
@@ -168,6 +178,11 @@ class SettingGroups extends Component
         'shop_currency_symbol' => 'Bs.',
         'shop_welcome_message' => '',
         'shop_show_out_of_stock' => '0',
+        'shop_logo_path' => '',
+        'shop_primary_color' => '#2563EB',
+        'shop_secondary_color' => '#64748B',
+        'shop_accent_color' => '#F59E0B',
+        'shop_text_on_primary' => '#FFFFFF',
         'payroll_antiquity_base_amount' => '7500',
         'payroll_border_bonus_rate' => '20',
         'payroll_labor_contribution_rate' => '12.71',
@@ -197,11 +212,74 @@ class SettingGroups extends Component
 
     public bool $shopEnabled = false;
 
+    /** Tema visual de la tienda — editable inline desde la sección Tienda. */
+    public string $shopPrimaryColor = '#2563EB';
+    public string $shopSecondaryColor = '#64748B';
+    public string $shopAccentColor = '#F59E0B';
+    public string $shopTextOnPrimary = '#FFFFFF';
+
+    /** Upload temporal del logo (Livewire Temporary Upload). */
+    public $logoUpload = null;
+
+    /**
+     * Paletas preset family-user. Click aplica los 4 colores de una vez.
+     *
+     * @var array<string, array<string, string>>
+     */
+    public const COLOR_PALETTES = [
+        'azul' => [
+            'name' => 'Profesional Azul',
+            'primary' => '#2563EB',
+            'secondary' => '#64748B',
+            'accent' => '#F59E0B',
+            'text' => '#FFFFFF',
+        ],
+        'verde' => [
+            'name' => 'Natural Verde',
+            'primary' => '#16A34A',
+            'secondary' => '#78716C',
+            'accent' => '#EAB308',
+            'text' => '#FFFFFF',
+        ],
+        'rojo' => [
+            'name' => 'Energía Roja',
+            'primary' => '#DC2626',
+            'secondary' => '#52525B',
+            'accent' => '#F97316',
+            'text' => '#FFFFFF',
+        ],
+        'morado' => [
+            'name' => 'Elegante Morado',
+            'primary' => '#7C3AED',
+            'secondary' => '#6B7280',
+            'accent' => '#EC4899',
+            'text' => '#FFFFFF',
+        ],
+        'oscuro' => [
+            'name' => 'Modo Oscuro',
+            'primary' => '#0F172A',
+            'secondary' => '#475569',
+            'accent' => '#22D3EE',
+            'text' => '#F8FAFC',
+        ],
+        'calido' => [
+            'name' => 'Café Cálido',
+            'primary' => '#92400E',
+            'secondary' => '#78716C',
+            'accent' => '#D97706',
+            'text' => '#FFFBEB',
+        ],
+    ];
+
     public function mount(): void
     {
         abort_if(! auth()->user()?->isAdmin(), 403);
 
         $this->shopEnabled = Setting::get('shop_enabled') === '1';
+        $this->shopPrimaryColor = Setting::get('shop_primary_color', '#2563EB');
+        $this->shopSecondaryColor = Setting::get('shop_secondary_color', '#64748B');
+        $this->shopAccentColor = Setting::get('shop_accent_color', '#F59E0B');
+        $this->shopTextOnPrimary = Setting::get('shop_text_on_primary', '#FFFFFF');
     }
 
     #[On('settings-updated')]
@@ -221,6 +299,108 @@ class SettingGroups extends Component
         Setting::set('shop_enabled', $value ? '1' : '0');
         app(ShopFeatureFlag::class)->invalidate();
         $this->dispatch('settings-updated');
+    }
+
+    /**
+     * Persist color setting cuando wire:model.live se dispara. Valida formato
+     * hex #RRGGBB antes de guardar — protege contra CSS injection si el HTML
+     * del catálogo interpola el valor directamente.
+     */
+    public function updatedShopPrimaryColor(string $value): void
+    {
+        $this->persistColor('shop_primary_color', $value, 'shopPrimaryColor');
+    }
+
+    public function updatedShopSecondaryColor(string $value): void
+    {
+        $this->persistColor('shop_secondary_color', $value, 'shopSecondaryColor');
+    }
+
+    public function updatedShopAccentColor(string $value): void
+    {
+        $this->persistColor('shop_accent_color', $value, 'shopAccentColor');
+    }
+
+    public function updatedShopTextOnPrimary(string $value): void
+    {
+        $this->persistColor('shop_text_on_primary', $value, 'shopTextOnPrimary');
+    }
+
+    private function persistColor(string $settingKey, string $value, string $property): void
+    {
+        $value = strtoupper($value);
+        if (! preg_match('/^#[0-9A-F]{6}$/', $value)) {
+            // Valor inválido — revertir a lo que está en BD.
+            $this->{$property} = Setting::get($settingKey, '#000000');
+            return;
+        }
+
+        Setting::set($settingKey, $value);
+        $this->{$property} = $value;
+    }
+
+    /**
+     * Aplicar paleta preset completa. Más simple para usuario no técnico:
+     * elegir un nombre vs. ajustar 4 colores a mano.
+     */
+    public function applyPalette(string $paletteKey): void
+    {
+        if (! isset(self::COLOR_PALETTES[$paletteKey])) {
+            return;
+        }
+
+        $palette = self::COLOR_PALETTES[$paletteKey];
+
+        Setting::set('shop_primary_color', $palette['primary']);
+        Setting::set('shop_secondary_color', $palette['secondary']);
+        Setting::set('shop_accent_color', $palette['accent']);
+        Setting::set('shop_text_on_primary', $palette['text']);
+
+        $this->shopPrimaryColor = $palette['primary'];
+        $this->shopSecondaryColor = $palette['secondary'];
+        $this->shopAccentColor = $palette['accent'];
+        $this->shopTextOnPrimary = $palette['text'];
+
+        $this->dispatch('settings-updated');
+    }
+
+    /**
+     * Upload logo: validar imagen, generar storage path, persistir en setting.
+     * Borra el logo anterior si existía para no acumular orphan files.
+     */
+    public function updatedLogoUpload(): void
+    {
+        $this->validate([
+            'logoUpload' => ['image', 'max:2048', 'mimes:png,jpg,jpeg,svg,webp'],
+        ]);
+
+        $oldPath = Setting::get('shop_logo_path');
+        if ($oldPath && Storage::disk('public')->exists($oldPath)) {
+            Storage::disk('public')->delete($oldPath);
+        }
+
+        $path = $this->logoUpload->store('shop', 'public');
+        Setting::set('shop_logo_path', $path);
+
+        $this->logoUpload = null;
+        $this->dispatch('settings-updated');
+    }
+
+    public function removeLogo(): void
+    {
+        $path = Setting::get('shop_logo_path');
+        if ($path && Storage::disk('public')->exists($path)) {
+            Storage::disk('public')->delete($path);
+        }
+        Setting::set('shop_logo_path', '');
+        $this->dispatch('settings-updated');
+    }
+
+    #[Computed]
+    public function shopLogoUrl(): ?string
+    {
+        $path = Setting::get('shop_logo_path');
+        return $path ? Storage::url($path) : null;
     }
 
     #[Computed]
@@ -352,6 +532,11 @@ class SettingGroups extends Component
             'shop_currency_symbol' => 'Símbolo de moneda (tienda)',
             'shop_welcome_message' => 'Mensaje de bienvenida',
             'shop_show_out_of_stock' => 'Mostrar productos sin stock',
+            'shop_logo_path' => 'Logo del negocio',
+            'shop_primary_color' => 'Color principal',
+            'shop_secondary_color' => 'Color secundario',
+            'shop_accent_color' => 'Color de acento',
+            'shop_text_on_primary' => 'Texto sobre color principal',
             'payroll_antiquity_base_amount' => 'Base bono antiguedad',
             'payroll_border_bonus_rate' => 'Bono frontera (%)',
             'payroll_labor_contribution_rate' => 'Aporte laboral (%)',

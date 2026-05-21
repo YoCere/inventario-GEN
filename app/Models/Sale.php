@@ -16,6 +16,8 @@ class Sale extends Model
     protected $fillable = [
         'invoice_number',
         'customer_id',
+        'buyer_name',
+        'buyer_phone',
         'created_by',
         'sale_date',
         'status',
@@ -26,6 +28,7 @@ class Sale extends Model
         'cash_received',
         'change',
         'payment_method',
+        'source',
         'notes',
     ];
 

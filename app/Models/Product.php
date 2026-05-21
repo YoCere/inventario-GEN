@@ -2,8 +2,12 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use App\Shop\Models\ProductImage;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Product extends Model
 {
@@ -16,11 +20,15 @@ class Product extends Model
         'unit_id',
         'sku',
         'name',
+        'slug',
         'purchase_price',
         'selling_price',
         'quantity',
         'min_stock',
         'is_active',
+        'is_public',
+        'featured',
+        'sort_order',
         'description',
         'notes',
         'image_path',
@@ -32,6 +40,9 @@ class Product extends Model
         'quantity' => 'integer',
         'min_stock' => 'integer',
         'is_active' => 'boolean',
+        'is_public' => 'boolean',
+        'featured' => 'boolean',
+        'sort_order' => 'integer',
     ];
 
     public function category()
@@ -75,6 +86,55 @@ class Product extends Model
     {
         return $this->image_path
             ? \Illuminate\Support\Facades\Storage::url($this->image_path)
-            : asset('images/placeholder-product.png');
+            : asset('images/placeholder-product.svg');
+    }
+
+    /**
+     * Galería del producto. Ordenada por sort_order para que el frontend
+     * respete el orden definido por el admin.
+     */
+    public function images(): HasMany
+    {
+        return $this->hasMany(ProductImage::class)->orderBy('sort_order');
+    }
+
+    /**
+     * Imagen marcada como principal. Usada para tarjetas de catálogo y OG tags.
+     */
+    public function primaryImage(): HasOne
+    {
+        return $this->hasOne(ProductImage::class)->where('is_primary', true);
+    }
+
+    /**
+     * URL del tamaño "card" (~600px) para grids del catálogo público.
+     * Cae al image_path legacy si todavía no se generó la galería.
+     */
+    public function getCardImageUrlAttribute(): string
+    {
+        $img = $this->primaryImage;
+        if ($img) {
+            return \Illuminate\Support\Facades\Storage::url($img->path_card ?: $img->path);
+        }
+
+        return $this->image_path
+            ? \Illuminate\Support\Facades\Storage::url($this->image_path)
+            : asset('images/placeholder-product.svg');
+    }
+
+    /**
+     * Scope para listados públicos del catálogo. Filtra:
+     *   - is_public = true (visibilidad pública explícita, separada de is_active interno)
+     *   - quantity > 0 si shop_show_out_of_stock != '1' (configurable en Settings)
+     */
+    public function scopePublic(Builder $query): Builder
+    {
+        $query->where('is_public', true);
+
+        if (\App\Models\Setting::get('shop_show_out_of_stock') !== '1') {
+            $query->where('quantity', '>', 0);
+        }
+
+        return $query;
     }
 }

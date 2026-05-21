@@ -40,10 +40,13 @@ class SaleService
                 $sale = Sale::create([
                     'invoice_number' => $this->generateInvoiceNumber(),
                     'customer_id' => $data->customer_id,
+                    'buyer_name' => $data->buyer_name,
+                    'buyer_phone' => $data->buyer_phone,
                     'created_by' => $data->created_by,
                     'sale_date' => $data->sale_date,
                     'status' => $data->status,
                     'payment_method' => $data->payment_method,
+                    'source' => $data->source,
                     'notes' => $data->notes,
                     'cash_received' => $data->cash_received,
                     'change' => $data->change,

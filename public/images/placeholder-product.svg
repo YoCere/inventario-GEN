@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" fill="none" role="img" aria-label="Producto sin imagen">
+  <rect width="600" height="600" fill="#F3F4F6"/>
+  <rect x="40" y="40" width="520" height="520" rx="20" fill="#E5E7EB"/>
+  <g transform="translate(180 170)" stroke="#9CA3AF" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="0" y="0" width="240" height="200" rx="14"/>
+    <circle cx="70" cy="80" r="20"/>
+    <path d="M0 160 L80 95 L140 140 L240 60"/>
+  </g>
+  <text x="300" y="450" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif" font-size="32" font-weight="600" fill="#6B7280">Sin imagen</text>
+  <text x="300" y="490" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif" font-size="20" fill="#9CA3AF">Producto sin foto disponible</text>
+</svg>
