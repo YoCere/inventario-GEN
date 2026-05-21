@@ -406,7 +406,7 @@ class SettingGroups extends Component
     #[Computed]
     public function shopPublicUrl(): string
     {
-        return rtrim(config('app.url'), '/') . '/';
+        return rtrim(config('app.url'), '/') . '/tienda';
     }
 
     /**
