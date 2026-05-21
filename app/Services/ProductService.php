@@ -164,9 +164,15 @@ class ProductService
                             'quantity' => $data->quantity,
                         ]);
                     }
+                } elseif ($stocks->count() > 1 && (int) $data->quantity !== (int) $product->quantity) {
+                    // Multi-location stock: edición directa de cantidad NO se aplica desde el form
+                    // (corrompería el balance entre locations). Antes el cambio se descartaba
+                    // silenciosamente — ahora se bloquea explícitamente.
+                    throw ProductException::updateFailed(
+                        'Este producto tiene stock en varias ubicaciones. Edita la cantidad desde el módulo de Ubicaciones para evitar inconsistencias.',
+                        ['id' => $product->id, 'locations_count' => $stocks->count()]
+                    );
                 }
-                // If product has multi-location stock (>1 rows), skip auto-sync to avoid corrupting.
-                // User must manage stock per location via Locations UI (FASE 3+).
 
                 if (!empty($changedNew)) {
                     if (array_key_exists('quantity', $changedNew)) {

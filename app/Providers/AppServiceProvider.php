@@ -16,6 +16,10 @@ use App\Services\Agent\Tools\GetStockTool;
 use App\Services\Agent\Tools\GetSalesTodayTool;
 use App\Services\Agent\Tools\GetTopSellersTool;
 use App\Services\Agent\Tools\ListLocationsTool;
+use App\Services\Agent\Tools\GetLowStockTool;
+use App\Services\Agent\Tools\ListProductsTool;
+use App\Services\Agent\Tools\StartSaleTool;
+use App\Services\Agent\Tools\StartProductCreationTool;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -33,6 +37,10 @@ class AppServiceProvider extends ServiceProvider
             $registry->register($app->make(GetSalesTodayTool::class));
             $registry->register($app->make(GetTopSellersTool::class));
             $registry->register($app->make(ListLocationsTool::class));
+            $registry->register($app->make(StartSaleTool::class));
+            $registry->register($app->make(StartProductCreationTool::class));
+            $registry->register($app->make(GetLowStockTool::class));
+            $registry->register($app->make(ListProductsTool::class));
             return $registry;
         });
     }

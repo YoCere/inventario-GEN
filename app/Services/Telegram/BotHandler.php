@@ -5,6 +5,7 @@ namespace App\Services\Telegram;
 use App\Models\Setting;
 use App\Models\TelegramConversation;
 use App\Models\Product;
+use App\Services\Agent\WhisperService;
 use App\Services\Messaging\TelegramService;
 use App\Services\Messaging\ProductSearchService;
 use Illuminate\Support\Facades\Log;
@@ -21,6 +22,7 @@ class BotHandler
         protected BotAuthHandler $authHandler,
         protected BotReportHandler $reportHandler,
         protected BotAgentHandler $agentHandler,
+        protected WhisperService $whisperService,
     ) {}
 
     public function dispatch(array $update): void
@@ -32,7 +34,12 @@ class BotHandler
                 return;
             }
 
-            $chatId = (string) $message['from']['id'];
+            // Channel posts, edited messages y service updates pueden NO traer 'from'.
+            $fromId = $message['from']['id'] ?? null;
+            if ($fromId === null) {
+                return;
+            }
+            $chatId = (string) $fromId;
 
             // CHECK AUTHENTICATION FIRST
             $conversation = TelegramConversation::where('chat_id', $chatId)
@@ -61,7 +68,39 @@ class BotHandler
                 return;
             }
 
+            // Voice/audio messages
+            if (isset($message['voice']) || isset($message['audio'])) {
+                $this->handleVoiceMessage($chatId, $message);
+                return;
+            }
+
+            if (empty($message['text'])) {
+                return;
+            }
+
+            $text = trim($message['text']);
+
+            // Commands escape search/report/agent states — only active sale flows intercept them
+            if (str_starts_with($text, '/')) {
+                $isActiveFlow = $conversation && (
+                    str_starts_with($conversation->step, 'nuevo:') ||
+                    str_starts_with($conversation->step, 'venta_rapida:') ||
+                    str_starts_with($conversation->step, 'devolver:')
+                );
+                if (!$isActiveFlow) {
+                    $conversation?->delete();
+                    $this->handleCommand($chatId, $text);
+                    return;
+                }
+            }
+
             if ($conversation) {
+                // If user sends a clearly unrelated sentence while in a structured multi-step flow,
+                // show a gentle reminder instead of feeding it to the step handler.
+                if ($this->handleOutOfContextInput($chatId, $conversation, $text)) {
+                    return;
+                }
+
                 // Route to appropriate handler based on conversation type
                 if (str_starts_with($conversation->step, 'nuevo:')) {
                     $this->productHandler->handle($chatId, $message);
@@ -105,30 +144,36 @@ class BotHandler
                 } elseif ($conversation->step === 'reportes:menu') {
                     $this->reportHandler->handle($chatId, $message);
                     return;
+                } elseif ($conversation->step === 'agent:active') {
+                    // Ongoing agent conversation — route directly, skip product search
+                    $this->agentHandler->handle($chatId, $text);
+                    return;
                 }
             }
 
-            if (empty($message['text'])) {
-                return;
-            }
-
-            $text = trim($message['text']);
-
-            if (str_starts_with($text, '/')) {
-                $this->handleCommand($chatId, $text);
-            } else {
-                // Check if trying to sell from recent search
-                if (strtolower($text) === 'vender') {
-                    Log::info('User requested quick sale', ['chatId' => $chatId]);
-                    $this->handleQuickSaleFromSearch($chatId);
-                } elseif (\App\Models\Setting::get('ai_chatbot_enabled') === '1') {
-                    // Free text → IA agent if enabled
-                    Log::info('Dispatching to agent', ['chatId' => $chatId]);
+            // Free text routing
+            if (strtolower($text) === 'vender') {
+                Log::info('User requested quick sale', ['chatId' => $chatId]);
+                $this->handleQuickSaleFromSearch($chatId);
+            } elseif ($this->isConversationalQuery($text)) {
+                // Looks like a question/sentence → skip product search, go straight to AI
+                if (Setting::get('ai_chatbot_enabled') === '1') {
+                    Log::info('Conversational query → agent', ['chatId' => $chatId]);
                     $this->agentHandler->handle($chatId, $text);
                 } else {
-                    // Fallback: free text = product search
-                    Log::info('Searching product', ['query' => $text, 'chatId' => $chatId]);
-                    $this->handleSearch($chatId, $text);
+                    $this->telegram->sendMessage($chatId, "❓ Escribe el nombre de un producto para buscarlo.");
+                }
+            } else {
+                // Short query → product search first, AI fallback if no match
+                $searchResults = $this->searchService->search($text);
+                if (!empty($searchResults)) {
+                    Log::info('Product search hit', ['chatId' => $chatId]);
+                    $this->handleSearch($chatId, $text, $searchResults);
+                } elseif (Setting::get('ai_chatbot_enabled') === '1') {
+                    Log::info('No product match → agent', ['chatId' => $chatId]);
+                    $this->agentHandler->handle($chatId, $text);
+                } else {
+                    $this->telegram->sendMessage($chatId, "❌ No se encontró ningún producto con \"<i>{$text}</i>\"");
                 }
             }
         } catch (\Exception $e) {
@@ -136,9 +181,9 @@ class BotHandler
         }
     }
 
-    protected function handleSearch(string $chatId, string $text): void
+    protected function handleSearch(string $chatId, string $text, ?array $results = null): void
     {
-        $results = $this->searchService->search($text);
+        $results ??= $this->searchService->search($text);
 
         if (empty($results)) {
             $this->telegram->sendMessage($chatId, "❌ No se encontró ningún producto con \"<i>{$text}</i>\"");
@@ -374,7 +419,7 @@ class BotHandler
 
     protected function cmdSales(string $chatId): void
     {
-        $today = now()->toDate();
+        $today = today();
         $sales = \App\Models\Sale::whereDate('created_at', $today)
             ->where('status', 'completed')
             ->get();
@@ -461,5 +506,189 @@ class BotHandler
         }
         Setting::set('telegram_bot_paused', '0');
         $this->telegram->sendMessage($chatId, "✅ Bot activado y listo.");
+    }
+
+    protected function handleVoiceMessage(string $chatId, array $message): void
+    {
+        if (Setting::get('ai_voice_enabled', '0') !== '1') {
+            $this->telegram->sendMessage($chatId, "🎙️ El procesamiento de voz no está habilitado.");
+            return;
+        }
+
+        $voiceData = $message['voice'] ?? $message['audio'] ?? null;
+        if (!$voiceData) {
+            return;
+        }
+
+        $duration = (int) ($voiceData['duration'] ?? 0);
+        $maxSeconds = (int) Setting::get('whisper_max_seconds', '60');
+
+        if ($duration > $maxSeconds) {
+            $this->telegram->sendMessage($chatId, "⏱️ Audio demasiado largo. Máximo {$maxSeconds} segundos.");
+            return;
+        }
+
+        try {
+            $this->telegram->sendChatAction($chatId, 'typing');
+
+            $fileId   = $voiceData['file_id'];
+            $filePath = $this->telegram->getFile($fileId);
+            $audio    = $this->telegram->downloadFile($filePath);
+            $filename = basename($filePath) ?: 'audio.ogg';
+
+            $transcript = $this->whisperService->transcribe($audio, $filename, $duration);
+
+            if (empty($transcript)) {
+                $this->telegram->sendMessage($chatId, "❌ No se pudo transcribir el audio.");
+                return;
+            }
+
+            // If user is mid-flow, route transcript to the correct handler
+            $activeConv = TelegramConversation::where('chat_id', $chatId)->where('step', '!=', 'idle')->first();
+            if ($activeConv) {
+                // Same out-of-context check as text dispatch
+                if ($this->handleOutOfContextInput($chatId, $activeConv, $transcript)) {
+                    return;
+                }
+
+                $step    = $activeConv->step;
+                $fakeMsg = array_merge($message, ['text' => $transcript]);
+                if (str_starts_with($step, 'venta_rapida:')) {
+                    $this->saleHandler->handle($chatId, $fakeMsg);
+                    return;
+                }
+                if (str_starts_with($step, 'nuevo:')) {
+                    $this->productHandler->handle($chatId, $fakeMsg);
+                    return;
+                }
+                if (str_starts_with($step, 'devolver:')) {
+                    $this->refundHandler->handle($chatId, $fakeMsg);
+                    return;
+                }
+                if ($step === 'agent:active') {
+                    $this->agentHandler->handleVoice($chatId, $transcript);
+                    return;
+                }
+                // busqueda:* — fall through to normal search routing below
+            }
+
+            // Same routing as text — product search first, agent only for conversational queries
+            if ($this->isConversationalQuery($transcript)) {
+                $this->agentHandler->handleVoice($chatId, $transcript);
+            } else {
+                $searchResults = $this->searchService->search($transcript);
+                if (!empty($searchResults)) {
+                    $this->handleSearch($chatId, $transcript, $searchResults);
+                } else {
+                    $this->agentHandler->handleVoice($chatId, $transcript);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::error('Voice message error', ['chat_id' => $chatId, 'error' => $e->getMessage()]);
+            $this->telegram->sendMessage($chatId, "❌ Error al procesar el audio: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * If user sends conversational sentence while in structured multi-step flow
+     * (nuevo:*, venta_rapida:*, devolver:*), show step hint reminder and return true.
+     * Caller should return without further processing. Returns false if input is normal.
+     */
+    protected function handleOutOfContextInput(string $chatId, TelegramConversation $conv, string $text): bool
+    {
+        $step = $conv->step;
+        $structured = str_starts_with($step, 'nuevo:')
+            || str_starts_with($step, 'venta_rapida:')
+            || str_starts_with($step, 'devolver:');
+
+        if (!$structured) {
+            return false;
+        }
+
+        $lower = mb_strtolower(trim($text));
+
+        // 1. Restart intent → auto-cancel and route to agent / show menu
+        $restartKeywords = ['crear producto', 'registrar producto', 'nuevo producto', 'agregar producto',
+                            'empezar de nuevo', 'cancelar todo', 'salir del proceso'];
+        foreach ($restartKeywords as $kw) {
+            if (str_contains($lower, $kw)) {
+                $conv->delete();
+                if (Setting::get('ai_chatbot_enabled') === '1') {
+                    $this->telegram->sendMessage($chatId, "🔄 Proceso anterior cancelado.");
+                    $this->agentHandler->handle($chatId, $text);
+                } else {
+                    $this->telegram->sendMessage(
+                        $chatId,
+                        "🔄 Proceso anterior cancelado. Usa /nuevo, /devolver, o escribe un nombre para buscar."
+                    );
+                }
+                return true;
+            }
+        }
+
+        // 2. Only block clearly out-of-context input (very long sentences, > 15 words).
+        // Short voice replies like "no quiero descuento", "efectivo por favor", "40 cajas" pass through
+        // to handlers (NumberParser, keyword matching) which now tolerate natural language.
+        $wordCount = str_word_count($text);
+        if ($wordCount <= 15) {
+            return false;
+        }
+
+        $hints = [
+            'nuevo:nombre'           => 'nombre del producto',
+            'nuevo:categoria'        => 'categoría',
+            'nuevo:precio_compra'    => 'precio de compra',
+            'nuevo:precio_venta'     => 'precio de venta',
+            'nuevo:cantidad'         => 'cantidad inicial',
+            'nuevo:foto'             => 'foto (o escribe omitir)',
+            'nuevo:confirmar'        => 'confirmación (sí/no)',
+            'venta_rapida:cantidad'  => 'cantidad a vender',
+            'venta_rapida:descuento' => 'descuento (número, %, o no)',
+            'venta_rapida:metodo_pago' => 'método de pago (1=efectivo, 2=transferencia)',
+            'venta_rapida:confirmar' => 'confirmación (sí/no)',
+            'devolver:seleccionar'   => 'ID o número de venta',
+            'devolver:confirmar'     => 'confirmación (1 = sí)',
+        ];
+        $hint = $hints[$step] ?? 'datos del flujo actual';
+
+        $this->telegram->sendMessage(
+            $chatId,
+            "📝 Estás en proceso activo. Esperando: <b>{$hint}</b>.\n\n" .
+            "Escribe <b>/cancelar</b> si quieres salir y empezar de nuevo."
+        );
+        return true;
+    }
+
+    /**
+     * Detect conversational messages that should go to AI, not product search.
+     * Product names are short (1-3 words) and don't start with question/verb words.
+     */
+    protected function isConversationalQuery(string $text): bool
+    {
+        // Question mark = definitely a question
+        if (str_contains($text, '?')) {
+            return true;
+        }
+
+        // More than 4 words = likely a sentence, not a product name
+        if (str_word_count($text) > 4) {
+            return true;
+        }
+
+        // Starts with Spanish interrogative or conversational starters
+        $conversationalStarters = [
+            'cuánto', 'cuanto', 'cuánta', 'cuanta', 'cuántos', 'cuantos',
+            'cómo', 'como', 'qué', 'que', 'cuál', 'cual',
+            'dónde', 'donde', 'cuándo', 'cuando', 'por',
+            'hola', 'buenos', 'buenas', 'buen',
+            'necesito', 'quiero', 'quisiera',
+            'hay', 'tiene', 'tenemos', 'tienen',
+            'verificar', 'mostrar', 'muéstrame', 'muestrame',
+            'dame', 'dime', 'ayuda', 'ayúdame',
+            'vendimos', 'vendiste', 'vendió',
+        ];
+
+        $firstWord = strtolower(explode(' ', trim($text))[0]);
+        return in_array($firstWord, $conversationalStarters, true);
     }
 }

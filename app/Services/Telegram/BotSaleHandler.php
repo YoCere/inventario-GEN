@@ -6,6 +6,7 @@ use App\Models\TelegramConversation;
 use App\Models\Product;
 use App\Services\Messaging\TelegramService;
 use App\Services\SaleService;
+use App\Support\NumberParser;
 use App\DTOs\SaleData;
 use App\DTOs\SaleItemData;
 use App\Enums\PaymentMethod;
@@ -79,11 +80,11 @@ class BotSaleHandler
 
     private function askCantidad(string $chatId, TelegramConversation $conversation, string $input): void
     {
-        $cantidad = (int) $input;
+        $cantidad = NumberParser::extractInt($input);
         $data = $conversation->data ?? [];
 
-        if ($cantidad <= 0) {
-            $this->telegram->sendMessage($chatId, "❌ Cantidad inválida. Ingresa un número mayor a 0.");
+        if ($cantidad === null || $cantidad <= 0) {
+            $this->telegram->sendMessage($chatId, "❌ Cantidad inválida. Ingresa un número mayor a 0 (ej: 40, cuarenta).");
             return;
         }
 
@@ -122,14 +123,29 @@ class BotSaleHandler
 
         $input = strtolower(trim($input));
 
-        if ($input !== 'no') {
+        // Accept natural-language "no" variants from voice
+        $negatives = ['no', 'nada', 'sin descuento', 'ninguno', 'ninguna', 'cero'];
+        $isNegative = false;
+        foreach ($negatives as $neg) {
+            if (str_contains($input, $neg)) {
+                $isNegative = true;
+                break;
+            }
+        }
+
+        if (!$isNegative) {
             // Parse descuento: puede ser "500" (Bs) o "10%" (porcentaje)
-            if (str_ends_with($input, '%')) {
-                $porcentaje = (float) str_replace('%', '', $input);
+            if (str_contains($input, '%') || str_contains($input, 'porciento') || str_contains($input, 'por ciento')) {
+                $clean = str_replace(['%', 'porciento', 'por ciento'], '', $input);
+                $porcentaje = NumberParser::extractFloat($clean) ?? 0.0;
                 $descuento = (int) round(($data['subtotal'] * $porcentaje) / 100);
             } else {
-                // Asumir que es Bs, convertir a centavos (1.40 -> 140)
-                $descuento = (int) round(floatval($input) * 100);
+                $bs = NumberParser::extractFloat($input);
+                if ($bs === null) {
+                    $this->telegram->sendMessage($chatId, "❌ Descuento inválido. Ej: 500, 10%, o 'no'.");
+                    return;
+                }
+                $descuento = (int) round($bs * 100);
             }
 
             // Validar que descuento no supere subtotal
@@ -174,10 +190,17 @@ class BotSaleHandler
         $data = $conversation->data ?? [];
         $input = strtolower(trim($input));
 
-        $metodoPago = match ($input) {
-            '1', 'efectivo', 'cash' => PaymentMethod::CASH,
-            '2', 'transferencia', 'transfer', 'banco' => PaymentMethod::TRANSFER,
-            default => null,
+        // Match against keywords; tolerant of full sentences from voice
+        $hasCash     = $input === '1' || str_contains($input, 'efectivo') || str_contains($input, 'cash')
+                       || str_contains($input, 'contado') || str_contains($input, 'billete');
+        $hasTransfer = $input === '2' || str_contains($input, 'transfer') || str_contains($input, 'banco')
+                       || str_contains($input, 'qr') || str_contains($input, 'tigo') || str_contains($input, 'depósito')
+                       || str_contains($input, 'deposito');
+
+        $metodoPago = match (true) {
+            $hasCash     => PaymentMethod::CASH,
+            $hasTransfer => PaymentMethod::TRANSFER,
+            default      => null,
         };
 
         if (!$metodoPago) {

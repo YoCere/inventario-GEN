@@ -4,10 +4,12 @@ namespace App\Services\Telegram;
 
 use App\Models\TelegramConversation;
 use App\Models\Category;
-use App\Models\Product;
+use App\DTOs\CategoryData;
+use App\DTOs\ProductData;
+use App\Services\CategoryService;
 use App\Services\Messaging\TelegramService;
 use App\Services\ProductService;
-use App\DTOs\ProductData;
+use App\Support\NumberParser;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
@@ -17,6 +19,7 @@ class BotProductHandler
     public function __construct(
         protected TelegramService $telegram,
         protected ProductService $productService,
+        protected CategoryService $categoryService,
     ) {}
 
     public function handle(string $chatId, array $message): void
@@ -57,7 +60,6 @@ class BotProductHandler
     private function handleNuevoFlow(string $chatId, TelegramConversation $conversation, array $message, string $text): void
     {
         $step = $conversation->step;
-        $data = $conversation->data ?? [];
 
         match ($step) {
             'nuevo:nombre' => $this->askNombre($chatId, $conversation, $text),
@@ -81,93 +83,174 @@ class BotProductHandler
         $data = $conversation->data ?? [];
         $data['nombre'] = $nombre;
 
-        // Get categories for next step
-        $categories = Category::orderBy('name')->get();
         $conversation->update([
             'step' => 'nuevo:categoria',
             'data' => $data,
             'expires_at' => now()->addMinutes(30),
         ]);
 
-        $message = "📦 Nombre: <b>{$nombre}</b>\n\n";
-        $message .= "Ahora, ¿cuál es la <b>categoría</b>?\n\n";
+        $this->telegram->sendMessage($chatId, "📦 Nombre: <b>{$nombre}</b>\n\n" . $this->buildCategoryPrompt());
+    }
 
-        if ($categories->count() <= 5) {
-            // Show numbered list
-            foreach ($categories as $idx => $cat) {
-                $message .= ($idx + 1) . ". {$cat->name}\n";
-            }
-            $message .= "\nResponde con el número";
+    private function buildCategoryPrompt(): string
+    {
+        $categories = Category::orderBy('name')->limit(12)->get();
+        $total = Category::count();
+
+        $msg = "¿Cuál es la <b>categoría</b>?\n\n";
+
+        if ($categories->isEmpty()) {
+            $msg .= "No hay categorías aún. Escribe el nombre de la nueva categoría.";
         } else {
-            // Ask to type
-            $message .= "Escribe el nombre de la categoría (ej: Electrónica)";
+            foreach ($categories as $idx => $cat) {
+                $msg .= ($idx + 1) . ". {$cat->name}\n";
+            }
+            if ($total > 12) {
+                $msg .= "... ({$total} en total)\n";
+            }
+            $msg .= "\nEscribe el <b>número</b> o el <b>nombre</b>.\n";
+            $msg .= "<i>Si no existe la categoría, escríbela y te pregunto si crear.</i>";
         }
 
-        $this->telegram->sendMessage($chatId, $message);
+        return $msg;
     }
 
     private function askCategoria(string $chatId, TelegramConversation $conversation, string $input): void
     {
-        $data = $conversation->data ?? [];
-        $category = null;
+        $data      = $conversation->data ?? [];
+        $inputLow  = mb_strtolower(trim($input));
 
-        // Try by number first
-        $num = (int) $input;
-        if ($num > 0) {
-            $category = Category::orderBy('name')->skip($num - 1)->first();
+        // ── Pending create confirmation ──────────────────────────────────────
+        if (!empty($data['categoria_pending'])) {
+            $pendingName = $data['categoria_pending'];
+
+            if (\in_array($inputLow, ['si', 'sí', 's', 'yes', '1'], true)) {
+                $this->createAndAdvanceCategory($chatId, $conversation, $data, $pendingName);
+                return;
+            }
+
+            if (\in_array($inputLow, ['no', 'n', '2'], true)) {
+                unset($data['categoria_pending']);
+                $conversation->update(['data' => $data]);
+                $this->telegram->sendMessage($chatId, $this->buildCategoryPrompt());
+                return;
+            }
+
+            // User typed a new name instead → clear pending, fall through to search
+            unset($data['categoria_pending']);
+            $conversation->update(['data' => $data]);
         }
 
-        // Try by name (fuzzy match)
-        if (!$category) {
-            $category = Category::whereRaw('LOWER(name) LIKE ?', ['%' . strtolower($input) . '%'])->first();
-        }
-
-        // Si no existe, ofrecee crear
-        if (!$category) {
-            // Checa si usuario quiere crear
-            if (str_starts_with(strtolower($input), '+') || strtolower($input) === 'crear') {
-                $newCatName = str_replace('+', '', $input);
-                $newCatName = trim($newCatName === 'crear' ? '' : $newCatName);
-
-                if (empty($newCatName)) {
-                    $this->telegram->sendMessage($chatId, "❓ Escribe el nombre de la categoría a crear.\n\nEj: +Electrónica o +Accesorios");
-                    return;
-                }
-
-                try {
-                    $category = Category::create(['name' => $newCatName]);
-                    $this->telegram->sendMessage($chatId, "✅ Categoría creada: <b>{$newCatName}</b>");
-                } catch (\Exception $e) {
-                    $this->telegram->sendMessage($chatId, "❌ Error al crear categoría. Intenta de nuevo.");
-                    return;
-                }
-            } else {
-                $this->telegram->sendMessage(
-                    $chatId,
-                    "❌ Categoría no encontrada.\n\n" .
-                    "Opciones:\n" .
-                    "- Escribe número de lista\n" .
-                    "- Escribe nombre existente\n" .
-                    "- Escribe +NombreNueva para crear"
-                );
+        // ── Number selection ─────────────────────────────────────────────────
+        if (ctype_digit(trim($input))) {
+            $idx      = (int) $input - 1;
+            $category = Category::orderBy('name')->offset($idx)->limit(1)->first();
+            if ($category) {
+                $this->setCategoryAndAdvance($chatId, $conversation, $data, $category);
                 return;
             }
         }
 
-        $data['categoria_id'] = $category->id;
+        // ── Text search (fuzzy) ──────────────────────────────────────────────
+        $category = $this->findCategoryByText($input);
+        if ($category) {
+            $this->setCategoryAndAdvance($chatId, $conversation, $data, $category);
+            return;
+        }
+
+        // ── Not found → ask to create ────────────────────────────────────────
+        $similar = Category::whereRaw('LOWER(name) LIKE ?', ['%' . $inputLow . '%'])
+            ->orderBy('name')
+            ->limit(3)
+            ->get();
+
+        $data['categoria_pending'] = $input;
+        $conversation->update(['data' => $data, 'expires_at' => now()->addMinutes(30)]);
+
+        $msg = "❓ No encontré \"<b>{$input}</b>\".\n\n";
+        if ($similar->isNotEmpty()) {
+            $msg .= "¿Quisiste decir?\n";
+            foreach ($similar as $cat) {
+                $msg .= "• {$cat->name}\n";
+            }
+            $msg .= "\n";
+        }
+        $msg .= "¿Crear la categoría <b>\"{$input}\"</b>?\n<i>Responde sí/no o escribe otro nombre.</i>";
+
+        $this->telegram->sendMessage($chatId, $msg);
+    }
+
+    private function findCategoryByText(string $input): ?Category
+    {
+        // Exact match (case-insensitive)
+        $cat = Category::whereRaw('LOWER(name) = LOWER(?)', [$input])->first();
+        if ($cat) {
+            return $cat;
+        }
+
+        // Contains match
+        $cat = Category::whereRaw('LOWER(name) LIKE ?', ['%' . mb_strtolower($input) . '%'])->first();
+        if ($cat) {
+            return $cat;
+        }
+
+        // Normalized (accent-stripped) match
+        $normalized = mb_strtolower(iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $input) ?: $input);
+        if ($normalized !== mb_strtolower($input)) {
+            $all = Category::orderBy('name')->get();
+            foreach ($all as $cat) {
+                $catNorm = mb_strtolower(iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $cat->name) ?: $cat->name);
+                if (str_contains($catNorm, $normalized)) {
+                    return $cat;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function setCategoryAndAdvance(string $chatId, TelegramConversation $conversation, array $data, Category $category): void
+    {
+        $data['categoria_id']     = $category->id;
         $data['categoria_nombre'] = $category->name;
+        unset($data['categoria_pending']);
 
         $conversation->update([
-            'step' => 'nuevo:precio_compra',
-            'data' => $data,
+            'step'       => 'nuevo:precio_compra',
+            'data'       => $data,
             'expires_at' => now()->addMinutes(30),
         ]);
 
         $this->telegram->sendMessage(
             $chatId,
             "✅ Categoría: <b>{$category->name}</b>\n\n" .
-            "¿Cuál es el <b>precio de compra</b>? (número, ej: 1500)"
+            "¿Cuál es el <b>precio de compra</b>? (número, ej: 25.50)"
         );
+    }
+
+    private function createAndAdvanceCategory(string $chatId, TelegramConversation $conversation, array $data, string $name): void
+    {
+        try {
+            $name = trim($name);
+            $slug = Str::slug($name);
+
+            // Ensure unique slug
+            $base = $slug;
+            $n    = 1;
+            while (Category::where('slug', $slug)->exists()) {
+                $slug = $base . '-' . $n++;
+            }
+
+            $category = $this->categoryService->createCategory(
+                CategoryData::fromArray(['name' => $name, 'slug' => $slug])
+            );
+
+            $this->telegram->sendMessage($chatId, "✅ Categoría creada: <b>{$name}</b>");
+            $this->setCategoryAndAdvance($chatId, $conversation, $data, $category);
+        } catch (\Exception $e) {
+            Log::error('Category creation failed in bot', ['error' => $e->getMessage()]);
+            $this->telegram->sendMessage($chatId, "❌ Error al crear categoría: " . $e->getMessage() . "\n\nIntenta de nuevo.");
+        }
     }
 
     private function askPrecioCompra(string $chatId, TelegramConversation $conversation, string $input): void
@@ -224,10 +307,9 @@ class BotProductHandler
 
     private function askCantidad(string $chatId, TelegramConversation $conversation, string $input): void
     {
-        $qty = (int) $input;
-
-        if ($qty < 0) {
-            $this->telegram->sendMessage($chatId, "❌ Cantidad inválida.");
+        $qty = NumberParser::extractInt($input);
+        if ($qty === null || $qty < 0) {
+            $this->telegram->sendMessage($chatId, "❌ Cantidad inválida. Escribe un número (ej: 10, diez)");
             return;
         }
 
@@ -292,7 +374,7 @@ class BotProductHandler
                 };
 
                 // Ensure directory exists
-                Storage::disk('public')->makeDirectory('products', 0755, true);
+                Storage::disk('public')->makeDirectory('products');
 
                 // Store in storage
                 $storagePath = 'products/' . Str::uuid() . '.' . $extension;
@@ -379,24 +461,16 @@ class BotProductHandler
             );
         } catch (\Exception $e) {
             Log::error('Product creation error', ['error' => $e->getMessage()]);
-            $conversation->delete();
-            $this->telegram->sendMessage(
-                $chatId,
-                "❌ Error al crear el producto.\n\n" .
-                "Error: " . $e->getMessage()
-            );
+            $this->telegram->sendMessage($chatId, "❌ Error al crear el producto. Intenta de nuevo o /cancelar.");
         }
     }
 
     private function parsePrice(string $input): ?int
     {
-        $input = trim(str_replace(',', '.', $input));
-
-        if (!is_numeric($input)) {
+        $value = NumberParser::extractFloat($input);
+        if ($value === null || $value <= 0) {
             return null;
         }
-
-        // Convert to cents (multiply by 100)
-        return (int) round(floatval($input) * 100);
+        return (int) round($value * 100);
     }
 }

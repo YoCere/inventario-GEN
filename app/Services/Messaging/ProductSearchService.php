@@ -41,6 +41,7 @@ class ProductSearchService
                 $q->where('sku', $query)
                     ->orWhereRaw("LOWER(name) = LOWER(?)", [$query]);
             })
+            ->with(['unit', 'category', 'stocks.location.warehouse'])
             ->get();
     }
 
@@ -53,7 +54,34 @@ class ProductSearchService
             return collect();
         }
 
-        $products = Product::where('is_active', true)->get();
+        // Pre-filtrar en SQL: solo cargar productos cuyo nombre/sku/descripción
+        // contenga AL MENOS un token. Evita full-table scan PHP.
+        // NOTA: LIKE en SQLite es binary y NO ignora acentos. Usuario que busca "cafe"
+        // sin acento puede no matchear "Café" en DB. Para esos casos cae fallback abajo.
+        $relations = ['unit', 'category', 'stocks.location.warehouse'];
+
+        $products = Product::where('is_active', true)
+            ->where(function ($q) use ($tokens) {
+                foreach ($tokens as $token) {
+                    $like = '%' . $token . '%';
+                    $q->orWhereRaw('LOWER(name) LIKE ?', [$like])
+                        ->orWhereRaw('LOWER(sku) LIKE ?', [$like])
+                        ->orWhereRaw('LOWER(description) LIKE ?', [$like]);
+                }
+            })
+            ->with($relations)
+            ->limit(200)
+            ->get();
+
+        // Fallback: pre-filter no matcheó (probable mismatch acentos). Cargar set acotado
+        // para que el scoring fuzzy PHP (levenshtein) tenga oportunidad. Cap a 500 para
+        // evitar OOM. Si tienes >500 productos activos considera columna normalized_name.
+        if ($products->isEmpty()) {
+            $products = Product::where('is_active', true)
+                ->with($relations)
+                ->limit(500)
+                ->get();
+        }
 
         $scored = $products->map(function ($product) use ($tokens, $query, $normalized) {
             $name_lower = mb_strtolower($product->name);
@@ -103,6 +131,11 @@ class ProductSearchService
 
     private function searchWithAi(string $query): Collection
     {
+        // Skip AI for queries that are clearly questions, not product names
+        if (str_contains($query, '?') || str_word_count($query) > 3) {
+            return collect();
+        }
+
         try {
             $products = Product::where('is_active', true)
                 ->select(['id', 'name', 'sku'])
@@ -116,36 +149,19 @@ class ProductSearchService
             $productList = $products->map(fn ($p) => "{$p->id}:{$p->name} (SKU: {$p->sku})")
                 ->implode("\n");
 
-            $apiKey = \App\Models\Setting::get('anthropic_api_key');
-            if (!$apiKey) {
-                return collect();
-            }
-
             $prompt = "De esta lista de productos:\n{$productList}\n\n¿Cuál coincide mejor con: '{$query}'?\nResponde SOLO con el ID del producto (número) o 'ninguno' si no hay coincidencia.";
 
-            $response = Http::withHeaders([
-                'x-api-key' => $apiKey,
-                'anthropic-version' => '2023-06-01',
-            ])->timeout(10)->post('https://api.anthropic.com/v1/messages', [
-                'model' => 'claude-haiku-4-5-20251001',
-                'max_tokens' => 50,
-                'messages' => [
-                    ['role' => 'user', 'content' => $prompt],
-                ],
-            ]);
+            $provider = \App\Models\Setting::get('ai_provider', 'anthropic');
+            $content = $provider === 'openai_compatible'
+                ? $this->aiSearchOpenAi($prompt)
+                : $this->aiSearchAnthropic($prompt);
 
-            if ($response->failed()) {
-                Log::warning('AI search API failed', ['status' => $response->status()]);
-                return collect();
-            }
-
-            $content = $response->json('content.0.text', '');
-            $productId = (int) trim($content);
+            $productId = (int) trim((string) $content);
 
             if ($productId > 0) {
                 $product = $products->firstWhere('id', $productId);
                 if ($product) {
-                    return collect([$product->load('unit', 'category')]);
+                    return collect([$product->load(['unit', 'category', 'stocks.location.warehouse'])]);
                 }
             }
 
@@ -154,6 +170,56 @@ class ProductSearchService
             Log::error('AI search error', ['error' => $e->getMessage()]);
             return collect();
         }
+    }
+
+    private function aiSearchAnthropic(string $prompt): string
+    {
+        $apiKey = \App\Models\Setting::get('anthropic_api_key', '');
+        if (!$apiKey) {
+            return '';
+        }
+
+        $response = Http::withHeaders([
+            'x-api-key' => $apiKey,
+            'anthropic-version' => '2023-06-01',
+        ])->timeout(10)->post('https://api.anthropic.com/v1/messages', [
+            'model' => 'claude-haiku-4-5-20251001',
+            'max_tokens' => 50,
+            'messages' => [['role' => 'user', 'content' => $prompt]],
+        ]);
+
+        if ($response->failed()) {
+            Log::warning('AI search (Anthropic) failed', ['status' => $response->status()]);
+            return '';
+        }
+
+        return (string) $response->json('content.0.text', '');
+    }
+
+    private function aiSearchOpenAi(string $prompt): string
+    {
+        $apiKey = \App\Models\Setting::get('openai_api_key', '');
+        if (!$apiKey) {
+            return '';
+        }
+
+        $baseUrl = rtrim(\App\Models\Setting::get('ai_api_base_url', 'https://api.openai.com/v1'), '/');
+        $model = \App\Models\Setting::get('ai_model', 'gpt-4o-mini');
+
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . $apiKey,
+        ])->timeout(10)->post($baseUrl . '/chat/completions', [
+            'model' => $model,
+            'max_tokens' => 50,
+            'messages' => [['role' => 'user', 'content' => $prompt]],
+        ]);
+
+        if ($response->failed()) {
+            Log::warning('AI search (OpenAI-compatible) failed', ['status' => $response->status()]);
+            return '';
+        }
+
+        return (string) $response->json('choices.0.message.content', '');
     }
 
     private function normalize(string $text): string
@@ -177,8 +243,12 @@ class ProductSearchService
             $price = number_format($product->selling_price / 100, 2);
             $stock = $product->quantity <= $product->min_stock ? '⚠️ ' : '';
 
-            // Build location info
-            $stocks = $product->stocks()->with('location.warehouse')->where('quantity', '>', 0)->get();
+            // Build location info. Usa relación eager-loaded si está disponible
+            // (ver searchExact/searchFuzzy con ->with('stocks.location.warehouse')).
+            // Fallback a query si la relación no está cargada.
+            $stocks = $product->relationLoaded('stocks')
+                ? $product->stocks->where('quantity', '>', 0)
+                : $product->stocks()->with('location.warehouse')->where('quantity', '>', 0)->get();
             $locationLine = '';
             if ($stocks->count() === 1) {
                 $loc = $stocks->first()->location;
@@ -187,7 +257,8 @@ class ProductSearchService
                 $parts = $stocks->map(function ($s) use ($unit) {
                     $loc = $s->location;
                     $whName = $loc?->warehouse?->name ?? '';
-                    return "  • {$whName} › {$loc?->name}: {$s->quantity} {$unit}";
+                    $locName = $loc?->name ?? '';
+                    return "  • {$whName} › {$locName}: {$s->quantity} {$unit}";
                 })->implode("\n");
                 $locationLine = "\n📍 Ubicaciones:\n{$parts}";
             }

@@ -4,7 +4,7 @@ namespace App\Services\Agent;
 
 use App\Models\AiUsageLog;
 use App\Models\Setting;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 class CostTracker
 {
@@ -25,8 +25,11 @@ class CostTracker
         'gpt-4o-mini' => ['input' => 0.15, 'output' => 0.60, 'cache_write' => 0.0, 'cache_read' => 0.075],
         'gpt-4o' => ['input' => 2.50, 'output' => 10.00, 'cache_write' => 0.0, 'cache_read' => 1.25],
 
-        // External services
+        // External services — Whisper
         'whisper-1' => ['per_minute' => 0.006],
+        'whisper-large-v3' => ['per_minute' => 0.00185],
+        'whisper-large-v3-turbo' => ['per_minute' => 0.00067],
+        'distil-whisper-large-v3-en' => ['per_minute' => 0.00033],
         'tts-1' => ['per_1m_chars' => 15.00],
         'piper' => ['per_1m_chars' => 0.0], // self-hosted
     ];
@@ -45,7 +48,7 @@ class CostTracker
     ): AiUsageLog {
         $cost = $this->calculateCost($model, $tokensIn, $tokensOut, $cacheRead, $cacheWrite, $audioSeconds);
 
-        return AiUsageLog::create([
+        $log = AiUsageLog::create([
             'user_id' => $userId,
             'chat_id' => $chatId,
             'channel' => 'telegram',
@@ -60,6 +63,16 @@ class CostTracker
             'summary' => $summary,
             'created_at' => now(),
         ]);
+
+        // Invalidar cache de gasto del día — la próxima lectura recalcula.
+        Cache::forget($this->todayCostCacheKey());
+
+        return $log;
+    }
+
+    private function todayCostCacheKey(): string
+    {
+        return 'ai_cost_total_' . today()->format('Y-m-d');
     }
 
     public function calculateCost(
@@ -94,9 +107,25 @@ class CostTracker
      */
     public function withinDailyLimit(): bool
     {
-        $maxDaily = (float) Setting::get('ai_max_cost_usd_per_day', '5.00');
+        $raw = Setting::get('ai_max_cost_usd_per_day', '');
 
-        $todayCost = AiUsageLog::whereDate('created_at', today())->sum('cost_usd');
+        // Empty or zero = no limit configured
+        if ($raw === '' || $raw === null) {
+            return true;
+        }
+
+        $maxDaily = (float) $raw;
+        if ($maxDaily <= 0) {
+            return true;
+        }
+
+        // Cachear el total diario: cada record() invalida la clave, así que
+        // sólo se reconsulta cuando hay una nueva inserción.
+        $todayCost = Cache::remember(
+            $this->todayCostCacheKey(),
+            now()->endOfDay(),
+            fn () => (float) AiUsageLog::whereDate('created_at', today())->sum('cost_usd'),
+        );
 
         return $todayCost < $maxDaily;
     }

@@ -23,43 +23,71 @@ class TelegramPollingCommand extends Command
         return storage_path('framework/telegram-poll.stop');
     }
 
+    private function isProcessRunning(int $pid): bool
+    {
+        if (PHP_OS_FAMILY === 'Windows') {
+            exec("tasklist /FI \"PID eq {$pid}\" /NH 2>&1", $output);
+            return str_contains(implode('', $output), (string) $pid);
+        }
+        return file_exists("/proc/{$pid}");
+    }
+
     public function handle(TelegramService $telegram, BotHandler $handler): int
     {
-        // Reject if another instance is already running
         $pidFile = self::pidFile();
+
         if (file_exists($pidFile)) {
-            $existingPid = trim((string) file_get_contents($pidFile));
-            $this->warn("Already running (PID {$existingPid}). Use php artisan telegram:stop to stop it.");
-            return Command::FAILURE;
+            $existingPid = (int) trim((string) file_get_contents($pidFile));
+            if ($this->isProcessRunning($existingPid)) {
+                $this->warn("Already running (PID {$existingPid}). Use php artisan telegram:stop to stop it.");
+                return Command::FAILURE;
+            }
+            // Stale PID file from a previous crash or Ctrl+C
+            $this->warn("Stale PID file found (PID {$existingPid} not running). Cleaning up and starting.");
+            @unlink($pidFile);
         }
 
         file_put_contents($pidFile, (string) getmypid());
-        @unlink(self::stopFile()); // clear any stale stop flag
+        @unlink(self::stopFile());
+
+        // Clean up PID file on any exit (Ctrl+C, crash, etc.)
+        register_shutdown_function(function () use ($pidFile): void {
+            @unlink($pidFile);
+            @unlink(self::stopFile());
+        });
 
         $this->info('Telegram polling started (PID ' . getmypid() . '). Use php artisan telegram:stop to stop.');
 
-        $offset = 0;
+        $offset    = 0;
+        $errDelay  = 5;   // seconds; doubles on consecutive errors, caps at 60
 
         while (true) {
-            // Graceful stop check
             if (file_exists(self::stopFile())) {
-                @unlink(self::stopFile());
-                @unlink($pidFile);
                 $this->info('Stop signal received. Exiting.');
-                return Command::SUCCESS;
+                return Command::SUCCESS; // shutdown function cleans files
             }
 
             try {
-                $updates = $telegram->getUpdates($offset);
+                $updates = $telegram->getUpdates($offset, timeout: 20);
+
+                $errDelay = 5; // reset on success
 
                 if (empty($updates)) {
-                    sleep(1);
                     continue;
                 }
 
                 foreach ($updates as $update) {
-                    $handler->dispatch($update);
+                    // Avanzar offset PRIMERO para que un crash del handler no atasque el bot
+                    // en el mismo update infinitamente (Telegram re-enviaría tras getUpdates).
                     $offset = $update['update_id'] + 1;
+                    try {
+                        $handler->dispatch($update);
+                    } catch (\Throwable $e) {
+                        Log::error('Telegram dispatch failed for update', [
+                            'update_id' => $update['update_id'] ?? null,
+                            'error'     => $e->getMessage(),
+                        ]);
+                    }
                 }
 
                 TelegramConversation::cleanExpired();
@@ -67,7 +95,8 @@ class TelegramPollingCommand extends Command
             } catch (\Exception $e) {
                 $this->error('Polling error: ' . $e->getMessage());
                 Log::error('Telegram polling error', ['error' => $e->getMessage()]);
-                sleep(5);
+                sleep($errDelay);
+                $errDelay = min($errDelay * 2, 60);
             }
         }
     }

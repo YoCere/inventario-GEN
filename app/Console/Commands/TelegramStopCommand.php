@@ -22,6 +22,8 @@ class TelegramStopCommand extends Command
         $pid = trim((string) file_get_contents($pidFile));
 
         touch($stopFile);
+        // Also remove PID file so a new poll can start immediately if the old process is already gone
+        @unlink($pidFile);
 
         $this->info("Stop signal sent to PID {$pid}. Process will exit after the current polling cycle.");
 

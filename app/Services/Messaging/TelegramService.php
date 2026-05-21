@@ -99,6 +99,22 @@ class TelegramService
         return $response->body();
     }
 
+    public function sendVoice(string $chatId, string $audioContent, string $filename = 'reply.ogg'): array
+    {
+        if (!$this->botToken) {
+            throw new \Exception('Telegram bot token not configured');
+        }
+
+        $endpoint = str_ends_with($filename, '.wav') ? 'sendAudio' : 'sendVoice';
+
+        $response = Http::attach($endpoint === 'sendVoice' ? 'voice' : 'audio', $audioContent, $filename)
+            ->post("{$this->apiUrl}{$this->botToken}/{$endpoint}", [
+                'chat_id' => $chatId,
+            ]);
+
+        return $response->json() ?? [];
+    }
+
     public function setWebhook(string $url, string $secret): array
     {
         if (!$this->botToken) {
@@ -124,13 +140,13 @@ class TelegramService
         return $response->json();
     }
 
-    public function getUpdates(int $offset = 0, int $timeout = 25): array
+    public function getUpdates(int $offset = 0, int $timeout = 20): array
     {
         if (!$this->botToken) {
             throw new \Exception('Telegram bot token not configured');
         }
 
-        $response = Http::timeout(35)->post("{$this->apiUrl}{$this->botToken}/getUpdates", [
+        $response = Http::timeout($timeout + 8)->post("{$this->apiUrl}{$this->botToken}/getUpdates", [
             'offset' => $offset,
             'timeout' => $timeout,
             'allowed_updates' => ['message', 'callback_query'],
