@@ -385,8 +385,14 @@
                             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Efectivo recibido</label>
                             <div class="relative">
                                 <span class="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-bold text-gray-500" x-text="window.currencySymbol"></span>
-                                <input type="text" :value="formatNumber(payment.cash_received)"
-                                       @input="payment.cash_received = unformatNumber($event.target.value)"
+                                {{-- Input "draft": user escribe libre (sin reformateo en cada keystroke).
+                                     Solo al perder foco (blur) se aplica formato lindo con miles + decimales. --}}
+                                <input type="text"
+                                       inputmode="decimal"
+                                       x-model="cashInputDraft"
+                                       @focus="onCashFocus($event)"
+                                       @input="payment.cash_received = unformatNumber(cashInputDraft)"
+                                       @blur="onCashBlur()"
                                        class="block w-full py-3.5 pl-12 pr-3 text-2xl font-bold text-right border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="0">
                             </div>
 
@@ -402,10 +408,11 @@
 
                             {{-- Atajos billetes comunes --}}
                             <div class="mt-3 grid grid-cols-4 gap-2">
-                                <template x-for="amount in [total, 50, 100, 200]" :key="amount">
-                                    <button @click="payment.cash_received = amount * 100"
+                                <template x-for="amount in [Math.ceil(total/100), 50, 100, 200]" :key="amount">
+                                    <button type="button"
+                                            @click="setCashFromShortcut(amount)"
                                             class="py-2 text-xs font-bold border border-gray-200 rounded-lg hover:bg-indigo-50 hover:border-indigo-300 transition-colors"
-                                            x-text="amount === total ? 'Exacto' : (window.currencySymbol + ' ' + amount)"></button>
+                                            x-text="amount === Math.ceil(total/100) ? 'Exacto' : (window.currencySymbol + ' ' + amount)"></button>
                                 </template>
                             </div>
                         </section>
@@ -474,6 +481,11 @@
                     cartDrawerOpen: false,
                     paymentSheetOpen: false,
 
+                    // Draft del input de efectivo: string libre que muestra exactamente
+                    // lo que el usuario tipea. Sin reformateo en cada keystroke = el
+                    // cursor no salta al final ni reinterpreta los dígitos como centavos.
+                    cashInputDraft: '',
+
                     productTs: null,
                     customerTs: null,
 
@@ -495,8 +507,54 @@
                         this.$watch('globalDiscount', (val) => localStorage.setItem('pos_globalDiscount', val));
                         this.$watch('viewMode', (val) => localStorage.setItem('pos_view_mode', val));
 
+                        // Inicializa el draft del input efectivo con el valor formateado
+                        // (por si venía persistido en localStorage de una sesión anterior).
+                        this.cashInputDraft = this.payment.cash_received > 0
+                            ? this.formatNumber(this.payment.cash_received)
+                            : '';
+
                         this.loadProducts('');
                         this.initCustomerSelect();
+                    },
+
+                    /**
+                     * Al hacer focus: mostrar el valor "crudo" editable (sin separadores
+                     * de miles para evitar confusión al teclear). Si el draft vino
+                     * formateado (ej "1.234,56"), lo convierte a editable ("1234.56").
+                     */
+                    onCashFocus(e) {
+                        if (this.payment.cash_received === 0) {
+                            this.cashInputDraft = '';
+                        } else {
+                            // Solo número editable: stripear thousand separator, mantener decimal.
+                            const cents = this.payment.cash_received;
+                            const bs = (cents / 100).toFixed(2);
+                            // Mostrar con el decimal local pero sin separador de miles para edición.
+                            this.cashInputDraft = bs.replace('.', window.decimalSeparator);
+                        }
+                        // Seleccionar todo el contenido para que el primer dígito reemplace.
+                        this.$nextTick(() => e.target.select());
+                    },
+
+                    /**
+                     * Al perder foco: reformatea el draft a la versión bonita
+                     * con miles + 2 decimales fijos. Si el campo está vacío deja vacío.
+                     */
+                    onCashBlur() {
+                        if (this.payment.cash_received === 0) {
+                            this.cashInputDraft = '';
+                            return;
+                        }
+                        this.cashInputDraft = this.formatNumber(this.payment.cash_received);
+                    },
+
+                    /**
+                     * Botón atajo "Exacto / 50 / 100 / 200": setea el monto + sincroniza
+                     * el draft visual del input.
+                     */
+                    setCashFromShortcut(amount) {
+                        this.payment.cash_received = amount * 100;
+                        this.cashInputDraft = this.formatNumber(this.payment.cash_received);
                     },
 
                     async loadProducts(query) {
