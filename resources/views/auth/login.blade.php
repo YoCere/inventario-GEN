@@ -25,17 +25,18 @@
 
             <!-- Contraseña -->
             <div class="mt-4 space-y-2">
-                <div class="flex items-center justify-between">
-                    <x-input-label for="password" :value="__('Contraseña')" :required="true" />
-                    @if (Route::has('password.request'))
-                        <a class="text-sm font-medium text-primary hover:underline" href="{{ route('password.request') }}">
-                            {{ __('¿Olvidó su contraseña?') }}
-                        </a>
-                    @endif
-                </div>
+                <x-input-label for="password" :value="__('Contraseña')" :required="true" />
                 <x-text-input id="password" class="block mt-1 w-full" type="password" name="password" required autocomplete="current-password" />
                 <x-input-error :messages="$errors->get('password')" class="mt-2" />
             </div>
+
+            @if (Route::has('password.request'))
+                <div class="flex justify-end mt-2">
+                    <a class="text-sm font-medium text-primary hover:underline" href="{{ route('password.request') }}">
+                        {{ __('¿Olvidó su contraseña?') }}
+                    </a>
+                </div>
+            @endif
 
             <!-- Recordarme -->
             <div class="block mt-4">
@@ -53,13 +54,6 @@
                     </svg>
                     {{ __('Iniciar Sesión') }}
                 </x-primary-button>
-            </div>
-
-            <div class="mt-4 text-center text-sm">
-                ¿No tiene una cuenta?
-                <a href="{{ route('register') }}" class="underline text-primary">
-                    Regístrese
-                </a>
             </div>
         </form>
     </div>
