@@ -308,9 +308,20 @@ class SettingGroups extends Component
      * Toggle del módulo Tienda — wire:model.live en el switch dispara updatedShopEnabled.
      * Persiste el flag, invalida el cache del feature flag para que ShopServiceProvider
      * lo refleje en el próximo request.
+     *
+     * GATE: solo Developer puede tocar este flag. Aunque la UI del admin renderice
+     * el switch deshabilitado, un admin con dev-tools podría forzar el wire:model.
+     * Este guard server-side rechaza el cambio y revierte el estado visible.
      */
     public function updatedShopEnabled(bool $value): void
     {
+        if (! auth()->user()?->isDeveloper()) {
+            // Revertir el estado al valor real persistido, sin escribir.
+            $this->shopEnabled = Setting::get('shop_enabled') === '1';
+            $this->dispatch('toast', message: 'Solo el desarrollador puede activar/desactivar la tienda.', type: 'error');
+            return;
+        }
+
         Setting::set('shop_enabled', $value ? '1' : '0');
         app(ShopFeatureFlag::class)->invalidate();
         $this->dispatch('settings-updated');

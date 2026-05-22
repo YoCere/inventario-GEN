@@ -5,16 +5,29 @@
                 <h3 class="text-base font-semibold text-foreground">{{ $group['title'] }}</h3>
 
                 @if($group['key'] === 'tienda')
-                    {{-- Switch maestro inline (no usa el modal de SettingForm). --}}
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox"
-                               wire:model.live="shopEnabled"
-                               class="sr-only peer">
-                        <div class="w-11 h-6 bg-muted rounded-full peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-background after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                        <span class="ml-3 text-sm font-medium text-foreground">
-                            {{ $shopEnabled ? 'Activa' : 'Inactiva' }}
-                        </span>
-                    </label>
+                    @php $canToggleShop = auth()->user()?->isDeveloper(); @endphp
+                    {{-- Switch maestro inline. Solo Developer puede tocarlo — el admin
+                         ve el estado en read-only para que sepa si la tienda está
+                         publicada pero no pueda romperla por accidente. --}}
+                    @if($canToggleShop)
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox"
+                                   wire:model.live="shopEnabled"
+                                   class="sr-only peer">
+                            <div class="w-11 h-6 bg-muted rounded-full peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-background after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                            <span class="ml-3 text-sm font-medium text-foreground">
+                                {{ $shopEnabled ? 'Activa' : 'Inactiva' }}
+                            </span>
+                        </label>
+                    @else
+                        <div class="flex items-center gap-2" title="Solo el desarrollador puede activar/desactivar la tienda">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold {{ $shopEnabled ? 'bg-green-100 text-green-700' : 'bg-zinc-100 text-zinc-600' }}">
+                                <span class="w-1.5 h-1.5 rounded-full {{ $shopEnabled ? 'bg-green-500' : 'bg-zinc-400' }}"></span>
+                                {{ $shopEnabled ? 'Activa' : 'Inactiva' }}
+                            </span>
+                            <span class="text-[10px] text-muted-foreground">🔒 dev</span>
+                        </div>
+                    @endif
                 @endif
             </header>
 
