@@ -48,12 +48,11 @@ class ProductController extends Controller
 
             // ── Con query: usar ProductSearchService (exact → fuzzy → IA).
             //    publicOnly=false → scope interno (todos los is_active), no filtra is_public.
-            $results = $this->searchService->searchProducts($query, publicOnly: false);
-
-            // Cap al limit + asegurar las relaciones que el POS necesita están eager loaded.
-            return $results
-                ->take($limit)
-                ->loadMissing(['unit', 'primaryImage']);
+            //    Cada capa del service ya eager-carga unit + primaryImage en su query
+            //    inicial (with()), así que el accessor card_image_url no dispara N+1.
+            return $this->searchService
+                ->searchProducts($query, publicOnly: false)
+                ->take($limit);
         });
 
         $payload = $products->map(function (Product $product) {
