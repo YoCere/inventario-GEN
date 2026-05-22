@@ -215,17 +215,46 @@ class BotProductHandler
         $data['categoria_nombre'] = $category->name;
         unset($data['categoria_pending']);
 
+        $this->telegram->sendMessage($chatId, "✅ Categoría: <b>{$category->name}</b>");
+
+        $this->advanceToNextMissingStep($chatId, $conversation, $data);
+    }
+
+    /**
+     * Determina cuál es el siguiente campo faltante y avanza ahí.
+     * Usado tras llenar cualquier campo (categoría, precios, cantidad) cuando
+     * el flujo viene pre-poblado desde la herramienta de IA (audio multi-campo)
+     * y NO debemos volver a preguntar lo que ya tenemos.
+     */
+    private function advanceToNextMissingStep(string $chatId, TelegramConversation $conversation, array $data): void
+    {
+        $nextStep = match (true) {
+            empty($data['nombre'])         => 'nuevo:nombre',
+            empty($data['categoria_id'])   => 'nuevo:categoria',
+            empty($data['precio_compra'])  => 'nuevo:precio_compra',
+            empty($data['precio_venta'])   => 'nuevo:precio_venta',
+            !isset($data['cantidad'])      => 'nuevo:cantidad',
+            default                        => 'nuevo:foto',
+        };
+
         $conversation->update([
-            'step'       => 'nuevo:precio_compra',
+            'step'       => $nextStep,
             'data'       => $data,
             'expires_at' => now()->addMinutes(30),
         ]);
 
-        $this->telegram->sendMessage(
-            $chatId,
-            "✅ Categoría: <b>{$category->name}</b>\n\n" .
-            "¿Cuál es el <b>precio de compra</b>? (número, ej: 25.50)"
-        );
+        // Si ya teníamos TODOS los datos numéricos, saltamos directo a foto.
+        $prompt = match ($nextStep) {
+            'nuevo:precio_compra' => "¿Cuál es el <b>precio de compra</b>? (número, ej: 25.50)",
+            'nuevo:precio_venta'  => "¿Cuál es el <b>precio de venta</b>?",
+            'nuevo:cantidad'      => "¿Cuál es la <b>cantidad inicial en stock</b>?",
+            'nuevo:foto'          => "Envía una <b>foto del producto</b> (opcional).\nEscribe '<b>omitir</b>' si no tienes foto.",
+            default               => '',
+        };
+
+        if ($prompt !== '') {
+            $this->telegram->sendMessage($chatId, $prompt);
+        }
     }
 
     private function createAndAdvanceCategory(string $chatId, TelegramConversation $conversation, array $data, string $name): void
@@ -265,18 +294,10 @@ class BotProductHandler
         $data = $conversation->data ?? [];
         $data['precio_compra'] = $price;
 
-        $conversation->update([
-            'step' => 'nuevo:precio_venta',
-            'data' => $data,
-            'expires_at' => now()->addMinutes(30),
-        ]);
-
         $formatted = number_format($price / 100, 2);
-        $this->telegram->sendMessage(
-            $chatId,
-            "💰 Precio de compra: <b>{$formatted}</b>\n\n" .
-            "¿Cuál es el <b>precio de venta</b>?"
-        );
+        $this->telegram->sendMessage($chatId, "💰 Precio de compra: <b>{$formatted}</b>");
+
+        $this->advanceToNextMissingStep($chatId, $conversation, $data);
     }
 
     private function askPrecioVenta(string $chatId, TelegramConversation $conversation, string $input): void
@@ -291,18 +312,10 @@ class BotProductHandler
         $data = $conversation->data ?? [];
         $data['precio_venta'] = $price;
 
-        $conversation->update([
-            'step' => 'nuevo:cantidad',
-            'data' => $data,
-            'expires_at' => now()->addMinutes(30),
-        ]);
-
         $formatted = number_format($price / 100, 2);
-        $this->telegram->sendMessage(
-            $chatId,
-            "💵 Precio de venta: <b>{$formatted}</b>\n\n" .
-            "¿Cuál es la <b>cantidad inicial en stock</b>?"
-        );
+        $this->telegram->sendMessage($chatId, "💵 Precio de venta: <b>{$formatted}</b>");
+
+        $this->advanceToNextMissingStep($chatId, $conversation, $data);
     }
 
     private function askCantidad(string $chatId, TelegramConversation $conversation, string $input): void
@@ -316,18 +329,9 @@ class BotProductHandler
         $data = $conversation->data ?? [];
         $data['cantidad'] = $qty;
 
-        $conversation->update([
-            'step' => 'nuevo:foto',
-            'data' => $data,
-            'expires_at' => now()->addMinutes(30),
-        ]);
+        $this->telegram->sendMessage($chatId, "📊 Cantidad: <b>{$qty}</b>");
 
-        $this->telegram->sendMessage(
-            $chatId,
-            "📊 Cantidad: <b>{$qty}</b>\n\n" .
-            "Envía una foto del producto (opcional)\n" .
-            "Escribe 'omitir' si no tienes foto"
-        );
+        $this->advanceToNextMissingStep($chatId, $conversation, $data);
     }
 
     private function askFoto(string $chatId, TelegramConversation $conversation, array $message): void

@@ -74,6 +74,13 @@ class BotHandler
                 return;
             }
 
+            // Photo messages: rutear a flujo activo si lo espera (ej. nuevo:foto).
+            // Hacerlo ANTES del early-return por texto vacío — las fotos no llevan texto.
+            if (isset($message['photo']) && $conversation && str_starts_with($conversation->step, 'nuevo:')) {
+                $this->productHandler->handle($chatId, $message);
+                return;
+            }
+
             if (empty($message['text'])) {
                 return;
             }

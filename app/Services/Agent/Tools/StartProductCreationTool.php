@@ -19,7 +19,30 @@ class StartProductCreationTool extends BaseTool
 
     public function description(): string
     {
-        return 'Inicia flujo de creación de producto. Llama cuando el usuario quiera crear/registrar/agregar un producto. Extrae los campos del mensaje del usuario sin importar el orden: nombre, categoría, precio_compra, precio_venta, cantidad. Pasa todos los que detectes; el flujo pedirá los que falten.';
+        return <<<DESC
+Inicia el flujo de creación de producto. Llama esta herramienta cuando el usuario
+quiera crear/registrar/agregar un producto al inventario.
+
+IMPORTANTE: extrae TODOS los campos que detectes en el mensaje del usuario,
+SIN IMPORTAR EL ORDEN y SIN DEPENDER DE QUE OTROS CAMPOS ESTÉN PRESENTES.
+Pasa cada campo de manera independiente — el flujo solo pedirá al usuario los
+que falten. Nunca omitas un campo solo porque otro no está claro.
+
+Ejemplos de extracción:
+
+Usuario: "Quiero registrar un producto llamado Labubu, categoría juguete,
+10 de precio compra, 20 de venta, cantidad 100"
+→ name="Labubu", category="juguete", purchase_price=10, selling_price=20,
+   quantity=100
+
+Usuario: "Crear producto mouse gamer, vale 50 la compra y 80 la venta"
+→ name="mouse gamer", purchase_price=50, selling_price=80
+   (sin category ni quantity — los pedirá el flujo)
+
+Usuario: "Nuevo producto cable USB de la categoría electrónica, 30 unidades"
+→ name="cable USB", category="electrónica", quantity=30
+   (sin precios — los pedirá el flujo)
+DESC;
     }
 
     public function inputSchema(): array
@@ -38,20 +61,27 @@ class StartProductCreationTool extends BaseTool
 
     public function execute(array $input, AgentContext $context): array
     {
-        $data = [];
+        // ── Cargar estado previo (si el usuario ya estaba en flujo, no perder
+        //    lo que ya había aportado en turnos anteriores). ──────────────────
+        $conversation = TelegramConversation::getOrCreate($context->chatId);
+        $existing = is_array($conversation->data) ? $conversation->data : [];
+        $data = $existing;
 
-        // ── Extract & normalize fields ───────────────────────────────────────
+        // ── Extracción INDEPENDIENTE por campo (sin cascade). Cualquier campo
+        //    detectado por la IA se persiste, aunque otros no estén presentes. ─
+
         if (!empty($input['name'])) {
             $data['nombre'] = trim($input['name']);
         }
 
         $categoryStatus = null; // 'found' | 'pending' | null
-        if (!empty($data['nombre']) && !empty($input['category'])) {
+        if (!empty($input['category'])) {
             $catName = trim($input['category']);
             $cat = Category::whereRaw('LOWER(name) LIKE ?', ['%' . mb_strtolower($catName) . '%'])->first();
             if ($cat) {
                 $data['categoria_id']     = $cat->id;
                 $data['categoria_nombre'] = $cat->name;
+                unset($data['categoria_pending']);
                 $categoryStatus           = 'found';
             } else {
                 $data['categoria_pending'] = $catName;
@@ -59,19 +89,19 @@ class StartProductCreationTool extends BaseTool
             }
         }
 
-        if (!empty($data['categoria_id']) && isset($input['purchase_price']) && $input['purchase_price'] > 0) {
+        if (isset($input['purchase_price']) && $input['purchase_price'] > 0) {
             $data['precio_compra'] = (int) round($input['purchase_price'] * 100);
         }
 
-        if (!empty($data['precio_compra']) && isset($input['selling_price']) && $input['selling_price'] > 0) {
+        if (isset($input['selling_price']) && $input['selling_price'] > 0) {
             $data['precio_venta'] = (int) round($input['selling_price'] * 100);
         }
 
-        if (!empty($data['precio_venta']) && isset($input['quantity']) && $input['quantity'] >= 0) {
+        if (isset($input['quantity']) && $input['quantity'] >= 0) {
             $data['cantidad'] = (int) $input['quantity'];
         }
 
-        // ── Determine next step ──────────────────────────────────────────────
+        // ── Determinar siguiente paso basado en lo que SIGUE faltando ────────
         $nextStep = match (true) {
             empty($data['nombre'])           => 'nuevo:nombre',
             $categoryStatus === 'pending'    => 'nuevo:categoria', // user must confirm sí/no
@@ -93,7 +123,6 @@ class StartProductCreationTool extends BaseTool
             : $prompt;
 
         // ── Save state & send ────────────────────────────────────────────────
-        $conversation = TelegramConversation::getOrCreate($context->chatId);
         $conversation->update([
             'step'       => $nextStep,
             'data'       => $data,
