@@ -29,6 +29,7 @@ class ShopServiceProvider extends ServiceProvider
                 \App\Shop\Console\Commands\CancelExpiredReservationsCommand::class,
                 \App\Shop\Console\Commands\PublishAllProductsCommand::class,
                 \App\Shop\Console\Commands\UnpublishAllProductsCommand::class,
+                \App\Shop\Console\Commands\CleanOrphanImagesCommand::class,
             ]);
         }
 

@@ -56,7 +56,9 @@
     <div x-show="$store.cart.items.length > 0" class="flex-1 overflow-y-auto px-5 py-4 space-y-3">
         <template x-for="item in $store.cart.items" :key="item.id">
             <div class="flex gap-3 p-3 rounded-xl border border-zinc-100 hover:bg-zinc-50">
-                <img :src="item.image" :alt="item.name" class="w-16 h-16 object-cover rounded-lg bg-zinc-100 shrink-0">
+                <img :src="item.image" :alt="item.name"
+                     onerror="if(!this.dataset.fallback){this.dataset.fallback='1';this.src='{{ asset('images/placeholder-product.svg') }}';}"
+                     class="w-16 h-16 object-cover rounded-lg bg-zinc-100 shrink-0">
                 <div class="flex-1 min-w-0">
                     <a :href="`/tienda/producto/${item.slug}`" class="font-medium text-sm text-zinc-900 line-clamp-2 hover:underline" x-text="item.name"></a>
                     <p class="text-xs text-zinc-500 mt-0.5">

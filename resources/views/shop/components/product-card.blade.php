@@ -1,10 +1,10 @@
 @props(['product'])
 @php
-    use App\Models\Setting;
-    $currencySymbol = Setting::get('shop_currency_symbol', 'Bs.');
+    $currencySymbol = \App\Models\Setting::get('shop_currency_symbol', 'Bs.');
     $img = $product->primaryImage;
     $cardUrl = $img && $img->path_card ? \Illuminate\Support\Facades\Storage::url($img->path_card) : $product->card_image_url;
     $fullUrl = $img && $img->path_full ? \Illuminate\Support\Facades\Storage::url($img->path_full) : $cardUrl;
+    $placeholderUrl = asset('images/placeholder-product.svg');
 @endphp
 
 <article class="shop-card group" x-data="{
@@ -20,12 +20,17 @@
 }">
     <a href="{{ route('shop.product', $product->slug) }}" class="block">
         <div class="relative aspect-square overflow-hidden bg-zinc-100">
+            {{-- onerror: si el archivo no existe en disk (ej. tras un deploy
+                 fresco sin volume mount, o producto cuya imagen fue borrada),
+                 reemplaza por placeholder en lugar de mostrar el icono roto
+                 del navegador con el alt-text. Idempotente vía dataset flag. --}}
             <picture>
                 <source media="(min-width: 768px)" srcset="{{ $fullUrl }}">
                 <img src="{{ $cardUrl }}"
                      alt="{{ $product->name }}"
                      loading="lazy"
                      decoding="async"
+                     onerror="if(!this.dataset.fallback){this.dataset.fallback='1';this.src='{{ $placeholderUrl }}';}"
                      class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
             </picture>
             @if($product->featured)

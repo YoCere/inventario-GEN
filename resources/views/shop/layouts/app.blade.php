@@ -97,7 +97,9 @@
                         </template>
                         <template x-for="r in $store.search.results" :key="r.id">
                             <a :href="r.url" class="flex items-center gap-3 p-3 hover:bg-zinc-50 transition-colors border-b border-zinc-100 last:border-b-0">
-                                <img :src="r.image" :alt="r.name" class="w-12 h-12 object-cover rounded-lg bg-zinc-100">
+                                <img :src="r.image" :alt="r.name"
+                                     onerror="if(!this.dataset.fallback){this.dataset.fallback='1';this.src='{{ asset('images/placeholder-product.svg') }}';}"
+                                     class="w-12 h-12 object-cover rounded-lg bg-zinc-100">
                                 <div class="flex-1 min-w-0">
                                     <p class="font-medium text-sm text-zinc-900 truncate" x-text="r.name"></p>
                                     <p class="text-xs text-zinc-500" x-text="'SKU: ' + r.sku"></p>

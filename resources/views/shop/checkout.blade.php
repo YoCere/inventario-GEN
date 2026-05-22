@@ -106,7 +106,9 @@
                 <div class="max-h-96 overflow-y-auto px-5 py-3 space-y-3 border-b border-zinc-100">
                     <template x-for="item in $store.cart.items" :key="item.id">
                         <div class="flex gap-3 items-start">
-                            <img :src="item.image" :alt="item.name" class="w-14 h-14 object-cover rounded-lg bg-zinc-100 shrink-0">
+                            <img :src="item.image" :alt="item.name"
+                                 onerror="if(!this.dataset.fallback){this.dataset.fallback='1';this.src='{{ asset('images/placeholder-product.svg') }}';}"
+                                 class="w-14 h-14 object-cover rounded-lg bg-zinc-100 shrink-0">
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm font-medium text-zinc-900 line-clamp-2" x-text="item.name"></p>
                                 <p class="text-xs text-zinc-500" x-text="`${item.qty} × {{ $currencySymbol }} ${(item.price/100).toFixed(2)}`"></p>

@@ -11,22 +11,15 @@ class RegistrationTest extends TestCase
 
     public function test_registration_screen_can_be_rendered(): void
     {
-        $response = $this->get('/register');
-
-        $response->assertStatus(200);
+        $this->markTestSkipped(
+            'Rutas /register fueron removidas de routes/auth.php. Los nuevos usuarios ' .
+            'se crean exclusivamente desde el admin (/users), no por registro público. ' .
+            'Re-habilitar este test si se restaura el registro abierto.'
+        );
     }
 
     public function test_new_users_can_register(): void
     {
-        $response = $this->post('/register', [
-            'name' => 'Test User',
-            'username' => 'testuser',
-            'email' => 'test@example.com',
-            'password' => 'password',
-            'password_confirmation' => 'password',
-        ]);
-
-        $this->assertAuthenticated();
-        $response->assertRedirect(route('dashboard', absolute: false));
+        $this->markTestSkipped('Registro público deshabilitado — ver test_registration_screen_can_be_rendered.');
     }
 }

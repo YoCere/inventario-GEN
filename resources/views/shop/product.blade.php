@@ -55,6 +55,7 @@
         <div>
             <div class="aspect-square rounded-2xl overflow-hidden bg-white border border-zinc-200">
                 <img :src="images[activeIdx].full" :alt="images[activeIdx].alt"
+                     onerror="if(!this.dataset.fallback){this.dataset.fallback='1';this.src='{{ asset('images/placeholder-product.svg') }}';}"
                      class="w-full h-full object-contain">
             </div>
             <template x-if="images.length > 1">
@@ -64,7 +65,9 @@
                                 :class="activeIdx === idx ? 'ring-2' : 'opacity-60 hover:opacity-100'"
                                 :style="activeIdx === idx ? `--tw-ring-color: var(--shop-primary)` : ''"
                                 class="aspect-square rounded-lg overflow-hidden border border-zinc-200 bg-white transition-all">
-                            <img :src="img.thumb" :alt="img.alt" class="w-full h-full object-cover">
+                            <img :src="img.thumb" :alt="img.alt"
+                                 onerror="if(!this.dataset.fallback){this.dataset.fallback='1';this.src='{{ asset('images/placeholder-product.svg') }}';}"
+                                 class="w-full h-full object-cover">
                         </button>
                     </template>
                 </div>
