@@ -42,4 +42,33 @@ class UserFactory extends Factory
             'email_verified_at' => null,
         ]);
     }
+
+    /**
+     * Asigna un rol spatie al usuario después de crearlo. El rol debe existir
+     * (la migración migrate_user_roles_to_spatie seedea developer/admin/staff
+     * en RefreshDatabase, así que tests pueden invocar ->admin() / ->staff() /
+     * ->developer() libremente).
+     */
+    public function withRole(string $role): static
+    {
+        return $this->afterCreating(function ($user) use ($role) {
+            \Spatie\Permission\Models\Role::findOrCreate($role, 'web');
+            $user->assignRole($role);
+        });
+    }
+
+    public function admin(): static
+    {
+        return $this->withRole('admin');
+    }
+
+    public function developer(): static
+    {
+        return $this->withRole('developer');
+    }
+
+    public function staff(): static
+    {
+        return $this->withRole('staff');
+    }
 }

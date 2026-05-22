@@ -19,10 +19,7 @@ class FinanceModuleTest extends TestCase
 
     public function test_finance_pages_are_accessible_for_verified_user(): void
     {
-        $user = User::factory()->create([
-            'email_verified_at' => now(),
-            'role' => 'admin',
-        ]);
+        $user = User::factory()->admin()->create(['email_verified_at' => now()]);
 
         $this->actingAs($user)
             ->get(route('finance.index'))
@@ -59,10 +56,7 @@ class FinanceModuleTest extends TestCase
             ChartOfAccountSeeder::class,
         ]);
 
-        $user = User::factory()->create([
-            'email_verified_at' => now(),
-            'role' => 'admin',
-        ]);
+        $user = User::factory()->admin()->create(['email_verified_at' => now()]);
 
         $cash = ChartOfAccount::query()->where('code', '1.1.01')->firstOrFail();
         $sales = ChartOfAccount::query()->where('code', '4.1')->firstOrFail();
@@ -105,10 +99,7 @@ class FinanceModuleTest extends TestCase
             ChartOfAccountSeeder::class,
         ]);
 
-        $user = User::factory()->create([
-            'email_verified_at' => now(),
-            'role' => 'admin',
-        ]);
+        $user = User::factory()->admin()->create(['email_verified_at' => now()]);
 
         $cash = ChartOfAccount::query()->where('code', '1.1.01')->firstOrFail();
         $sales = ChartOfAccount::query()->where('code', '4.1')->firstOrFail();
@@ -148,10 +139,7 @@ class FinanceModuleTest extends TestCase
             ChartOfAccountSeeder::class,
         ]);
 
-        $user = User::factory()->create([
-            'email_verified_at' => now(),
-            'role' => 'admin',
-        ]);
+        $user = User::factory()->admin()->create(['email_verified_at' => now()]);
 
         $cash = ChartOfAccount::query()->where('code', '1.1.01')->firstOrFail();
         $expense = ChartOfAccount::query()->where('code', '6.1')->firstOrFail();

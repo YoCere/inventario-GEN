@@ -28,9 +28,9 @@ class ReservationControllerTest extends TestCase
 
         $this->seed([CategorySeeder::class, UnitSeeder::class]);
 
-        // Admin user — ReservationService::createReservation usa
-        // User::where('role','admin')->first()?->id como created_by de la venta.
-        \App\Models\User::factory()->create(['role' => 'admin']);
+        // Admin user — ReservationService::createReservation toma el primer
+        // usuario con rol admin/developer como created_by de la venta.
+        \App\Models\User::factory()->admin()->create();
 
         // Set up default warehouse + location for stock movements.
         $warehouse = Warehouse::firstOrCreate(['name' => 'Almacén Test'], ['is_default' => true, 'is_active' => true]);

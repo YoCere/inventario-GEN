@@ -86,8 +86,9 @@ class ReservationService
                 );
             }
 
-            // Bot/admin de la tienda. Usuario 1 si no hay sistema-user definido.
-            $systemUserId = (int) (\App\Models\User::where('role', 'admin')->orderBy('id')->value('id') ?? 1);
+            // Bot/admin de la tienda. Toma el primer usuario con rol admin
+            // (vía spatie). Si no hay ninguno aún, cae al user id 1.
+            $systemUserId = (int) (\App\Models\User::role(['developer', 'admin'])->orderBy('id')->value('id') ?? 1);
 
             $saleData = new SaleData(
                 sale_date: Carbon::now(),

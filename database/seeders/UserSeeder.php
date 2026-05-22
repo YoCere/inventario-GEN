@@ -14,12 +14,20 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        User::create([
-            'name' => 'admin',
-            'username' => 'admin',
-            'email' => 'admin@admin.com',
-            'password' => Hash::make('password'),
-            'role' => 'admin',
-        ]);
+        $user = User::firstOrCreate(
+            ['email' => 'admin@admin.com'],
+            [
+                'name' => 'admin',
+                'username' => 'admin',
+                'password' => Hash::make('password'),
+            ]
+        );
+
+        // Asigna rol developer al user de seed (instalador). Asume que
+        // RolesAndPermissionsSeeder ya corrió (la migración se encarga de eso).
+        \Spatie\Permission\Models\Role::findOrCreate('developer', 'web');
+        if (! $user->hasRole('developer')) {
+            $user->assignRole('developer');
+        }
     }
 }

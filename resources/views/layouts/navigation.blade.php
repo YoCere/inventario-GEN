@@ -185,6 +185,12 @@
                         </x-dropdown-link>
                         @endif
 
+                        @if(auth()->user()->isDeveloper())
+                        <x-dropdown-link :href="route('roles.index')" :active="request()->routeIs('roles.*')">
+                            🔧 Roles y permisos
+                        </x-dropdown-link>
+                        @endif
+
                         <!-- Authentication -->
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
@@ -356,6 +362,11 @@
                                 @if(auth()->user()->isAdmin())
                                 <a href="{{ route('settings.index') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input h-9 px-4 py-2 w-full {{ request()->routeIs('settings.*') ? 'bg-accent text-accent-foreground' : 'bg-background hover:bg-accent hover:text-accent-foreground' }}">
                                     Ajustes
+                                </a>
+                                @endif
+                                @if(auth()->user()->isDeveloper())
+                                <a href="{{ route('roles.index') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium border border-input h-9 px-4 py-2 w-full {{ request()->routeIs('roles.*') ? 'bg-accent text-accent-foreground' : 'bg-background hover:bg-accent hover:text-accent-foreground' }}">
+                                    🔧 Roles y permisos
                                 </a>
                                 @endif
                                 <form method="POST" action="{{ route('logout') }}" class="w-full">

@@ -3,13 +3,13 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
-use App\Enums\UserRole;
 use Illuminate\Console\Command;
+use Spatie\Permission\Models\Role;
 
 class MakeFirstUserAdmin extends Command
 {
-    protected $signature = 'users:make-first-admin';
-    protected $description = 'Promote the first registered user to admin role';
+    protected $signature = 'users:make-first-admin {--role=admin : Rol a asignar (admin, developer, staff)}';
+    protected $description = 'Promote the first registered user to the given role (default admin)';
 
     public function handle(): void
     {
@@ -20,7 +20,10 @@ class MakeFirstUserAdmin extends Command
             return;
         }
 
-        $user->update(['role' => UserRole::Admin->value]);
-        $this->info("User '{$user->name}' (ID: {$user->id}) promoted to admin.");
+        $roleName = (string) $this->option('role');
+        Role::findOrCreate($roleName, 'web');
+        $user->syncRoles([$roleName]);
+
+        $this->info("User '{$user->name}' (ID: {$user->id}) promoted to {$roleName}.");
     }
 }

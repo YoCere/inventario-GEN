@@ -22,8 +22,13 @@ class UserService
                 'username' => $data->username,
                 'email' => $data->email,
                 'password' => Hash::make($data->password),
-                'role' => $data->role,
             ]);
+
+            // Asigna rol vía spatie. Sin esto el usuario queda sin permisos
+            // (no hereda nada del enum legacy que ya no existe).
+            if ($data->role) {
+                $user->assignRole($data->role);
+            }
 
             Cache::forget('users_list_all');
 
@@ -45,6 +50,13 @@ class UserService
             }
 
             $user->update($updateData);
+
+            // syncRoles reemplaza todas las asignaciones — apropiado para el
+            // form de admin que muestra UN rol primario. Si en el futuro se
+            // soportan múltiples roles por usuario, este punto debe cambiar.
+            if ($data->role !== null) {
+                $user->syncRoles([$data->role]);
+            }
 
             Cache::forget('users_list_all');
 

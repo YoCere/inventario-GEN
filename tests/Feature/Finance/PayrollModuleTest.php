@@ -24,10 +24,7 @@ class PayrollModuleTest extends TestCase
             SettingSeeder::class,
         ]);
 
-        $admin = User::factory()->create([
-            'email_verified_at' => now(),
-            'role' => 'admin',
-        ]);
+        $admin = User::factory()->admin()->create(['email_verified_at' => now()]);
 
         $service = app(PayrollService::class);
 
@@ -83,10 +80,7 @@ class PayrollModuleTest extends TestCase
 
     public function test_staff_cannot_access_payroll_module(): void
     {
-        $staff = User::factory()->create([
-            'email_verified_at' => now(),
-            'role' => 'staff',
-        ]);
+        $staff = User::factory()->staff()->create(['email_verified_at' => now()]);
 
         $this->actingAs($staff)
             ->get(route('finance.payroll.index'))
@@ -95,10 +89,7 @@ class PayrollModuleTest extends TestCase
 
     public function test_payroll_pages_load_for_admin(): void
     {
-        $admin = User::factory()->create([
-            'email_verified_at' => now(),
-            'role' => 'admin',
-        ]);
+        $admin = User::factory()->admin()->create(['email_verified_at' => now()]);
 
         $this->actingAs($admin)
             ->get(route('finance.payroll.index'))

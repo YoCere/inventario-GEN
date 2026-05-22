@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Settings;
 
-use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -13,10 +12,7 @@ class SettingsModuleTest extends TestCase
 
     public function test_admin_can_access_grouped_settings_page(): void
     {
-        $admin = User::factory()->create([
-            'email_verified_at' => now(),
-            'role' => UserRole::Admin,
-        ]);
+        $admin = User::factory()->admin()->create(['email_verified_at' => now()]);
 
         $this->actingAs($admin)
             ->get(route('settings.index'))
@@ -28,14 +24,10 @@ class SettingsModuleTest extends TestCase
 
     public function test_non_admin_cannot_access_settings_page(): void
     {
-        $staff = User::factory()->create([
-            'email_verified_at' => now(),
-            'role' => UserRole::Staff,
-        ]);
+        $staff = User::factory()->staff()->create(['email_verified_at' => now()]);
 
         $this->actingAs($staff)
             ->get(route('settings.index'))
             ->assertForbidden();
     }
 }
-

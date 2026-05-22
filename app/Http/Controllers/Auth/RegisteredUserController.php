@@ -41,17 +41,25 @@ class RegisteredUserController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
-        // Determinar rol: admin si es el primero, staff para los siguientes
+        // Determinar rol: developer si es el primero (instalador del sistema),
+        // staff para los siguientes (admin promueve manualmente desde users).
+        // El developer hereda todos los permisos via Gate::before, así que
+        // el setup inicial queda con acceso total + capacidad de gestionar roles.
         $isFirstUser = !User::exists();
-        $role = $isFirstUser ? 'admin' : 'staff';
+        $roleName = $isFirstUser ? 'developer' : 'staff';
 
         $user = User::create([
             'name' => $request->name,
             'username' => $request->username,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role' => $role,
         ]);
+
+        // assignRole requiere que el rol exista — RolesAndPermissionsSeeder
+        // los crea en la migración migrate_user_roles_to_spatie, pero defendemos
+        // contra setups sin esa migración con findOrCreate.
+        \Spatie\Permission\Models\Role::findOrCreate($roleName, 'web');
+        $user->assignRole($roleName);
 
         event(new Registered($user));
 

@@ -97,6 +97,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::view('settings', 'settings.index')->name('settings.index');
     });
 
+    // Roles y permisos — solo Developer (gate adicional dentro del componente).
+    Route::middleware('developer')->group(function () {
+        Route::view('roles', 'roles.index')->name('roles.index');
+    });
+
     // =========================================================================
     // Internal APIs (AJAX)
     // =========================================================================

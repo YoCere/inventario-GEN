@@ -3,12 +3,12 @@
 namespace App\Livewire\Users;
 
 use App\Models\User;
-use App\Enums\UserRole;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use App\DTOs\UserData;
 use App\Services\UserService;
 use Illuminate\Validation\Rule;
+use Spatie\Permission\Models\Role;
 
 class UserForm extends Component
 {
@@ -22,6 +22,22 @@ class UserForm extends Component
     public $password_confirmation;
     public string $role = 'staff';
 
+    /**
+     * Roles asignables. Excluye 'developer' — solo otro developer puede
+     * promover a developer, y eso se gestiona vía CRUD de roles, no aquí.
+     * @return array<int,string>
+     */
+    public function assignableRoles(): array
+    {
+        $names = Role::query()->pluck('name')->all();
+
+        if (! auth()->user()?->isDeveloper()) {
+            $names = array_values(array_filter($names, fn ($n) => $n !== 'developer'));
+        }
+
+        return $names;
+    }
+
     public function rules(): array
     {
         return [
@@ -29,7 +45,7 @@ class UserForm extends Component
             'username' => ['required', 'string', 'max:255', Rule::unique('users', 'username')->ignore($this->user?->id)],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($this->user?->id)],
             'password' => [$this->isEditing ? 'nullable' : 'required', 'string', 'min:8', 'confirmed'],
-            'role' => ['required', Rule::enum(UserRole::class)],
+            'role' => ['required', Rule::in($this->assignableRoles())],
         ];
     }
 
@@ -55,7 +71,7 @@ class UserForm extends Component
         $this->email = $user->email;
         $this->password = '';
         $this->password_confirmation = '';
-        $this->role = $user->role->value;
+        $this->role = $user->primaryRole() ?? 'staff';
 
         $this->dispatch('open-modal', name: 'user-form-modal');
     }
