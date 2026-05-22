@@ -59,9 +59,19 @@ class User extends Authenticatable
         return $this->hasMany(Sale::class, 'created_by');
     }
 
+    /**
+     * isAdmin incluye Developer: el rol técnico hereda todos los permisos de
+     * Admin por diseño. Para chequeos específicos de developer usar
+     * isDeveloper() explícitamente.
+     */
     public function isAdmin(): bool
     {
-        return $this->role === UserRole::Admin;
+        return in_array($this->role, UserRole::adminGrade(), true);
+    }
+
+    public function isDeveloper(): bool
+    {
+        return $this->role === UserRole::Developer;
     }
 
     public function hasRole(UserRole|string $role): bool

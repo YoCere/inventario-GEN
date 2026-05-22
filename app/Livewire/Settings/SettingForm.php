@@ -42,6 +42,11 @@ class SettingForm extends Component
             return;
         }
 
+        // Gate técnico: settings sensibles (Telegram, IA, voz, API keys)
+        // requieren rol Developer. Protege contra requests Livewire forjados
+        // por un admin tech-savvy aunque el grupo esté oculto en la UI.
+        $this->guardDeveloperOnlyKey($key);
+
         $setting = Setting::query()->find($key) ?? new Setting([
             'key' => $key,
             'value' => '',
@@ -58,6 +63,10 @@ class SettingForm extends Component
     public function save()
     {
         abort_if(!auth()->user()->isAdmin(), 403);
+
+        // Doble check: el key persistido pudo cambiar entre edit() y save() vía
+        // wire:model. Validamos el key actual del componente.
+        $this->guardDeveloperOnlyKey((string) $this->key);
 
         $this->validate();
 
@@ -84,6 +93,37 @@ class SettingForm extends Component
             'opening_balance_date',
             'opening_balance_amount',
         ], true);
+    }
+
+    /**
+     * Prefijos de settings que solo el rol Developer puede tocar. Cubre
+     * credenciales API, tokens, modelos IA y configuración del bot — un
+     * cambio incorrecto rompe integraciones difíciles de diagnosticar.
+     */
+    private const DEVELOPER_ONLY_PREFIXES = [
+        'telegram_',
+        'ai_',
+        'whisper_',
+        'tts_',
+        'anthropic_',
+        'openai_',
+    ];
+
+    private function isDeveloperOnlyKey(string $key): bool
+    {
+        foreach (self::DEVELOPER_ONLY_PREFIXES as $prefix) {
+            if (str_starts_with($key, $prefix)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private function guardDeveloperOnlyKey(string $key): void
+    {
+        if ($this->isDeveloperOnlyKey($key) && ! auth()->user()->isDeveloper()) {
+            abort(403, 'Solo el desarrollador puede modificar esta configuración técnica.');
+        }
     }
 
     public function render()

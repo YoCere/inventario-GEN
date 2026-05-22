@@ -271,6 +271,12 @@ class SettingGroups extends Component
         ],
     ];
 
+    /**
+     * Grupos sensibles: contienen credenciales API / tokens / config técnica
+     * que un toque equivocado rompe integraciones. Solo el rol Developer los ve.
+     */
+    private const DEVELOPER_ONLY_GROUPS = ['mensajeria', 'ia'];
+
     public function mount(): void
     {
         abort_if(! auth()->user()?->isAdmin(), 403);
@@ -280,6 +286,15 @@ class SettingGroups extends Component
         $this->shopSecondaryColor = Setting::get('shop_secondary_color', '#64748B');
         $this->shopAccentColor = Setting::get('shop_accent_color', '#F59E0B');
         $this->shopTextOnPrimary = Setting::get('shop_text_on_primary', '#FFFFFF');
+    }
+
+    /**
+     * True si el usuario actual puede ver/editar grupos técnicos. Usado por
+     * buildGroups() para esconder Telegram + IA al admin estándar.
+     */
+    private function canSeeDeveloperGroups(): bool
+    {
+        return auth()->user()?->isDeveloper() ?? false;
     }
 
     #[On('settings-updated')]
@@ -434,9 +449,16 @@ class SettingGroups extends Component
     {
         $settings = Setting::query()->orderBy('key')->get()->keyBy('key');
         $usedKeys = collect(self::GROUP_KEYS)->flatten()->values()->all();
+        $canSeeDevGroups = $this->canSeeDeveloperGroups();
 
         $groups = [];
         foreach (self::GROUP_KEYS as $groupKey => $keys) {
+            // Filtrar grupos técnicos sensibles para no-developers. Mantiene la
+            // visión limpia para el admin y evita que toque tokens/keys por error.
+            if (in_array($groupKey, self::DEVELOPER_ONLY_GROUPS, true) && ! $canSeeDevGroups) {
+                continue;
+            }
+
             $groups[] = [
                 'key' => $groupKey,
                 'title' => self::GROUP_LABELS[$groupKey],
@@ -444,13 +466,17 @@ class SettingGroups extends Component
             ];
         }
 
-        $otherKeys = $settings->keys()->filter(fn (string $key) => ! in_array($key, $usedKeys, true))->values()->all();
-        if (! empty($otherKeys)) {
-            $groups[] = [
-                'key' => 'otros',
-                'title' => self::GROUP_LABELS['otros'],
-                'items' => $this->makeItems($otherKeys, $settings),
-            ];
+        // El grupo 'otros' (settings ad-hoc sin grupo asignado) también es técnico
+        // por naturaleza — esconderlo a non-devs.
+        if ($canSeeDevGroups) {
+            $otherKeys = $settings->keys()->filter(fn (string $key) => ! in_array($key, $usedKeys, true))->values()->all();
+            if (! empty($otherKeys)) {
+                $groups[] = [
+                    'key' => 'otros',
+                    'title' => self::GROUP_LABELS['otros'],
+                    'items' => $this->makeItems($otherKeys, $settings),
+                ];
+            }
         }
 
         return $groups;
