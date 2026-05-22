@@ -18,10 +18,9 @@ COPY . .
 
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-RUN npm install -g pnpm
 
-RUN pnpm install --frozen-lockfile
-RUN pnpm run build
+RUN npm install --frozen-lockfile
+RUN npm run build
 
 RUN php artisan storage:link || true
 
