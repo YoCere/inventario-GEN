@@ -90,7 +90,10 @@ class ProductForm extends Component
             'is_public', 'featured', 'gallery', 'newUpload', 'imagesToDelete', 'primaryImageId',
         ]);
         $this->is_active = true;
-        $this->is_public = false;
+        // Default público=true: queremos que productos creados aparezcan en el
+        // catálogo /tienda sin acción extra del admin. Si no quiere mostrarlo,
+        // desmarca el checkbox antes de guardar.
+        $this->is_public = true;
         $this->featured = false;
         $this->location_id = Location::default()?->id;
 

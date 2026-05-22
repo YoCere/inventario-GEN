@@ -27,6 +27,8 @@ class ShopServiceProvider extends ServiceProvider
             $this->commands([
                 \App\Shop\Console\Commands\RegenerateImagesCommand::class,
                 \App\Shop\Console\Commands\CancelExpiredReservationsCommand::class,
+                \App\Shop\Console\Commands\PublishAllProductsCommand::class,
+                \App\Shop\Console\Commands\UnpublishAllProductsCommand::class,
             ]);
         }
 
