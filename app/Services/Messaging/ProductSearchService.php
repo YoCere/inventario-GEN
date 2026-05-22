@@ -27,6 +27,47 @@ class ProductSearchService
         }
     }
 
+    /**
+     * Core layered search. Retorna Collection<Product> sin formatear, en orden
+     * de relevancia. Cualquier consumidor (Telegram bot, POS, API, etc.) puede
+     * mapear el resultado al shape que necesite.
+     *
+     * @param string $query
+     * @param bool $publicOnly Si true, restringe al scope público (Shop module).
+     * @return Collection<int,Product>
+     */
+    public function searchProducts(string $query, bool $publicOnly = false): Collection
+    {
+        $previousPublic = $this->publicOnly;
+        $this->publicOnly = $publicOnly;
+
+        try {
+            // Layer 1: Exact match (SKU o nombre normalizado)
+            $results = $this->searchExact($query);
+            if (!$results->isEmpty()) {
+                return $results;
+            }
+
+            // Layer 2: Fuzzy (tokenizado + Levenshtein + accent-insensitive)
+            $results = $this->searchFuzzy($query);
+            if (!$results->isEmpty()) {
+                return $results;
+            }
+
+            // Layer 3: AI fallback (si está habilitado y las capas anteriores no encontraron)
+            if ($this->isAiEnabled()) {
+                $results = $this->searchWithAi($query);
+                if (!$results->isEmpty()) {
+                    return $results;
+                }
+            }
+
+            return collect();
+        } finally {
+            $this->publicOnly = $previousPublic;
+        }
+    }
+
     public function search(string $query): array
     {
         // Layer 1: Exact match (SKU or normalized name)
