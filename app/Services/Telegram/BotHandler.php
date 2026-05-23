@@ -380,22 +380,35 @@ class BotHandler
             '/nuevo' => $this->cmdNewProduct($chatId),
             '/listar' => $this->cmdList($chatId, $args),
             '/devolver' => $this->cmdRefund($chatId),
-            '/reportes' => $this->reportHandler->showMenu($chatId),
+            '/reportes' => $this->cmdReports($chatId),
             '/detener' => $this->cmdDetener($chatId),
             '/activar' => $this->cmdActivar($chatId),
+            '/logout', '/salir' => $this->cmdLogout($chatId),
+            '/cambiar', '/cambiarusuario' => $this->cmdSwitchUser($chatId),
             default => $this->telegram->sendMessage($chatId, "❓ Comando no reconocido. Escribe /ayuda para ver opciones."),
         };
     }
 
     protected function cmdHelp(string $chatId): void
     {
+        $user = $this->authHandler->getAuthenticatedUser($chatId);
+        $isAdmin = $user && $user->isAdmin();
+
         $message = "<b>📚 Ayuda - Comandos disponibles</b>\n\n" .
             "/stock — Ver productos en stock crítico\n" .
             "/ventas — Resumen de ventas de hoy\n" .
             "/nuevo — Registrar un nuevo producto\n" .
             "/listar — Listar productos (todas categorías o filtrar)\n" .
-            "/devolver — Procesar devoluciones\n" .
-            "/reportes — Reportes del negocio (libro diario, top ventas, ganancia, etc.)\n\n" .
+            "/devolver — Procesar devoluciones\n";
+
+        // Reportes solo para admin (gerencia financiera, no operación diaria)
+        if ($isAdmin) {
+            $message .= "/reportes — Reportes del negocio (libro diario, top ventas, ganancia, etc.) <i>admin</i>\n";
+        }
+
+        $message .= "\n<b>🔐 Sesión</b>\n" .
+            "/logout — Cerrar sesión completa\n" .
+            "/cambiar — Cambiar de usuario\n\n" .
             "<b>💡 Búsqueda directa</b>\n" .
             "Escribe el nombre de un producto y te mostraré el precio y stock.\n\n" .
             "Ej: <code>Redmi 14c</code>\n\n" .
@@ -500,6 +513,61 @@ class BotHandler
     protected function cmdRefund(string $chatId): void
     {
         $this->refundHandler->start($chatId);
+    }
+
+    /**
+     * /reportes — gate admin-only. Staff no ve cifras financieras del negocio.
+     */
+    protected function cmdReports(string $chatId): void
+    {
+        $user = $this->authHandler->getAuthenticatedUser($chatId);
+
+        if (! $user || ! $user->isAdmin()) {
+            $this->telegram->sendMessage(
+                $chatId,
+                "⛔ <b>Acceso restringido</b>\n\n" .
+                "Los reportes financieros del negocio están disponibles solo para administradores. " .
+                "Tu rol actual no tiene permiso."
+            );
+            return;
+        }
+
+        $this->reportHandler->showMenu($chatId);
+    }
+
+    /**
+     * /logout — cerrar sesión completa. Olvida el identifier — próximo login
+     * pide usuario + contraseña desde cero.
+     */
+    protected function cmdLogout(string $chatId): void
+    {
+        $user = $this->authHandler->getAuthenticatedUser($chatId);
+        $name = $user?->name ?? 'Usuario';
+
+        $this->authHandler->logout($chatId, forgetIdentifier: true);
+
+        $this->telegram->sendMessage(
+            $chatId,
+            "👋 <b>Sesión cerrada</b>\n\nHasta luego, {$name}.\n\nEscribe cualquier mensaje para volver a iniciar sesión."
+        );
+    }
+
+    /**
+     * /cambiar — alias semántico de logout. UX: usuario sabe que va a cambiar
+     * de cuenta, no que está cerrando sesión definitivamente.
+     */
+    protected function cmdSwitchUser(string $chatId): void
+    {
+        $this->authHandler->logout($chatId, forgetIdentifier: true);
+
+        $this->telegram->sendMessage(
+            $chatId,
+            "🔄 <b>Cambio de usuario</b>\n\nSesión anterior cerrada.\nIngresa tus credenciales del nuevo usuario."
+        );
+
+        // Inmediatamente dispara flujo de login para que el siguiente mensaje
+        // del usuario sea ya el identifier (no tiene que mandar 'hola' primero).
+        $this->authHandler->startLogin($chatId);
     }
 
     protected function cmdDetener(string $chatId): void

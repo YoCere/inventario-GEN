@@ -92,9 +92,24 @@ class TelegramPollingCommand extends Command
 
                 TelegramConversation::cleanExpired();
 
-            } catch (\Exception $e) {
-                $this->error('Polling error: ' . $e->getMessage());
-                Log::error('Telegram polling error', ['error' => $e->getMessage()]);
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+
+                // cURL 28 = timeout transitorio en long-polling. Esperado en network
+                // blips (WiFi, ISP, NAT). Reintentar rápido sin backoff exponencial.
+                // Backoff pleno se reserva para errores reales (401 token inválido, etc.).
+                $isTransientTimeout = str_contains($msg, 'cURL error 28')
+                                   || str_contains($msg, 'Operation timed out')
+                                   || str_contains($msg, 'Connection timed out');
+
+                if ($isTransientTimeout) {
+                    Log::info('Telegram polling timeout (transient, retrying)', ['error' => $msg]);
+                    sleep(2);
+                    continue;
+                }
+
+                $this->error('Polling error: ' . $msg);
+                Log::error('Telegram polling error', ['error' => $msg]);
                 sleep($errDelay);
                 $errDelay = min($errDelay * 2, 60);
             }

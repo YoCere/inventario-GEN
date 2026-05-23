@@ -15,8 +15,13 @@ class BotAuthHandler
         protected TelegramService $telegram,
     ) {}
 
+    /** Sesión expira automáticamente tras este tiempo de inactividad. */
+    public const SESSION_TTL_HOURS = 24;
+
     /**
-     * Chequea si el chat_id está autenticado
+     * Chequea si chat_id está autenticado Y sesión sigue vigente.
+     * Sesiones idle >SESSION_TTL_HOURS se invalidan y obligan re-login (solo
+     * pide pwd, el identifier persiste para UX rápida).
      */
     public function isAuthenticated(string $chatId): bool
     {
@@ -26,9 +31,39 @@ class BotAuthHandler
             return false;
         }
 
-        // Verificar que User siga existiendo
-        $user = $telegramUser->user;
-        return $user !== null;
+        if (!$telegramUser->user) {
+            return false;
+        }
+
+        // Sesión expirada por inactividad
+        if (!$telegramUser->last_login
+            || $telegramUser->last_login->lt(now()->subHours(self::SESSION_TTL_HOURS))) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Cerrar sesión. Borra la asociación TelegramUser → User. El identifier
+     * NO se recuerda, así que el próximo login pedirá usuario + contraseña
+     * (escenario "cambio de usuario"). Para mantener identifier y solo pedir
+     * pwd otra vez, usar refreshSession() en lugar.
+     */
+    public function logout(string $chatId, bool $forgetIdentifier = true): void
+    {
+        $telegramUser = TelegramUser::find($chatId);
+        if ($telegramUser) {
+            if ($forgetIdentifier) {
+                $telegramUser->delete();
+            } else {
+                // Conservar identifier — solo invalidar la sesión bumping last_login al pasado
+                $telegramUser->update(['last_login' => null]);
+            }
+        }
+
+        // Cualquier conversación activa también se borra para empezar limpio
+        TelegramConversation::where('chat_id', $chatId)->delete();
     }
 
     /**
