@@ -5,6 +5,7 @@ namespace App\Services\Telegram;
 use App\Models\Setting;
 use App\Models\TelegramConversation;
 use App\Models\Product;
+use App\Services\Agent\VisionService;
 use App\Services\Agent\WhisperService;
 use App\Services\Messaging\TelegramService;
 use App\Services\Messaging\ProductSearchService;
@@ -23,6 +24,7 @@ class BotHandler
         protected BotReportHandler $reportHandler,
         protected BotAgentHandler $agentHandler,
         protected WhisperService $whisperService,
+        protected VisionService $visionService,
     ) {}
 
     public function dispatch(array $update): void
@@ -78,6 +80,13 @@ class BotHandler
             // Hacerlo ANTES del early-return por texto vacío — las fotos no llevan texto.
             if (isset($message['photo']) && $conversation && str_starts_with($conversation->step, 'nuevo:')) {
                 $this->productHandler->handle($chatId, $message);
+                return;
+            }
+
+            // Photo sin flujo activo → búsqueda por imagen vía OpenAI Vision.
+            // Solo si ai_vision_enabled='1' está configurado, sino se ignora silencio.
+            if (isset($message['photo']) && $this->visionService->isEnabled()) {
+                $this->handlePhotoSearch($chatId, $message);
                 return;
             }
 
@@ -513,6 +522,66 @@ class BotHandler
         }
         Setting::set('telegram_bot_paused', '0');
         $this->telegram->sendMessage($chatId, "✅ Bot activado y listo.");
+    }
+
+    /**
+     * Recibe foto del cliente sin flujo activo. Pasa imagen a VisionService
+     * (OpenAI Vision o compatible) → descripción en texto → ProductSearchService
+     * busca por descripción → muestra match o pide más datos.
+     *
+     * Costo aprox USD 0.001-0.003 por imagen con gpt-4o-mini.
+     */
+    protected function handlePhotoSearch(string $chatId, array $message): void
+    {
+        try {
+            $this->telegram->sendChatAction($chatId, 'typing');
+            $this->telegram->sendMessage($chatId, "🔍 <i>Analizando la imagen…</i>");
+
+            // Telegram envía array de versiones; la última es la mayor resolución.
+            $photo = end($message['photo']);
+            $fileId = $photo['file_id'] ?? null;
+            if (! $fileId) {
+                $this->telegram->sendMessage($chatId, "❌ No pude leer la imagen.");
+                return;
+            }
+
+            $filePath = $this->telegram->getFile($fileId);
+            $imageBinary = $this->telegram->downloadFile($filePath);
+
+            $description = $this->visionService->describeProductImage($imageBinary);
+
+            if (empty($description)) {
+                $this->telegram->sendMessage(
+                    $chatId,
+                    "❌ No pude identificar un producto en la imagen.\n\nIntenta con otra foto más clara o escribe el nombre."
+                );
+                return;
+            }
+
+            $this->telegram->sendMessage(
+                $chatId,
+                "👁️ Producto detectado: <b>" . htmlspecialchars($description, ENT_QUOTES) . "</b>\n\n<i>Buscando en inventario…</i>"
+            );
+
+            // Reusa el buscador inteligente (exact → fuzzy → IA layer)
+            $results = $this->searchService->search($description);
+
+            if (! empty($results)) {
+                Log::info('Photo search hit', ['chatId' => $chatId, 'description' => $description, 'matches' => count($results)]);
+                $this->handleSearch($chatId, $description, $results);
+            } else {
+                $this->telegram->sendMessage(
+                    $chatId,
+                    "❌ Producto identificado como \"<i>" . htmlspecialchars($description, ENT_QUOTES) . "</i>\" pero no encontré coincidencias en el inventario.\n\nEscribe el nombre exacto o /listar para ver el catálogo."
+                );
+            }
+        } catch (\Throwable $e) {
+            Log::error('Photo search error', [
+                'chat_id' => $chatId,
+                'error' => $e->getMessage(),
+            ]);
+            $this->telegram->sendMessage($chatId, "❌ Error procesando la imagen: " . $e->getMessage());
+        }
     }
 
     protected function handleVoiceMessage(string $chatId, array $message): void
