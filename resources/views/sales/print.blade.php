@@ -227,7 +227,7 @@
         <div class="header-left">
             <div class="logo-box">
                 @if($logoPath)
-                    <img src="{{ asset('storage/' . $logoPath) }}" alt="Logo">
+                    <img src="{{ \Illuminate\Support\Facades\Storage::url($logoPath) }}" alt="Logo">
                 @else
                     {{ $initials }}
                 @endif
@@ -276,7 +276,7 @@
                 <td class="col-name">{{ $item->product->name }}</td>
                 <td class="col-qty">{{ $item->quantity }}</td>
                 <td class="col-price">@money($item->unit_price)</td>
-                <td class="col-disc">{!! $item->discount > 0 ? format_money($item->discount) : '-' !!}</td>
+                <td class="col-disc">{{ $item->discount > 0 ? format_money($item->discount) : '-' }}</td>
                 <td class="col-total">@money($item->subtotal)</td>
             </tr>
             @endforeach
@@ -299,7 +299,7 @@
                 Por favor verifique la mercancía al momento de recibirla. Los artículos vendidos no tienen devolución.
             </div>
             <div class="printed-by">
-                Impreso por: <strong>{{ auth()->user()->name }}</strong>
+                Impreso por: <strong>{{ auth()->user()->name ?? 'Sistema' }}</strong>
                 el {{ now()->format('d/m/Y H:i') }}
             </div>
         </div>
@@ -307,7 +307,7 @@
         <div class="footer-right">
             <div class="amount-row">
                 <span class="amount-label">Subtotal</span>
-                <span class="amount-value">@money($sale->total + $sale->global_discount)</span>
+                <span class="amount-value">@money($sale->subtotal)</span>
             </div>
             @if($sale->global_discount > 0)
             <div class="amount-row">
