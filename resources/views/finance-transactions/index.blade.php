@@ -5,13 +5,9 @@
                 {{ __('Transacciones Financieras') }}
             </h2>
             <div class="flex items-center gap-2 print:hidden">
-                <x-secondary-button type="button" onclick="window.print()">
-                    <x-heroicon-o-printer class="w-4 h-4 mr-2" />
-                    Imprimir
-                </x-secondary-button>
                 <x-primary-button x-data x-on:click="$dispatch('create-finance-transaction')">
                     <x-heroicon-o-plus class="w-4 h-4 mr-2" />
-                    Crear Transacción
+                    Crear TransacciÃ³n
                 </x-primary-button>
             </div>
         </div>
