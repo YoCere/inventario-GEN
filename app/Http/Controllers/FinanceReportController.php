@@ -43,7 +43,7 @@ class FinanceReportController extends Controller
         $firstDate = $cashFlows->first()->transaction_date;
 
         // Get Opening Balance from Settings
-        $settingOpeningBalance = (float) Setting::get('opening_balance_amount', 0);
+        $settingOpeningBalance = (int) round((float) Setting::get('opening_balance_amount', 0) * 100);
         $settingOpeningDate = Setting::get('opening_balance_date'); // Format Y-m-d
 
         // Calculate flows between Setting Date and Report Start Date

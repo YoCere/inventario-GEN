@@ -64,7 +64,9 @@
 
     <div class="header-container">
         <div class="company-info" style="display:flex; align-items:flex-start; gap:12px;">
-            @php($logoPath = \App\Models\Setting::get('shop_logo_path'))
+            @php
+                $logoPath = \App\Models\Setting::get('shop_logo_path');
+            @endphp
             @if($logoPath)
                 <img src="{{ \Illuminate\Support\Facades\Storage::url($logoPath) }}"
                      alt="Logo"
@@ -86,7 +88,7 @@
             <div class="meta-item">
                 Impreso: {{ now()->setTimezone(config('app.timezone'))->translatedFormat('d F Y, H:i') }}
             </div>
-            <div class="meta-item">Por: {{ auth()->user()->name ?? 'Administrador' }}</div>
+            <div class="meta-item">Por: {{ auth()->user()?->name ?? 'Administrador' }}</div>
         </div>
     </div>
 
