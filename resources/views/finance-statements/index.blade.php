@@ -20,6 +20,36 @@
         </div>
     </x-slot>
 
+    {{-- Print-only header --}}
+    <div id="estados-print-header" style="display:none;">
+        @php
+            $storeName    = \App\Models\Setting::get('store_name', config('app.name'));
+            $storeAddress = \App\Models\Setting::get('store_address', '');
+            $storePhone   = \App\Models\Setting::get('store_phone', '');
+            $logoPath     = \App\Models\Setting::get('shop_logo_path');
+        @endphp
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #000; padding-bottom:10px; margin-bottom:16px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+                @if($logoPath)
+                    <img src="{{ \Illuminate\Support\Facades\Storage::url($logoPath) }}" style="height:50px; object-fit:contain;">
+                @endif
+                <div>
+                    <div style="font-size:16pt; font-weight:bold; text-transform:uppercase;">{{ $storeName }}</div>
+                    @if($storeAddress)<div style="font-size:9pt; color:#555;">{{ $storeAddress }}</div>@endif
+                    @if($storePhone)<div style="font-size:9pt; color:#555;">Tel. {{ $storePhone }}</div>@endif
+                </div>
+            </div>
+            <div style="text-align:right;">
+                <div style="font-size:13pt; font-weight:bold; text-transform:uppercase;">Estados Financieros</div>
+                <div style="font-size:9pt; color:#555; margin-top:4px;">
+                    Periodo: {{ \Carbon\Carbon::parse($from)->format('d/m/Y') }} — {{ \Carbon\Carbon::parse($to)->format('d/m/Y') }}<br>
+                    Impreso por: <strong>{{ auth()->user()?->name ?? 'Sistema' }}</strong>
+                    el {{ now()->format('d/m/Y H:i') }}
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="py-4 space-y-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
             <div class="bg-card border border-border rounded-lg p-4">
@@ -219,10 +249,64 @@
     </div>
 
     <style>
+        /* ===== ESTADOS FINANCIEROS PRINT STYLES ===== */
         @media print {
+            @page { size: letter portrait; margin: 1.5cm; }
+
+            /* Hide navigation and UI chrome */
+            nav,
+            header,
+            footer,
             .print\:hidden { display: none !important; }
-            @page { size: landscape; margin: 1cm; }
-            .break-inside-avoid { break-inside: avoid; page-break-inside: avoid; }
+
+            /* Show print header */
+            #estados-print-header { display: block !important; }
+
+            /* Reset layout */
+            body { background: #fff !important; margin: 0 !important; padding: 0 !important; color: #000 !important; }
+            .py-4, .max-w-7xl {
+                padding: 0 !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+            }
+            .bg-card { background: transparent !important; }
+            .border, .rounded-lg {
+                border: none !important;
+                border-radius: 0 !important;
+                box-shadow: none !important;
+            }
+            .sm\:px-6, .lg\:px-8 { padding: 0 !important; }
+
+            /* Section headings */
+            h3 {
+                font-size: 11pt !important;
+                border-bottom: 1px solid #ccc !important;
+                padding-bottom: 4px !important;
+                margin-bottom: 10px !important;
+                margin-top: 0 !important;
+            }
+
+            /* Flex layouts in sections */
+            .flex.justify-between { display: flex !important; justify-content: space-between !important; }
+            .grid { display: grid !important; }
+
+            /* Keep each financial section together */
+            .break-inside-avoid {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+                margin-bottom: 18px !important;
+                padding: 8px 0 !important;
+                border-bottom: 1px solid #e0e0e0 !important;
+            }
+
+            /* Indicator cards */
+            .border.border-border.rounded-md {
+                border: 1px solid #ccc !important;
+                padding: 8px !important;
+                border-radius: 4px !important;
+            }
+
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
     </style>
 </x-app-layout>
