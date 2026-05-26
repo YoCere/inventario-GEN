@@ -63,12 +63,20 @@
     </div>
 
     <div class="header-container">
-        <div class="company-info">
-            <h1>{{ $storeName }}</h1>
-            <p>{{ $storeAddress }}</p>
-            @if($storePhone !== '-')
-                <p>Teléfono: {{ $storePhone }}</p>
+        <div class="company-info" style="display:flex; align-items:flex-start; gap:12px;">
+            @php($logoPath = \App\Models\Setting::get('shop_logo_path'))
+            @if($logoPath)
+                <img src="{{ \Illuminate\Support\Facades\Storage::url($logoPath) }}"
+                     alt="Logo"
+                     style="height:55px; object-fit:contain; flex-shrink:0;">
             @endif
+            <div>
+                <h1>{{ $storeName }}</h1>
+                <p>{{ $storeAddress }}</p>
+                @if($storePhone !== '-')
+                    <p>Teléfono: {{ $storePhone }}</p>
+                @endif
+            </div>
         </div>
         <div class="report-meta">
             <div class="report-title">Informe de Flujo de Caja</div>
@@ -76,7 +84,7 @@
                 Período: {{ $periodText }}
             </div>
             <div class="meta-item">
-                Impreso: {{ now()->setTimezone('Asia/Jakarta')->translatedFormat('d F Y, H:i') }}
+                Impreso: {{ now()->setTimezone(config('app.timezone'))->translatedFormat('d F Y, H:i') }}
             </div>
             <div class="meta-item">Por: {{ auth()->user()->name ?? 'Administrador' }}</div>
         </div>
@@ -125,7 +133,7 @@
                     </td>
 
                     <td class="text-right" style="font-family: monospace; font-size: 13px;">
-                        {{ number_format($cf->amount, 0, ',', '.') }}
+                        {{ format_money($cf->amount) }}
                     </td>
                 </tr>
             @empty
@@ -142,19 +150,19 @@
         <table class="summary-table">
             <tr>
                 <td class="text-right" style="color: #666;">Saldo Inicial ({{ \Carbon\Carbon::parse($openingBalanceDate)->format('d M Y') }})</td>
-                <td class="text-right">{{ number_format($openingBalanceAmount, 0, ',', '.') }}</td>
+                <td class="text-right">{{ format_money($openingBalanceAmount) }}</td>
             </tr>
             <tr>
                 <td class="text-right" style="color: #666;">Total de Ingresos</td>
-                <td class="text-right" style="color: #065f46;">+ {{ number_format($totalIncome, 0, ',', '.') }}</td>
+                <td class="text-right" style="color: #065f46;">+ {{ format_money($totalIncome) }}</td>
             </tr>
             <tr>
                 <td class="text-right" style="color: #666;">Total de Gastos</td>
-                <td class="text-right" style="color: #991b1b;">- {{ number_format($totalExpense, 0, ',', '.') }}</td>
+                <td class="text-right" style="color: #991b1b;">- {{ format_money($totalExpense) }}</td>
             </tr>
             <tr class="summary-row-total">
                 <td class="text-right">Saldo Final Estimado</td>
-                <td class="text-right">Rp {{ number_format($estimatedFinalBalance, 0, ',', '.') }}</td>
+                <td class="text-right">{{ format_money($estimatedFinalBalance) }}</td>
             </tr>
         </table>
     </div>
