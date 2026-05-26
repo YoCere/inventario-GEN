@@ -4,6 +4,8 @@ namespace App\Livewire\AccountingPeriods;
 
 use App\Enums\AccountingPeriodStatus;
 use App\Models\AccountingPeriod;
+use App\Models\Setting;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Livewire\Attributes\On;
 use PowerComponents\LivewirePowerGrid\Button;
@@ -50,6 +52,7 @@ final class AccountingPeriodTable extends PowerGridComponent
             ->add('name')
             ->add('start_date_formatted', fn (AccountingPeriod $model) => $model->start_date->format('d/m/Y'))
             ->add('end_date_formatted', fn (AccountingPeriod $model) => $model->end_date->format('d/m/Y'))
+            ->add('duration_days', fn (AccountingPeriod $model) => $model->start_date->diffInDays($model->end_date) + 1 . ' días')
             ->add('status_badge', function (AccountingPeriod $model) {
                 if ($model->status === AccountingPeriodStatus::Open) {
                     return '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">Abierto</span>';
@@ -75,6 +78,8 @@ final class AccountingPeriodTable extends PowerGridComponent
 
             Column::make('Fin', 'end_date_formatted', 'end_date')
                 ->sortable(),
+
+            Column::make('Duración', 'duration_days'),
 
             Column::make('Estado', 'status_badge', 'status')
                 ->sortable(),
@@ -108,16 +113,17 @@ final class AccountingPeriodTable extends PowerGridComponent
         $actions = [];
 
         if ($row->status === AccountingPeriodStatus::Open) {
+            $entryCount = $row->journal_entries_count ?? 0;
             $actions[] = Button::add('close')
                 ->slot('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" /></svg>')
                 ->class('bg-amber-500 hover:bg-amber-600 text-white p-2 rounded-md flex items-center justify-center')
                 ->dispatch('open-delete-modal', [
                     'component' => 'accounting-periods.accounting-period-table',
-                    'method' => 'closePeriod',
-                    'params' => ['periodId' => $row->id],
-                    'title' => "Cerrar periodo '{$row->name}'?",
-                    'description' => "Cerrar este periodo bloqueará todos sus asientos contables. No podrá registrar nuevas operaciones en este periodo. Asegúrese de haber creado el siguiente periodo antes de cerrar este.",
-                    'confirmButtonText' => 'Cerrar Periodo',
+                    'method'    => 'closePeriod',
+                    'params'    => ['periodId' => $row->id],
+                    'title'     => "Cerrar periodo \"{$row->name}\"?",
+                    'description' => "Este periodo tiene {$entryCount} asiento(s) contable(s). Al cerrarlo quedarán bloqueados y no podrá registrar nuevas operaciones en él. Asegúrese de haber creado el siguiente periodo antes de cerrar este.",
+                    'confirmButtonText'  => 'Cerrar Periodo',
                     'confirmButtonClass' => 'bg-amber-600 text-white hover:bg-amber-500',
                 ])
                 ->tooltip('Cerrar periodo');
@@ -128,11 +134,20 @@ final class AccountingPeriodTable extends PowerGridComponent
 
     public function header(): array
     {
+        $lastPeriod    = AccountingPeriod::orderByDesc('end_date')->first();
+        $suggestedType  = Setting::get('default_accounting_period_type', 'monthly');
+        $suggestedStart = $lastPeriod
+            ? $lastPeriod->end_date->addDay()->format('Y-m-d')
+            : now()->startOfMonth()->format('Y-m-d');
+
         return [
             Button::add('new-period')
                 ->slot('+ Nuevo Periodo')
                 ->class('bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md font-medium text-sm')
-                ->dispatch('create-accounting-period', []),
+                ->dispatch('create-accounting-period', [
+                    'suggestedType'  => $suggestedType,
+                    'suggestedStart' => $suggestedStart,
+                ]),
         ];
     }
 

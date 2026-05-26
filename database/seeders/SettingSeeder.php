@@ -29,6 +29,9 @@ class SettingSeeder extends Seeder
         Setting::set('accounting_iva_receivable_code', '1.1.05');
         Setting::set('accounting_iva_payable_code', '2.1.11');
         Setting::set('accounting_it_payable_code', '2.1.12');
+
+        // Periodos contables
+        Setting::set('default_accounting_period_type', 'monthly');
         Setting::set('currency_symbol', 'Bs');
         Setting::set('currency_position', 'left');
         Setting::set('currency_fraction_digits', '2');

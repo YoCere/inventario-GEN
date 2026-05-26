@@ -5,56 +5,95 @@
                 Crear Periodo Contable
             </h3>
             <p class="text-sm text-muted-foreground">
-                Define el nombre y el rango de fechas del nuevo periodo. Una vez cerrado, no podrá registrarse asientos en él.
+                Elige el tipo de periodo. Las fechas y el nombre se calculan automáticamente.
             </p>
         </div>
 
         <form wire:submit="save" class="space-y-4">
-            <!-- Nombre -->
-            <x-form-input
-                name="name"
-                label="Nombre del periodo"
-                type="text"
-                wire:model="name"
-                placeholder="Ej. 2027"
-                required
-            />
 
-            <!-- Fecha inicio -->
+            {{-- Tipo de periodo --}}
+            <div class="space-y-2">
+                <x-input-label :value="__('Tipo de periodo')" />
+                <div class="grid grid-cols-5 gap-1.5">
+                    @foreach([
+                        'monthly'   => 'Mensual',
+                        'quarterly' => 'Trimestral',
+                        'biannual'  => 'Semestral',
+                        'annual'    => 'Anual',
+                        'custom'    => 'Personalizado',
+                    ] as $value => $label)
+                        <label class="cursor-pointer">
+                            <input type="radio" name="period_type" value="{{ $value }}" wire:model.live="period_type" class="peer sr-only">
+                            <div class="flex flex-col items-center justify-center rounded-lg border border-input bg-background px-2 py-2 text-center text-xs font-medium transition-all hover:bg-muted/50 peer-checked:border-blue-500 peer-checked:bg-blue-50 peer-checked:text-blue-700 peer-checked:ring-1 peer-checked:ring-blue-500">
+                                {{ $label }}
+                            </div>
+                        </label>
+                    @endforeach
+                </div>
+                <x-input-error :messages="$errors->get('period_type')" />
+            </div>
+
+            {{-- Fecha inicio --}}
             <div class="space-y-1.5">
                 <x-input-label for="start_date" :value="__('Fecha de inicio')" />
                 <input
                     id="start_date"
                     type="date"
-                    wire:model="start_date"
+                    wire:model.live="start_date"
                     class="block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm"
                     required
                 />
                 <x-input-error :messages="$errors->get('start_date')" />
             </div>
 
-            <!-- Fecha fin -->
+            {{-- Fecha fin: readonly si no es custom --}}
             <div class="space-y-1.5">
-                <x-input-label for="end_date" :value="__('Fecha de fin')" />
+                <div class="flex items-center justify-between">
+                    <x-input-label for="end_date" :value="__('Fecha de fin')" />
+                    @if($period_type !== 'custom')
+                        <span class="text-xs text-muted-foreground">Calculada automáticamente</span>
+                    @endif
+                </div>
                 <input
                     id="end_date"
                     type="date"
                     wire:model="end_date"
-                    class="block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm"
+                    @if($period_type !== 'custom') readonly @endif
+                    class="block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm {{ $period_type !== 'custom' ? 'bg-muted/30 cursor-not-allowed text-muted-foreground' : '' }}"
                     required
                 />
                 <x-input-error :messages="$errors->get('end_date')" />
             </div>
 
-            <!-- Alerta informativa -->
+            {{-- Nombre del periodo --}}
+            <div class="space-y-1.5">
+                <div class="flex items-center justify-between">
+                    <x-input-label for="name" :value="__('Nombre del periodo')" />
+                    @if($period_type !== 'custom')
+                        <span class="text-xs text-muted-foreground">Generado automáticamente · editable</span>
+                    @endif
+                </div>
+                <input
+                    id="name"
+                    type="text"
+                    wire:model="name"
+                    placeholder="Ej. Enero 2027, T1 2027, 2027"
+                    class="block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm"
+                    required
+                    maxlength="50"
+                />
+                <x-input-error :messages="$errors->get('name')" />
+            </div>
+
+            {{-- Alerta informativa --}}
             <div class="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
                 </svg>
-                <span>El periodo se creará en estado <strong>Abierto</strong>. Crea el siguiente periodo antes de cerrar el actual para evitar interrupciones en el registro de operaciones.</span>
+                <span>El periodo se crea en estado <strong>Abierto</strong>. Crea el siguiente periodo antes de cerrar el actual para evitar interrupciones.</span>
             </div>
 
-            <!-- Acciones -->
+            {{-- Acciones --}}
             <div class="mt-6 flex justify-end gap-3 border-t border-gray-200 pt-4">
                 <x-secondary-button type="button" x-on:click="$dispatch('close-modal', { name: 'accounting-period-form-modal' })">
                     Cancelar

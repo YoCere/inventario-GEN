@@ -48,6 +48,7 @@ class SettingGroups extends Component
             'accounting_iva_receivable_code',
             'accounting_iva_payable_code',
             'accounting_it_payable_code',
+            'default_accounting_period_type',
         ],
         'mensajeria' => [
             'telegram_enabled',
@@ -170,6 +171,7 @@ class SettingGroups extends Component
         'accounting_iva_receivable_code' => '1.1.05',
         'accounting_iva_payable_code' => '2.1.11',
         'accounting_it_payable_code' => '2.1.12',
+        'default_accounting_period_type' => 'monthly',
         'dashboard_display_mode' => 'percent',
         'telegram_enabled' => '0',
         'telegram_bot_paused' => '0',
@@ -551,6 +553,7 @@ class SettingGroups extends Component
             'accounting_iva_receivable_code' => 'Cuenta Crédito Fiscal IVA (compras)',
             'accounting_iva_payable_code' => 'Cuenta Débito Fiscal IVA (ventas)',
             'accounting_it_payable_code' => 'Cuenta IT por Pagar',
+            'default_accounting_period_type' => 'Tipo de periodo contable por defecto',
             'dashboard_display_mode' => 'Modo del dashboard',
             'telegram_enabled' => 'Habilitar Telegram',
             'telegram_bot_paused' => 'Bot en pausa',
@@ -639,6 +642,14 @@ class SettingGroups extends Component
             'payroll_border_bonus_rate', 'payroll_labor_contribution_rate', 'payroll_rc_iva_rate',
             'payroll_solidarity_1_rate', 'payroll_solidarity_2_rate', 'payroll_employer_contribution_rate',
             'payroll_aguinaldo_provision_rate', 'payroll_indemnization_provision_rate' => $value . '%',
+            'default_accounting_period_type' => match ($value) {
+                'monthly'   => 'Mensual',
+                'quarterly' => 'Trimestral',
+                'biannual'  => 'Semestral',
+                'annual'    => 'Anual',
+                'custom'    => 'Personalizado',
+                default     => $value,
+            },
             default => $value !== '' ? $value : '-',
         };
     }
