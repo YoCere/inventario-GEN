@@ -13,6 +13,17 @@
                 <h3 class="text-lg font-semibold mb-2">Contabilidad</h3>
                 <p class="text-sm text-muted-foreground mb-4">Estructura contable, libro diario, kardex, planilla de sueldos y estados financieros.</p>
                 <div class="grid grid-cols-1 sm:grid-cols-5 gap-3">
+                    @if(auth()->user()->isAdmin())
+                        <a href="{{ route('finance.accounting-periods.index') }}" class="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 hover:bg-amber-100 sm:col-span-5">
+                            <div class="flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                                </svg>
+                                <p class="font-medium text-amber-800">Periodos Contables</p>
+                            </div>
+                            <p class="text-xs text-amber-700 mt-1">Gestionar y cerrar periodos · Crear el siguiente año fiscal</p>
+                        </a>
+                    @endif
                     <a href="{{ route('finance.chart-of-accounts.index') }}" class="rounded-md border border-border px-4 py-3 hover:bg-muted/40">
                         <p class="font-medium">Plan de cuentas</p>
                         <p class="text-xs text-muted-foreground mt-1">Catalogo contable y jerarquias</p>

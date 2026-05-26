@@ -23,6 +23,7 @@ class SettingGroups extends Component
     private const GROUP_KEYS = [
         'empresa' => [
             'store_name',
+            'store_nit',
             'store_address',
             'store_phone',
         ],
@@ -44,6 +45,9 @@ class SettingGroups extends Component
             'tax_it_rate',
             'tax_include_iva',
             'tax_include_it',
+            'accounting_iva_receivable_code',
+            'accounting_iva_payable_code',
+            'accounting_it_payable_code',
         ],
         'mensajeria' => [
             'telegram_enabled',
@@ -148,6 +152,7 @@ class SettingGroups extends Component
      */
     private const DEFAULT_VALUES = [
         'store_name' => 'Mi empresa',
+        'store_nit' => '',
         'store_address' => '',
         'store_phone' => '',
         'currency_symbol' => 'Bs',
@@ -162,6 +167,9 @@ class SettingGroups extends Component
         'tax_it_rate' => '3',
         'tax_include_iva' => '1',
         'tax_include_it' => '1',
+        'accounting_iva_receivable_code' => '1.1.05',
+        'accounting_iva_payable_code' => '2.1.11',
+        'accounting_it_payable_code' => '2.1.12',
         'dashboard_display_mode' => 'percent',
         'telegram_enabled' => '0',
         'telegram_bot_paused' => '0',
@@ -525,6 +533,7 @@ class SettingGroups extends Component
     {
         return match ($key) {
             'store_name' => 'Nombre de la empresa',
+            'store_nit' => 'NIT (Número de Identificación Tributaria)',
             'store_address' => 'Dirección',
             'store_phone' => 'Teléfono',
             'currency_symbol' => 'Símbolo de moneda',
@@ -539,6 +548,9 @@ class SettingGroups extends Component
             'tax_it_rate' => 'IT (%)',
             'tax_include_iva' => 'Aplicar IVA',
             'tax_include_it' => 'Aplicar IT',
+            'accounting_iva_receivable_code' => 'Cuenta Crédito Fiscal IVA (compras)',
+            'accounting_iva_payable_code' => 'Cuenta Débito Fiscal IVA (ventas)',
+            'accounting_it_payable_code' => 'Cuenta IT por Pagar',
             'dashboard_display_mode' => 'Modo del dashboard',
             'telegram_enabled' => 'Habilitar Telegram',
             'telegram_bot_paused' => 'Bot en pausa',

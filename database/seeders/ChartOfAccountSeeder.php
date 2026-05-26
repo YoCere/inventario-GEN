@@ -20,6 +20,8 @@ class ChartOfAccountSeeder extends Seeder
             ['code' => '1.1.02', 'name' => 'Bancos', 'level' => 3, 'parent_code' => '1.1', 'account_type' => 'asset', 'normal_balance' => 'debit', 'allows_posting' => true],
             ['code' => '1.1.03', 'name' => 'Cuentas por Cobrar', 'level' => 3, 'parent_code' => '1.1', 'account_type' => 'asset', 'normal_balance' => 'debit', 'allows_posting' => true],
             ['code' => '1.1.04', 'name' => 'Inventario Mercaderias', 'level' => 3, 'parent_code' => '1.1', 'account_type' => 'asset', 'normal_balance' => 'debit', 'allows_posting' => true],
+            // IVA — Crédito Fiscal (IVA pagado en compras, deducible del Débito Fiscal)
+            ['code' => '1.1.05', 'name' => 'Credito Fiscal IVA', 'level' => 3, 'parent_code' => '1.1', 'account_type' => 'asset', 'normal_balance' => 'debit', 'allows_posting' => true],
             ['code' => '1.2', 'name' => 'ACTIVO NO CORRIENTE', 'level' => 2, 'parent_code' => '1', 'account_type' => 'asset', 'normal_balance' => 'debit', 'allows_posting' => false],
             ['code' => '1.2.01', 'name' => 'Propiedad, Planta y Equipo', 'level' => 3, 'parent_code' => '1.2', 'account_type' => 'asset', 'normal_balance' => 'debit', 'allows_posting' => true],
 
@@ -36,6 +38,10 @@ class ChartOfAccountSeeder extends Seeder
             ['code' => '2.1.08', 'name' => 'RC-IVA por Pagar', 'level' => 3, 'parent_code' => '2.1', 'account_type' => 'liability', 'normal_balance' => 'credit', 'allows_posting' => true],
             ['code' => '2.1.09', 'name' => 'Aporte Solidario por Pagar', 'level' => 3, 'parent_code' => '2.1', 'account_type' => 'liability', 'normal_balance' => 'credit', 'allows_posting' => true],
             ['code' => '2.1.10', 'name' => 'Otras Retenciones por Pagar', 'level' => 3, 'parent_code' => '2.1', 'account_type' => 'liability', 'normal_balance' => 'credit', 'allows_posting' => true],
+            // IVA — Débito Fiscal (IVA cobrado en ventas, obligación tributaria)
+            ['code' => '2.1.11', 'name' => 'Debito Fiscal IVA', 'level' => 3, 'parent_code' => '2.1', 'account_type' => 'liability', 'normal_balance' => 'credit', 'allows_posting' => true],
+            // IT — Impuesto a las Transacciones 3% sobre ingresos brutos
+            ['code' => '2.1.12', 'name' => 'IT por Pagar', 'level' => 3, 'parent_code' => '2.1', 'account_type' => 'liability', 'normal_balance' => 'credit', 'allows_posting' => true],
             ['code' => '2.2', 'name' => 'PASIVO NO CORRIENTE', 'level' => 2, 'parent_code' => '2', 'account_type' => 'liability', 'normal_balance' => 'credit', 'allows_posting' => false],
             ['code' => '2.2.01', 'name' => 'Prestamos por Pagar LP', 'level' => 3, 'parent_code' => '2.2', 'account_type' => 'liability', 'normal_balance' => 'credit', 'allows_posting' => true],
 

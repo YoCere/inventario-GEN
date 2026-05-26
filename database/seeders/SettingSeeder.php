@@ -13,6 +13,7 @@ class SettingSeeder extends Seeder
     public function run(): void
     {
         Setting::set('store_name', 'Importadora El Cóndor');
+        Setting::set('store_nit', '');
         Setting::set('store_address', 'Av. Antofagasta N° 145, Oruro, Bolivia');
         Setting::set('store_phone', '72345678');
         Setting::set('opening_balance_date', now()->startOfYear()->toDateString());
@@ -23,6 +24,11 @@ class SettingSeeder extends Seeder
         Setting::set('tax_it_rate', '3');
         Setting::set('tax_include_iva', '1');
         Setting::set('tax_include_it', '1');
+
+        // Cuentas contables para IVA e IT
+        Setting::set('accounting_iva_receivable_code', '1.1.05');
+        Setting::set('accounting_iva_payable_code', '2.1.11');
+        Setting::set('accounting_it_payable_code', '2.1.12');
         Setting::set('currency_symbol', 'Bs');
         Setting::set('currency_position', 'left');
         Setting::set('currency_fraction_digits', '2');

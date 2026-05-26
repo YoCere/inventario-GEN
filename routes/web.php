@@ -81,6 +81,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     Route::prefix('finance')->name('finance.')->middleware('admin')->group(function () {
+        Route::view('accounting-periods', 'finance-accounting-periods.index')->name('accounting-periods.index');
+
         Route::get('payroll', [PayrollController::class, 'index'])->name('payroll.index');
         Route::get('payroll/create', [PayrollController::class, 'create'])->name('payroll.create');
         Route::post('payroll', [PayrollController::class, 'store'])->name('payroll.store');
