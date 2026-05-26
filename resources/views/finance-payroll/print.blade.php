@@ -193,7 +193,7 @@
         <tr>
             <td>{{ $item->line_number }}</td>
             <td>{{ $item->employee_name }}</td>
-            <td>{{ strtoupper($item->area) }}</td>
+            <td>{{ strtoupper($item->area ?? '') }}</td>
             <td class="text-right mono">{{ number_format($item->total_earned, 2, ',', '.') }}</td>
             <td class="text-right mono">{{ number_format($item->total_deductions, 2, ',', '.') }}</td>
             <td class="text-right mono">{{ number_format($item->net_payable, 2, ',', '.') }}</td>
