@@ -1,7 +1,7 @@
 <x-app-layout title="Kardex valorizado">
     <x-slot name="header">
         <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
-            <h2 class="font-semibold text-xl text-foreground leading-tight">Kardex valorizado</h2>
+            <h2 class="font-semibold text-xl text-foreground leading-tight print:hidden">Kardex valorizado</h2>
             <div class="print:hidden">
                 <x-secondary-button type="button" onclick="window.print()">
                     <x-heroicon-o-printer class="w-4 h-4 mr-2" />

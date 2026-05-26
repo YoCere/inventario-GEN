@@ -1,7 +1,7 @@
 <x-app-layout title="Estados Financieros">
     <x-slot name="header">
         <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
-            <h2 class="font-semibold text-xl text-foreground leading-tight">Estados Financieros</h2>
+            <h2 class="font-semibold text-xl text-foreground leading-tight print:hidden">Estados Financieros</h2>
             <div class="flex items-center gap-2 print:hidden">
                 <form method="GET" action="{{ route('finance.statements.index') }}" class="flex items-center gap-2">
                     <input type="date" name="from" value="{{ $from }}" class="rounded-md border-input bg-background text-sm" />

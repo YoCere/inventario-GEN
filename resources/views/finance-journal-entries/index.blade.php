@@ -1,7 +1,7 @@
 <x-app-layout title="Libro Diario">
     <x-slot name="header">
         <div class="flex justify-between items-center gap-2">
-            <h2 class="font-semibold text-xl text-foreground leading-tight">
+            <h2 class="font-semibold text-xl text-foreground leading-tight print:hidden">
                 {{ __('Libro Diario') }}
             </h2>
             <div class="print:hidden">

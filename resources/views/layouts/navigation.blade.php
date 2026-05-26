@@ -1,4 +1,4 @@
-<section class="py-4 bg-background border-b border-border">
+<section class="py-4 bg-background border-b border-border print:hidden">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" x-data="{ mobileMenuOpen: false }">
         <!-- Desktop Menu -->
         <nav class="hidden items-center justify-between lg:flex">

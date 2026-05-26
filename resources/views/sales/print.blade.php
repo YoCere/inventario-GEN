@@ -299,7 +299,7 @@
                 Por favor verifique la mercancía al momento de recibirla. Los artículos vendidos no tienen devolución.
             </div>
             <div class="printed-by">
-                Impreso por: <strong>{{ auth()->user()->name ?? 'Sistema' }}</strong>
+                Impreso por: <strong>{{ auth()->user()?->name ?? 'Sistema' }}</strong>
                 el {{ now()->format('d/m/Y H:i') }}
             </div>
         </div>
