@@ -411,8 +411,8 @@ class SaleService
                 ->lockForUpdate()
                 ->first();
 
-            $lastNumber = $latest ? (int) substr($latest->invoice_number, -4) : 0;
-            $candidate = $prefix . str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
+            $lastNumber = $latest ? (int) substr($latest->invoice_number, -6) : 0;
+            $candidate = $prefix . str_pad($lastNumber + 1, 6, '0', STR_PAD_LEFT);
 
             // Defensive check: ensure candidate not already taken (covers gap edge cases)
             if (!Sale::where('invoice_number', $candidate)->exists()) {

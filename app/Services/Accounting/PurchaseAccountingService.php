@@ -18,7 +18,12 @@ class PurchaseAccountingService
     ) {
     }
 
-    public function postPaidPurchase(Purchase $purchase, int $userId): ?JournalEntry
+    /**
+     * Contabiliza una compra según su método de pago.
+     * - cash: Débito Inventario / Crédito Caja
+     * - credit/cualquier otro: Débito Inventario / Crédito Cuentas por Pagar
+     */
+    public function postPurchase(Purchase $purchase, int $userId): ?JournalEntry
     {
         $exists = JournalEntry::query()
             ->where('source_type', Purchase::class)
@@ -35,9 +40,18 @@ class PurchaseAccountingService
         $period = $this->resolveOpenPeriod($entryDate);
 
         $inventoryAccount = $this->findPostingAccount(Setting::get('accounting_inventory_code', '1.1.04'));
-        $cashAccount = $this->findPostingAccount(Setting::get('accounting_purchase_cash_code', '1.1.01'));
-
         $total = (int) $purchase->total;
+
+        // Seleccionar cuenta de contrapartida según método de pago
+        $paymentMethod = $purchase->payment_method ?? 'cash';
+        if ($paymentMethod === 'cash') {
+            $creditAccount = $this->findPostingAccount(Setting::get('accounting_purchase_cash_code', '1.1.01'));
+            $creditDescription = 'Salida de caja por compra ' . $purchase->invoice_number;
+        } else {
+            // credit, transfer, o cualquier otro → cuentas por pagar
+            $creditAccount = $this->findPostingAccount(Setting::get('accounting_purchase_payable_code', '2.1.01'));
+            $creditDescription = 'Cuenta por pagar por compra ' . $purchase->invoice_number;
+        }
 
         $lines = [
             [
@@ -48,8 +62,8 @@ class PurchaseAccountingService
                 'reference' => $purchase->invoice_number,
             ],
             [
-                'chart_of_account_id' => $cashAccount->id,
-                'description' => 'Salida de caja por compra ' . $purchase->invoice_number,
+                'chart_of_account_id' => $creditAccount->id,
+                'description' => $creditDescription,
                 'debit_amount' => 0,
                 'credit_amount' => $total,
                 'reference' => $purchase->invoice_number,
@@ -67,20 +81,17 @@ class PurchaseAccountingService
         ], $lines);
     }
 
+    /**
+     * Alias backward-compatible.
+     */
+    public function postPaidPurchase(Purchase $purchase, int $userId): ?JournalEntry
+    {
+        return $this->postPurchase($purchase, $userId);
+    }
+
     protected function resolveOpenPeriod(string $entryDate): AccountingPeriod
     {
-        $period = AccountingPeriod::query()
-            ->whereDate('start_date', '<=', $entryDate)
-            ->whereDate('end_date', '>=', $entryDate)
-            ->where('status', 'open')
-            ->orderBy('start_date')
-            ->first();
-
-        if (!$period) {
-            throw new RuntimeException("No existe un periodo contable abierto para la fecha {$entryDate}.");
-        }
-
-        return $period;
+        return AccountingPeriod::resolveOpenForDate($entryDate);
     }
 
     protected function findPostingAccount(string $code): ChartOfAccount

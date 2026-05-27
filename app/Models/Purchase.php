@@ -20,6 +20,7 @@ class Purchase extends Model
         'due_date',
         'total',
         'status',
+        'payment_method',
         'notes',
         'proof_image',
         'created_by',

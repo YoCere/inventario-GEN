@@ -32,7 +32,7 @@ class ProductController extends Controller
 
         $cacheKey = 'products_search_v2_' . md5($query . '|' . $limit);
 
-        $products = Cache::remember($cacheKey, 60, function () use ($query, $limit) {
+        $products = Cache::remember($cacheKey, 15, function () use ($query, $limit) {
             // ── Sin query (catálogo inicial): primeros N productos activos con stock,
             //    ordenados featured DESC → name ASC. No usa ProductSearchService.
             if (mb_strlen($query) < 2) {
