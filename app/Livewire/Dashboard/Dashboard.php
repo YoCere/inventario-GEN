@@ -5,6 +5,7 @@ namespace App\Livewire\Dashboard;
 use Carbon\Carbon;
 use Livewire\Component;
 use App\Enums\DatePeriod;
+use App\Models\AccountingPeriod;
 use App\Models\Setting;
 use App\Services\DashboardStatsService;
 
@@ -178,6 +179,10 @@ class Dashboard extends Component
 
     public function render()
     {
-        return view('livewire.dashboard.dashboard');
+        return view('livewire.dashboard.dashboard', [
+            'periodAlert' => auth()->user()?->isAdmin()
+                ? AccountingPeriod::dashboardAlert()
+                : null,
+        ]);
     }
 }

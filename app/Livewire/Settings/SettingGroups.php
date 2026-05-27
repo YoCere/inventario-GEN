@@ -22,6 +22,7 @@ class SettingGroups extends Component
      */
     private const GROUP_KEYS = [
         'empresa' => [
+            'store_logo_path',
             'store_name',
             'store_nit',
             'store_address',
@@ -35,10 +36,14 @@ class SettingGroups extends Component
             'currency_decimal_separator',
         ],
         'finanzas' => [
-            'opening_balance_date',
-            'opening_balance_amount',
             'discount_rate_annual',
             'dashboard_display_mode',
+        ],
+        'periodo_contable' => [
+            'default_accounting_period_type',
+            'auto_create_next_period',
+            'opening_balance_date',
+            'opening_balance_amount',
         ],
         'impuestos' => [
             'tax_iva_rate',
@@ -48,7 +53,6 @@ class SettingGroups extends Component
             'accounting_iva_receivable_code',
             'accounting_iva_payable_code',
             'accounting_it_payable_code',
-            'default_accounting_period_type',
         ],
         'mensajeria' => [
             'telegram_enabled',
@@ -140,6 +144,7 @@ class SettingGroups extends Component
         'empresa' => 'Datos de la empresa',
         'moneda' => 'Moneda y formato',
         'finanzas' => 'Ajustes financieros',
+        'periodo_contable' => 'Periodo Contable',
         'impuestos' => 'Impuestos Bolivia',
         'mensajeria' => 'Telegram y notificaciones',
         'ia' => 'Agente IA y voz',
@@ -152,6 +157,7 @@ class SettingGroups extends Component
      * @var array<string, string>
      */
     private const DEFAULT_VALUES = [
+        'store_logo_path' => '',
         'store_name' => 'Mi empresa',
         'store_nit' => '',
         'store_address' => '',
@@ -172,6 +178,7 @@ class SettingGroups extends Component
         'accounting_iva_payable_code' => '2.1.11',
         'accounting_it_payable_code' => '2.1.12',
         'default_accounting_period_type' => 'monthly',
+        'auto_create_next_period'        => '1',
         'dashboard_display_mode' => 'percent',
         'telegram_enabled' => '0',
         'telegram_bot_paused' => '0',
@@ -233,8 +240,11 @@ class SettingGroups extends Component
     public string $shopAccentColor = '#F59E0B';
     public string $shopTextOnPrimary = '#FFFFFF';
 
-    /** Upload temporal del logo (Livewire Temporary Upload). */
+    /** Upload temporal del logo de la tienda online (Livewire Temporary Upload). */
     public $logoUpload = null;
+
+    /** Upload temporal del logo de la empresa (nav principal). */
+    public $companyLogoUpload = null;
 
     /**
      * Paletas preset family-user. Click aplica los 4 colores de una vez.
@@ -437,6 +447,49 @@ class SettingGroups extends Component
         $this->dispatch('settings-updated');
     }
 
+    // -------------------------------------------------------------------------
+    // Logo de la empresa (nav principal)
+    // -------------------------------------------------------------------------
+
+    public function updatedCompanyLogoUpload(): void
+    {
+        $this->validate([
+            'companyLogoUpload' => ['image', 'max:2048', 'mimes:png,jpg,jpeg,svg,webp'],
+        ]);
+
+        $old = Setting::get('store_logo_path');
+        if ($old && Storage::disk('public')->exists($old)) {
+            Storage::disk('public')->delete($old);
+        }
+
+        $path = $this->companyLogoUpload->store('company', 'public');
+        Setting::set('store_logo_path', $path);
+
+        $this->companyLogoUpload = null;
+        $this->dispatch('settings-updated');
+    }
+
+    public function removeCompanyLogo(): void
+    {
+        $path = Setting::get('store_logo_path');
+        if ($path && Storage::disk('public')->exists($path)) {
+            Storage::disk('public')->delete($path);
+        }
+        Setting::set('store_logo_path', '');
+        $this->dispatch('settings-updated');
+    }
+
+    #[Computed]
+    public function companyLogoUrl(): ?string
+    {
+        $path = Setting::get('store_logo_path');
+        return $path ? Storage::url($path) : null;
+    }
+
+    // -------------------------------------------------------------------------
+    // Logo de la tienda online
+    // -------------------------------------------------------------------------
+
     #[Computed]
     public function shopLogoUrl(): ?string
     {
@@ -534,6 +587,7 @@ class SettingGroups extends Component
     protected function labelFor(string $key): string
     {
         return match ($key) {
+            'store_logo_path' => 'Logo de la empresa',
             'store_name' => 'Nombre de la empresa',
             'store_nit' => 'NIT (Número de Identificación Tributaria)',
             'store_address' => 'Dirección',
@@ -554,6 +608,7 @@ class SettingGroups extends Component
             'accounting_iva_payable_code' => 'Cuenta Débito Fiscal IVA (ventas)',
             'accounting_it_payable_code' => 'Cuenta IT por Pagar',
             'default_accounting_period_type' => 'Tipo de periodo contable por defecto',
+            'auto_create_next_period'        => 'Auto-crear siguiente periodo al cerrar',
             'dashboard_display_mode' => 'Modo del dashboard',
             'telegram_enabled' => 'Habilitar Telegram',
             'telegram_bot_paused' => 'Bot en pausa',
@@ -628,6 +683,13 @@ class SettingGroups extends Component
     protected function formatValue(string $key, string $value): string
     {
         return match ($key) {
+            // Rutas de archivo: no exponer path interno.
+            'store_logo_path', 'shop_logo_path' => $value !== '' ? '📷 Logo configurado' : '— Sin logo',
+            // Campos sensibles: mostrar sólo últimos 4 caracteres enmascarados.
+            'telegram_bot_token', 'telegram_webhook_secret',
+            'anthropic_api_key', 'openai_api_key' => $value !== ''
+                ? '••••••••' . substr($value, -4)
+                : '-',
             'ai_provider' => match ($value) {
                 'openai_compatible' => 'OpenAI-compatible (DeepSeek, Groq…)',
                 default => 'Anthropic (Claude)',
@@ -650,6 +712,7 @@ class SettingGroups extends Component
                 'custom'    => 'Personalizado',
                 default     => $value,
             },
+            'auto_create_next_period' => $value === '1' ? 'Activo' : 'Inactivo',
             default => $value !== '' ? $value : '-',
         };
     }

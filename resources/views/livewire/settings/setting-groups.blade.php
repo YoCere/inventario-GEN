@@ -31,6 +31,65 @@
                 @endif
             </header>
 
+            @if($group['key'] === 'empresa')
+                {{-- Panel logo empresa: upload/preview inline --}}
+                <div class="border-b border-border px-4 py-5">
+                    <h4 class="text-sm font-semibold text-foreground flex items-center gap-2 mb-4">
+                        <x-heroicon-o-building-office class="h-4 w-4" />
+                        Logo de la empresa
+                        <span class="text-xs font-normal text-muted-foreground">(aparece en la barra de navegación)</span>
+                    </h4>
+
+                    <div class="grid md:grid-cols-[160px_1fr] gap-4 items-start">
+                        {{-- Preview --}}
+                        <div class="bg-muted/40 rounded-lg border border-dashed border-border h-24 flex items-center justify-center overflow-hidden p-2">
+                            @if($this->companyLogoUrl)
+                                <img src="{{ $this->companyLogoUrl }}"
+                                     alt="Logo actual"
+                                     class="max-h-full max-w-full object-contain">
+                            @else
+                                <div class="text-center text-muted-foreground text-xs px-3">
+                                    <x-heroicon-o-building-office class="h-8 w-8 mx-auto mb-1 opacity-30" />
+                                    Sin logo
+                                </div>
+                            @endif
+                        </div>
+
+                        {{-- Controles --}}
+                        <div class="space-y-2">
+                            <p class="text-xs text-muted-foreground">
+                                PNG, JPG, SVG o WebP · Máximo 2 MB · Recomendado: fondo transparente.
+                            </p>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <label for="company-logo-upload"
+                                       class="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-input bg-background text-sm font-medium hover:bg-accent hover:text-accent-foreground cursor-pointer">
+                                    <x-heroicon-o-arrow-up-tray class="h-4 w-4" />
+                                    {{ $this->companyLogoUrl ? 'Cambiar logo' : 'Subir logo' }}
+                                </label>
+                                <input id="company-logo-upload"
+                                       type="file"
+                                       wire:model="companyLogoUpload"
+                                       class="hidden"
+                                       accept="image/png,image/jpeg,image/svg+xml,image/webp">
+                                @if($this->companyLogoUrl)
+                                    <x-secondary-button type="button"
+                                                        wire:click="removeCompanyLogo"
+                                                        wire:confirm="¿Quitar el logo de la empresa?">
+                                        Quitar logo
+                                    </x-secondary-button>
+                                @endif
+                            </div>
+                            <div wire:loading wire:target="companyLogoUpload" class="text-xs text-blue-600 dark:text-blue-400">
+                                Subiendo logo…
+                            </div>
+                            @error('companyLogoUpload')
+                                <p class="text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+                </div>
+            @endif
+
             @if($group['key'] === 'tienda' && $shopEnabled)
                 {{-- Panel info: link público + QR + botones compartir. Solo visible cuando ON. --}}
                 <div class="bg-green-50 dark:bg-green-950/30 border-b border-green-200 dark:border-green-900 px-4 py-4">
@@ -254,8 +313,9 @@
                             <tbody>
                                 @foreach($group['items'] as $item)
                                     @php
-                                        // Skip filas editadas inline en panel de Tienda.
-                                        $inlineShopKeys = [
+                                        // Skip filas editadas inline (logo empresa, panel tienda).
+                                        $inlineKeys = [
+                                            'store_logo_path',
                                             'shop_enabled',
                                             'shop_logo_path',
                                             'shop_primary_color',
@@ -264,12 +324,29 @@
                                             'shop_text_on_primary',
                                         ];
                                     @endphp
-                                    @if(in_array($item['key'], $inlineShopKeys, true))
+                                    @if(in_array($item['key'], $inlineKeys, true))
                                         @continue
                                     @endif
                                     <tr class="border-b border-border/60">
                                         <td class="py-2 pr-2">{{ $item['label'] }}</td>
-                                        <td class="py-2 pr-2 text-foreground">{{ $item['value'] }}</td>
+                                        <td class="py-2 pr-2 text-foreground">
+                                            @php $val = $item['value']; @endphp
+                                            @if($val === 'Activo' || $val === '✅ Activo')
+                                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Activo
+                                                </span>
+                                            @elseif($val === 'Inactivo')
+                                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-zinc-400"></span>Inactivo
+                                                </span>
+                                            @elseif($val === '🔴 Pausado')
+                                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>Pausado
+                                                </span>
+                                            @else
+                                                {{ $val }}
+                                            @endif
+                                        </td>
                                         <td class="py-2 text-right">
                                             <x-secondary-button type="button" wire:click="editSetting('{{ $item['key'] }}')">
                                                 Editar

@@ -4,10 +4,18 @@
             <h2 class="font-semibold text-xl text-foreground leading-tight">
                 {{ __('Productos') }}
             </h2>
-            <x-primary-button x-data x-on:click="$dispatch('create-product')">
-                <x-heroicon-o-plus class="w-4 h-4 mr-2" />
-                Crear producto
-            </x-primary-button>
+            <div class="flex items-center gap-2">
+                <a href="{{ route('products.report') }}">
+                    <x-secondary-button type="button">
+                        <x-heroicon-o-chart-bar class="w-4 h-4 mr-2" />
+                        Generar informe
+                    </x-secondary-button>
+                </a>
+                <x-primary-button x-data x-on:click="$dispatch('create-product')">
+                    <x-heroicon-o-plus class="w-4 h-4 mr-2" />
+                    Crear producto
+                </x-primary-button>
+            </div>
         </div>
     </x-slot>
 

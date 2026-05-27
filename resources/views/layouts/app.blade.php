@@ -8,6 +8,18 @@
 
         <title>{{ config('app.name', 'Laravel') }}{{ !empty($title) ? ' | ' . $title : '' }}</title>
 
+        {{-- Anti-flash dark mode: se ejecuta ANTES de que el CSS cargue para evitar
+             el parpadeo blanco cuando el usuario tiene modo oscuro guardado. --}}
+        <script>
+            (function () {
+                var theme = localStorage.getItem('theme');
+                var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (theme === 'dark' || (!theme && prefersDark)) {
+                    document.documentElement.classList.add('dark');
+                }
+            })();
+        </script>
+
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=inter:400,500,600&display=swap" rel="stylesheet" />

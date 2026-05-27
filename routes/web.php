@@ -32,6 +32,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::view('categories', 'categories.index')->name('categories.index');
         Route::view('units', 'units.index')->name('units.index');
         Route::view('products', 'products.index')->name('products.index');
+        Route::view('products/report', 'products.report')->name('products.report');
+        Route::get('products/report/print', [\App\Http\Controllers\ProductReportController::class, 'print'])->name('products.report.print');
         Route::view('warehouses', 'warehouses.index')->name('warehouses.index');
         Route::view('locations', 'locations.index')->name('locations.index');
         Route::view('transfers', 'transfers.index')->name('transfers.index');

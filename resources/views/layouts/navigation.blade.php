@@ -3,12 +3,23 @@
         <!-- Desktop Menu -->
         <nav class="hidden items-center justify-between lg:flex">
             <div class="flex items-center gap-6">
-                <!-- Logo -->
+                <!-- Logo empresa -->
+                @php
+                    $companyLogoPath = \App\Models\Setting::get('store_logo_path');
+                    $companyLogoUrl  = $companyLogoPath ? \Illuminate\Support\Facades\Storage::url($companyLogoPath) : null;
+                    $companyName     = \App\Models\Setting::get('store_name', config('app.name'));
+                @endphp
                 <a href="{{ route('dashboard') }}" class="flex items-center gap-2">
-                    <x-application-logo class="w-8 h-8 fill-current text-foreground" />
-                    <span class="text-md font-semibold tracking-tighter text-foreground">
-                        {{ config('app.name', 'Laravel') }}
-                    </span>
+                    @if($companyLogoUrl)
+                        <img src="{{ $companyLogoUrl }}"
+                             alt="{{ $companyName }}"
+                             class="h-8 w-auto max-w-[160px] object-contain">
+                    @else
+                        <x-application-logo class="w-8 h-8 fill-current text-foreground" />
+                        <span class="text-md font-semibold tracking-tighter text-foreground">
+                            {{ $companyName }}
+                        </span>
+                    @endif
                 </a>
 
                 <!-- Navigation Menu -->
@@ -165,7 +176,31 @@
             </div>
 
             <!-- User Auth Buttons -->
-            <div class="flex gap-2">
+            <div class="flex items-center gap-2">
+                {{-- Toggle modo oscuro/claro --}}
+                <button
+                    x-data="{
+                        dark: document.documentElement.classList.contains('dark'),
+                        toggle() {
+                            this.dark = !this.dark;
+                            document.documentElement.classList.toggle('dark', this.dark);
+                            localStorage.setItem('theme', this.dark ? 'dark' : 'light');
+                        }
+                    }"
+                    @click="toggle()"
+                    :title="dark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'"
+                    class="inline-flex items-center justify-center rounded-md h-9 w-9 border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                    {{-- Sol (visible en modo oscuro) --}}
+                    <svg x-show="dark" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+                    </svg>
+                    {{-- Luna (visible en modo claro) --}}
+                    <svg x-show="!dark" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" />
+                    </svg>
+                </button>
+
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button class="inline-flex items-center justify-center whitespace-nowrap rounded-full text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 gap-2">
@@ -209,9 +244,13 @@
         <!-- Mobile Menu -->
         <div class="block lg:hidden">
             <div class="flex items-center justify-between">
-                <!-- Logo -->
+                <!-- Logo empresa mobile -->
                 <a href="{{ route('dashboard') }}" class="flex items-center gap-2">
-                    <x-application-logo class="w-8 h-8 fill-current text-foreground" />
+                    @if($companyLogoUrl ?? false)
+                        <img src="{{ $companyLogoUrl }}" alt="{{ $companyName ?? '' }}" class="h-8 w-auto max-w-[120px] object-contain">
+                    @else
+                        <x-application-logo class="w-8 h-8 fill-current text-foreground" />
+                    @endif
                 </a>
 
                 <button @click="mobileMenuOpen = true" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 w-10">
@@ -246,8 +285,12 @@
                 <div class="flex flex-col gap-6">
                     <div class="flex items-center justify-between">
                         <a href="{{ route('dashboard') }}" class="flex items-center gap-2">
-                            <x-application-logo class="w-8 h-8 fill-current text-foreground" />
-                            <span class="text-lg font-semibold">{{ config('app.name') }}</span>
+                            @if($companyLogoUrl ?? false)
+                                <img src="{{ $companyLogoUrl }}" alt="{{ $companyName ?? '' }}" class="h-8 w-auto max-w-[120px] object-contain">
+                            @else
+                                <x-application-logo class="w-8 h-8 fill-current text-foreground" />
+                                <span class="text-lg font-semibold">{{ $companyName ?? config('app.name') }}</span>
+                            @endif
                         </a>
                         <button @click="mobileMenuOpen = false" class="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
                             <span class="sr-only">Cerrar</span>
@@ -356,6 +399,28 @@
                         <div class="pt-4 mt-4 border-t border-border">
                             <div class="font-medium text-base text-foreground mb-2">{{ Auth::user()->name }}</div>
                             <div class="flex flex-col gap-3">
+                                {{-- Toggle oscuro/claro mobile --}}
+                                <button
+                                    x-data="{
+                                        dark: document.documentElement.classList.contains('dark'),
+                                        toggle() {
+                                            this.dark = !this.dark;
+                                            document.documentElement.classList.toggle('dark', this.dark);
+                                            localStorage.setItem('theme', this.dark ? 'dark' : 'light');
+                                        }
+                                    }"
+                                    @click="toggle()"
+                                    class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input h-9 px-4 py-2 w-full bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
+                                >
+                                    <svg x-show="dark" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+                                    </svg>
+                                    <svg x-show="!dark" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" />
+                                    </svg>
+                                    <span x-text="dark ? 'Modo claro' : 'Modo oscuro'"></span>
+                                </button>
+
                                 <a href="{{ route('profile.index') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input h-9 px-4 py-2 w-full {{ request()->routeIs('profile.*') ? 'bg-accent text-accent-foreground' : 'bg-background hover:bg-accent hover:text-accent-foreground' }}">
                                     Perfil
                                 </a>

@@ -186,18 +186,6 @@ class JournalEntryService
     protected function resolveOpenPeriod(string $entryDate): AccountingPeriod
     {
         $date = Carbon::parse($entryDate)->toDateString();
-
-        $period = AccountingPeriod::query()
-            ->whereDate('start_date', '<=', $date)
-            ->whereDate('end_date', '>=', $date)
-            ->where('status', AccountingPeriodStatus::Open->value)
-            ->orderBy('start_date')
-            ->first();
-
-        if (!$period) {
-            throw new RuntimeException("No existe periodo contable abierto para {$date}.");
-        }
-
-        return $period;
+        return AccountingPeriod::resolveOpenForDate($date);
     }
 }

@@ -125,18 +125,7 @@ class PayrollAccountingService
 
     protected function resolveOpenPeriod(string $entryDate): AccountingPeriod
     {
-        $period = AccountingPeriod::query()
-            ->whereDate('start_date', '<=', $entryDate)
-            ->whereDate('end_date', '>=', $entryDate)
-            ->where('status', 'open')
-            ->orderBy('start_date')
-            ->first();
-
-        if (! $period) {
-            throw new RuntimeException("No existe un periodo contable abierto para la fecha {$entryDate}.");
-        }
-
-        return $period;
+        return AccountingPeriod::resolveOpenForDate($entryDate);
     }
 
     protected function findPostingAccount(string $code): ChartOfAccount

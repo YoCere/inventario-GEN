@@ -119,14 +119,38 @@ class ProductSearchService
     private function searchFuzzy(string $query): Collection
     {
         $normalized = $this->normalize($query);
-        $tokens = array_filter(explode(' ', $normalized));
+        $allTokens = array_values(array_filter(explode(' ', $normalized)));
 
+        if (empty($allTokens)) {
+            return collect();
+        }
+
+        // Filtrar stop words y tokens muy cortos para evitar que palabras vacías como
+        // "de", "y", "con" acumulen puntos al aparecer dentro de nombres de productos.
+        // Ej: query "llavero peluche labubu pop mart blanco y azul de conejo" →
+        //   token "de" vía str_contains daría +10 a "Ventilador de Pie" — falso positivo.
+        $stopWords = [
+            // Español
+            'y', 'o', 'e', 'de', 'del', 'el', 'la', 'lo', 'los', 'las',
+            'un', 'una', 'con', 'en', 'a', 'al', 'por', 'que', 'se',
+            'su', 'sus', 'es', 'son', 'no', 'si', 'mas', 'muy', 'ni',
+            'para', 'como', 'pero', 'hay', 'son', 'esta', 'esto',
+            // Inglés: visión describe en español pero marcas traen "the", "with", "and"
+            'the', 'and', 'with', 'for', 'its', 'has', 'are', 'was',
+        ];
+        $tokens = array_values(array_filter($allTokens, fn($t) =>
+            strlen($t) >= 3 && !in_array($t, $stopWords)
+        ));
+        // Si el filtrado dejó vacío (query era todo stop words), usar tokens con len >= 2
+        if (empty($tokens)) {
+            $tokens = array_values(array_filter($allTokens, fn($t) => strlen($t) >= 2));
+        }
         if (empty($tokens)) {
             return collect();
         }
 
         // Pre-filtrar en SQL: solo cargar productos cuyo nombre/sku/descripción
-        // contenga AL MENOS un token. Evita full-table scan PHP.
+        // contenga AL MENOS un token significativo. Evita full-table scan PHP.
         // NOTA: LIKE en SQLite es binary y NO ignora acentos. Usuario que busca "cafe"
         // sin acento puede no matchear "Café" en DB. Para esos casos cae fallback abajo.
         $relations = ['unit', 'category', 'stocks.location.warehouse', 'primaryImage'];
@@ -154,28 +178,39 @@ class ProductSearchService
                 ->get();
         }
 
-        $scored = $products->map(function ($product) use ($tokens, $query, $normalized) {
+        $scored = $products->map(function ($product) use ($tokens, $query) {
             $name_lower = mb_strtolower($product->name);
             $name_normalized = $this->normalize($name_lower);
             $name_words = preg_split('/\s+/', $name_normalized, -1, PREG_SPLIT_NO_EMPTY);
             $desc_lower = mb_strtolower($product->description ?? '');
+            $desc_normalized = $this->normalize($desc_lower);
 
             $score = 0;
 
             foreach ($tokens as $token) {
-                // Exact match en nombre normalizado
-                if (str_contains($name_normalized, $token)) {
+                // Word-exact match: busca el token como palabra completa del nombre.
+                // Evita que "de" sume puntos porque "ventilador de pie" lo contiene
+                // como subcadena en str_contains. Con in_array solo matchea palabras.
+                if (in_array($token, $name_words, true)) {
                     $score += 10;
+                } elseif (strlen($token) >= 4 && str_contains($name_normalized, $token)) {
+                    // Substring bonus solo para tokens de 4+ chars (reduce ruido)
+                    $score += 5;
                 }
 
-                // Match en descripción
-                if (str_contains($desc_lower, $token)) {
+                // Match en descripción (word-exact preferido)
+                $desc_words = preg_split('/\s+/', $desc_normalized, -1, PREG_SPLIT_NO_EMPTY);
+                if (in_array($token, $desc_words, true)) {
                     $score += 3;
+                } elseif (strlen($token) >= 4 && str_contains($desc_lower, $token)) {
+                    $score += 1;
                 }
 
-                // Typo tolerance: Levenshtein por palabra
+                // Typo tolerance: Levenshtein por palabra.
+                // Mínimo 4 chars para evitar que tokens cortos ("the", "con", "pie")
+                // tengan distancia ≤2 con palabras de 3 chars de cualquier producto.
                 foreach ($name_words as $word) {
-                    if (strlen($word) >= 3 && strlen($token) >= 3) {
+                    if (strlen($word) >= 4 && strlen($token) >= 4) {
                         $distance = levenshtein($token, $word);
                         if ($distance <= 2) {
                             // Distancia pequeña = match fuzzy
@@ -185,7 +220,7 @@ class ProductSearchService
                 }
             }
 
-            // Bonus: substring match case-insensitive
+            // Bonus: el query completo aparece como subcadena en el nombre (coincidencia total)
             if (stripos($name_lower, $query) !== false) {
                 $score += 5;
             }
@@ -307,6 +342,23 @@ class ProductSearchService
         return trim($text);
     }
 
+    /**
+     * Formatea un producto por ID para mostrarlo en el bot (usado por cache de memoria).
+     * Retorna array de un elemento compatible con handleSearch, o [] si no existe.
+     */
+    public function formatProductById(int $productId): array
+    {
+        $product = $this->applyScope(Product::query())
+            ->with(['unit', 'category', 'stocks.location.warehouse', 'primaryImage'])
+            ->find($productId);
+
+        if (! $product) {
+            return [];
+        }
+
+        return $this->formatResults(collect([$product]));
+    }
+
     private function formatResults(Collection $products): array
     {
         return $products->map(function ($product) {
@@ -350,6 +402,86 @@ class ProductSearchService
                     $locationLine,
             ];
         })->values()->toArray();
+    }
+
+    /**
+     * Re-rankea y filtra resultados de búsqueda visual usando IA.
+     *
+     * Después de que visión identifica "Llavero peluche Labubu Pop Mart…" y el
+     * buscador fuzzy devuelve 5 candidatos (incluyendo Aceite, Ventilador, etc.),
+     * la IA examina los nombres y determina cuáles son semánticamente relevantes.
+     *
+     * Retorna el array filtrado y reordenado (mejor match primero).
+     * Si la IA no está habilitada o falla, devuelve los resultados originales.
+     *
+     * @param string $description Descripción de visión del producto fotografiado.
+     * @param array  $results     Array formateado de formatResults() con claves id/name/sku.
+     * @return array
+     */
+    public function rerankForVision(string $description, array $results): array
+    {
+        if (!$this->isAiEnabled() || count($results) <= 1) {
+            return $results;
+        }
+
+        try {
+            $list = collect($results)
+                ->map(fn($r, $i) => ($i + 1) . '. ' . $r['name'])
+                ->implode("\n");
+
+            $prompt = <<<PROMPT
+Un cliente fotografió un producto. El modelo de visión lo describió como:
+"{$description}"
+
+Estos son los productos encontrados en el inventario de la tienda:
+{$list}
+
+Tarea: identifica cuáles de estos productos corresponden a la descripción.
+Devuelve SOLO los números de los productos relevantes, separados por coma, en orden de relevancia (más probable primero).
+Si ninguno corresponde, responde: ninguno
+
+Responde ÚNICAMENTE con números (ej: 5 o 2,5), sin texto adicional.
+PROMPT;
+
+            $provider = \App\Models\Setting::get('ai_provider', 'anthropic');
+            $content = $provider === 'openai_compatible'
+                ? $this->aiSearchOpenAi($prompt)
+                : $this->aiSearchAnthropic($prompt);
+
+            $answer = trim((string) $content);
+
+            if (strtolower($answer) === 'ninguno' || $answer === '') {
+                return $results;
+            }
+
+            // Parsear: "5" o "2,5" o "1, 3, 5"
+            $positions = array_filter(
+                array_map('intval', preg_split('/[\s,]+/', $answer)),
+                fn($n) => $n >= 1 && $n <= count($results)
+            );
+
+            if (empty($positions)) {
+                return $results;
+            }
+
+            // Reordenar: primero los elegidos por IA en su orden, luego descartar el resto
+            $reranked = [];
+            foreach ($positions as $pos) {
+                $reranked[] = $results[$pos - 1];
+            }
+
+            Log::info('Vision rerank applied', [
+                'description' => $description,
+                'original_count' => count($results),
+                'reranked_count' => count($reranked),
+                'ai_answer' => $answer,
+            ]);
+
+            return $reranked;
+        } catch (\Exception $e) {
+            Log::warning('Vision rerank error', ['error' => $e->getMessage()]);
+            return $results;
+        }
     }
 
     private function isAiEnabled(): bool

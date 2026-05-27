@@ -2,6 +2,7 @@
 
 namespace App\Services\Telegram;
 
+use App\Models\BotKnowledge;
 use App\Models\Setting;
 use App\Models\TelegramConversation;
 use App\Models\Product;
@@ -76,18 +77,43 @@ class BotHandler
                 return;
             }
 
-            // Photo messages: rutear a flujo activo si lo espera (ej. nuevo:foto).
-            // Hacerlo ANTES del early-return por texto vacío — las fotos no llevan texto.
-            if (isset($message['photo']) && $conversation && str_starts_with($conversation->step, 'nuevo:')) {
-                $this->productHandler->handle($chatId, $message);
-                return;
-            }
+            // Photo messages — debe manejarse ANTES del early-return por texto vacío.
+            // Telegram envía las fotos con 'caption' (no 'text'); sin esta rama se caen
+            // silenciosamente y el usuario queda sin respuesta.
+            if (isset($message['photo'])) {
+                // Flujo activo de alta de producto: la foto va al paso 'nuevo:foto'.
+                if ($conversation && str_starts_with($conversation->step, 'nuevo:')) {
+                    $this->productHandler->handle($chatId, $message);
+                    return;
+                }
 
-            // Photo sin flujo activo → búsqueda por imagen vía OpenAI Vision.
-            // Solo si ai_vision_enabled='1' está configurado, sino se ignora silencio.
-            if (isset($message['photo']) && $this->visionService->isEnabled()) {
-                $this->handlePhotoSearch($chatId, $message);
-                return;
+                $caption = trim($message['caption'] ?? '');
+
+                // Vision habilitado + key del provider activo → describir + buscar.
+                if ($this->visionService->isEnabled()) {
+                    $this->handlePhotoSearch($chatId, $message, $caption);
+                    return;
+                }
+
+                // Vision off pero el usuario mandó caption → usar caption como query.
+                // Soluciona "foto + 'tenemos este Redmi 14c?'" cuando Vision está apagado.
+                if ($caption !== '') {
+                    $this->telegram->sendMessage(
+                        $chatId,
+                        "📷 <i>Búsqueda por imagen no activa. Usando el texto que enviaste para buscar…</i>"
+                    );
+                    $message['text'] = $caption;
+                    // Continúa al routing de texto abajo con caption como query.
+                } else {
+                    // Vision off + sin caption → explicar en lugar de quedarse mudo.
+                    $this->telegram->sendMessage(
+                        $chatId,
+                        "📷 <b>Búsqueda por imagen no disponible</b>\n\n" .
+                        $this->visionService->unavailableReason() . "\n\n" .
+                        "Mientras tanto, escribe el nombre del producto."
+                    );
+                    return;
+                }
             }
 
             if (empty($message['text'])) {
@@ -143,6 +169,13 @@ class BotHandler
                     $text = trim($message['text'] ?? '');
                     if ($text === '1' || strtolower($text) === 'vender') {
                         Log::info('User selected option 1: vender', ['chatId' => $chatId]);
+                        // Si el resultado vino de búsqueda visual, el usuario eligió vender
+                        // = confirmación explícita → elevar source a 'user_confirmed' en memoria.
+                        $visionKey = $conversation->data['vision_key'] ?? null;
+                        $productId = $conversation->data['product_id'] ?? null;
+                        if ($visionKey && $productId) {
+                            BotKnowledge::rememberVision($visionKey, (int) $productId, confirmed: true);
+                        }
                         $this->handleQuickSaleFromSearch($chatId);
                         return;
                     } elseif ($text === '2') {
@@ -282,10 +315,12 @@ class BotHandler
             return;
         }
 
-        // Store selected product and show info with vender option
+        // Copiar vision_key si la búsqueda vino de visión (para confirmed-save al vender).
+        $visionKey = $conversation->data['vision_key'] ?? null;
+
         $conversation->update([
-            'step' => 'busqueda:resultado',
-            'data' => ['product_id' => $productId],
+            'step'       => 'busqueda:resultado',
+            'data'       => array_filter(['product_id' => $productId, 'vision_key' => $visionKey]),
             'expires_at' => now()->addMinutes(5),
         ]);
 
@@ -594,12 +629,14 @@ class BotHandler
 
     /**
      * Recibe foto del cliente sin flujo activo. Pasa imagen a VisionService
-     * (OpenAI Vision o compatible) → descripción en texto → ProductSearchService
-     * busca por descripción → muestra match o pide más datos.
+     * → descripción en texto → ProductSearchService busca → muestra match.
      *
-     * Costo aprox USD 0.001-0.003 por imagen con gpt-4o-mini.
+     * Si el usuario adjuntó caption (ej. "tenemos este Redmi 14C?"), se pasa
+     * como hint al modelo de visión y también se usa como query alterna al
+     * buscar (la unión de descripción + caption suele rescatar matches que
+     * solo la descripción no logra).
      */
-    protected function handlePhotoSearch(string $chatId, array $message): void
+    protected function handlePhotoSearch(string $chatId, array $message, string $caption = ''): void
     {
         try {
             $this->telegram->sendChatAction($chatId, 'typing');
@@ -616,31 +653,135 @@ class BotHandler
             $filePath = $this->telegram->getFile($fileId);
             $imageBinary = $this->telegram->downloadFile($filePath);
 
-            $description = $this->visionService->describeProductImage($imageBinary);
+            $description = $this->visionService->describeProductImage(
+                $imageBinary,
+                mimeType: null,
+                hint: $caption !== '' ? $caption : null,
+            );
 
             if (empty($description)) {
+                // Vision no identificó nada — si hay caption y NO es pregunta/frase,
+                // intentar búsqueda con el texto del caption (ej. "Redmi 14c").
+                // Si el caption ES pregunta/frase ("Tenemos este producto?"), usarlo como
+                // query produciría resultados basura — mejor pedir el nombre directo.
+                if ($caption !== '' && ! $this->isConversationalQuery($caption)) {
+                    $this->telegram->sendMessage(
+                        $chatId,
+                        "👁️ No pude identificar el producto en la foto. Probando con el texto que enviaste: <i>" .
+                        htmlspecialchars($caption, ENT_QUOTES) . "</i>"
+                    );
+                    $results = $this->searchService->search($caption);
+                    if (! empty($results)) {
+                        $this->handleSearch($chatId, $caption, $results);
+                        return;
+                    }
+                }
+
                 $this->telegram->sendMessage(
                     $chatId,
-                    "❌ No pude identificar un producto en la imagen.\n\nIntenta con otra foto más clara o escribe el nombre."
+                    "❌ No pude identificar el producto en la imagen.\n\n" .
+                    "✏️ Escribe el <b>nombre del producto</b> para buscarlo directamente."
                 );
                 return;
             }
+
+            // Query combinada: descripción de visión + caption (si aporta marca/modelo).
+            // Caption conversacional ("tenemos este?") ya se filtró arriba, por lo que
+            // si llega aquí es un nombre de producto real y vale la pena combinarlo.
+            $fullQuery = $caption !== ''
+                ? trim($description . ' ' . $caption)
+                : $description;
+
+            // Búsqueda enfocada: los modelos de visión describen en formato
+            // "[tipo] [marca] [color] [características]". Las palabras clave más
+            // distintivas están primero; lo que viene después (colores, adjetivos,
+            // preposiciones) introduce ruido en el buscador fuzzy.
+            // Tomamos las primeras 4 palabras de ≥3 chars como query primaria.
+            $focusedQuery = $this->extractVisionSearchQuery($description);
 
             $this->telegram->sendMessage(
                 $chatId,
                 "👁️ Producto detectado: <b>" . htmlspecialchars($description, ENT_QUOTES) . "</b>\n\n<i>Buscando en inventario…</i>"
             );
 
-            // Reusa el buscador inteligente (exact → fuzzy → IA layer)
-            $results = $this->searchService->search($description);
+            // ── Memoria del bot ───────────────────────────────────────────────
+            // Consultar aprendizajes previos ANTES de buscar en DB + llamar IA.
+            // Si ya se vio esta imagen antes y el usuario lo confirmó, responder
+            // instantáneamente sin gastar tokens de API.
+            $cachedProductId = BotKnowledge::findProductForVision($focusedQuery);
+            if ($cachedProductId) {
+                $cachedResults = $this->searchService->formatProductById($cachedProductId);
+                if (! empty($cachedResults)) {
+                    Log::info('Photo search: memory cache hit', [
+                        'chatId'     => $chatId,
+                        'key'        => $focusedQuery,
+                        'product_id' => $cachedProductId,
+                    ]);
+                    $this->handleSearch($chatId, $description, $cachedResults);
+                    return;
+                }
+                // Producto en cache ya no existe (borrado) — continuar búsqueda normal
+            }
+
+            // ── Búsqueda normal: fuzzy → IA rerank ───────────────────────────
+            // Intentar en orden: query enfocada → descripción completa → descripción + caption
+            $results = $this->searchService->search($focusedQuery);
+
+            if (empty($results) && $focusedQuery !== $description) {
+                $results = $this->searchService->search($description);
+            }
+
+            if (empty($results) && $fullQuery !== $description) {
+                $results = $this->searchService->search($fullQuery);
+            }
 
             if (! empty($results)) {
-                Log::info('Photo search hit', ['chatId' => $chatId, 'description' => $description, 'matches' => count($results)]);
+                // Re-rankear con IA: filtra resultados irrelevantes y pone el mejor match
+                // primero. Si solo queda uno, se muestra directo (no lista numerada).
+                // Ej: [Aceite, Ventilador, Camiseta, Llaves, labubu] → [labubu]
+                if (count($results) > 1) {
+                    $results = $this->searchService->rerankForVision($description, $results);
+                }
+
+                // ── Aprender del resultado ────────────────────────────────────
+                // Si la IA/fuzzy llegó a un único producto, guardarlo en memoria
+                // para responder instantáneamente la próxima vez.
+                if (count($results) === 1 && ! empty($results[0]['id'])) {
+                    BotKnowledge::rememberVision(
+                        key:             $focusedQuery,
+                        productId:       $results[0]['id'],
+                        confirmed:       false,
+                        fullDescription: $description,
+                    );
+                }
+
+                Log::info('Photo search hit', [
+                    'chatId'      => $chatId,
+                    'description' => $description,
+                    'caption'     => $caption,
+                    'matches'     => count($results),
+                ]);
                 $this->handleSearch($chatId, $description, $results);
+
+                // Etiquetar conversación con vision_key SIEMPRE (1 o múltiples resultados).
+                // Con 1 resultado → conversation step = busqueda:resultado
+                // Con múltiples → step = busqueda:multiple
+                // En ambos casos el vision_key viaja en data para que al final
+                // (vender) se guarde como user_confirmed en BotKnowledge.
+                $conv = TelegramConversation::where('chat_id', $chatId)
+                    ->whereIn('step', ['busqueda:resultado', 'busqueda:multiple'])
+                    ->first();
+                if ($conv) {
+                    $conv->update([
+                        'data' => array_merge($conv->data ?? [], ['vision_key' => $focusedQuery]),
+                    ]);
+                }
             } else {
                 $this->telegram->sendMessage(
                     $chatId,
-                    "❌ Producto identificado como \"<i>" . htmlspecialchars($description, ENT_QUOTES) . "</i>\" pero no encontré coincidencias en el inventario.\n\nEscribe el nombre exacto o /listar para ver el catálogo."
+                    "❌ Identifiqué: \"<i>" . htmlspecialchars($description, ENT_QUOTES) . "</i>\" " .
+                    "pero no hay coincidencias en el inventario.\n\n" .
+                    "✏️ Escribe el <b>nombre exacto</b> del producto o /listar para ver el catálogo."
                 );
             }
         } catch (\Throwable $e) {
@@ -801,6 +942,24 @@ class BotHandler
             "Escribe <b>/cancelar</b> si quieres salir y empezar de nuevo."
         );
         return true;
+    }
+
+    /**
+     * Extrae query de búsqueda enfocada desde descripción de visión.
+     * Los modelos de visión describen en formato "[tipo] [marca] [color] [características]".
+     * Las palabras clave más útiles están primero; colores y adjetivos al final son ruido.
+     * Toma las primeras 4 palabras de ≥3 chars para la query primaria.
+     *
+     * "Llavero peluche Labubu Pop Mart blanco y azul con orejas de conejo."
+     *   → "Llavero peluche Labubu Pop"  (token "labubu" → finds "Labubu" en DB)
+     */
+    protected function extractVisionSearchQuery(string $description): string
+    {
+        $clean = preg_replace('/[^\w\s]/u', ' ', $description);
+        $words = preg_split('/\s+/', trim($clean), -1, PREG_SPLIT_NO_EMPTY);
+        $words = array_values(array_filter($words, fn($w) => strlen($w) >= 3));
+        $selected = array_slice($words, 0, 4);
+        return $selected ? implode(' ', $selected) : $description;
     }
 
     /**

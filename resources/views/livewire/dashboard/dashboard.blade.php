@@ -1,5 +1,39 @@
 <div>
     <div class="space-y-6">
+
+        {{-- Alerta de periodo contable (solo admins) --}}
+        @if(isset($periodAlert) && $periodAlert)
+            @php
+                $isWarning  = $periodAlert['level'] === 'warning';
+                $isCritical = $periodAlert['level'] === 'critical';
+                $alertBg    = $isCritical ? 'bg-red-50 border-red-300 dark:bg-red-950/40 dark:border-red-800' : 'bg-amber-50 border-amber-300 dark:bg-amber-950/40 dark:border-amber-700';
+                $alertText  = $isCritical ? 'text-red-800 dark:text-red-200' : 'text-amber-800 dark:text-amber-200';
+                $iconColor  = $isCritical ? 'text-red-500' : 'text-amber-500';
+            @endphp
+            <div class="flex items-start gap-3 rounded-lg border px-4 py-3 {{ $alertBg }}">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                     class="mt-0.5 h-5 w-5 shrink-0 {{ $iconColor }}">
+                    <path fill-rule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75Zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" clip-rule="evenodd" />
+                </svg>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium {{ $alertText }}">
+                        {{ $periodAlert['message'] }}
+                    </p>
+                    @if($periodAlert['period'])
+                        <a href="{{ route('finance.accounting-periods.index') }}"
+                           class="mt-1 inline-flex items-center gap-1 text-xs font-semibold underline underline-offset-2 {{ $alertText }} opacity-80 hover:opacity-100">
+                            Ir a Periodos Contables →
+                        </a>
+                    @else
+                        <a href="{{ route('finance.accounting-periods.index') }}"
+                           class="mt-1 inline-flex items-center gap-1 text-xs font-semibold underline underline-offset-2 {{ $alertText }} opacity-80 hover:opacity-100">
+                            Crear Periodo Contable →
+                        </a>
+                    @endif
+                </div>
+            </div>
+        @endif
+
         <!-- Filter Section -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-card p-4 rounded-lg border border-border shadow-sm">
         <div>

@@ -90,11 +90,59 @@
                         class="block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm"
                         placeholder="Ejemplo: 13"
                     >
-                @elseif(in_array($key, ['tax_include_iva', 'tax_include_it']))
+                @elseif(in_array($key, [
+                    'tax_include_iva', 'tax_include_it',
+                    'telegram_enabled',
+                    'telegram_notify_low_stock', 'telegram_notify_daily',
+                    'ai_chatbot_enabled', 'ai_search_enabled',
+                    'ai_voice_enabled', 'ai_voice_reply', 'ai_vision_enabled',
+                    'shop_show_out_of_stock',
+                    'auto_create_next_period',
+                ]))
                     <select id="value" wire:model="value" class="block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm">
-                        <option value="1">Sí (activo)</option>
-                        <option value="0">No (inactivo)</option>
+                        <option value="1">✅ Activo</option>
+                        <option value="0">❌ Inactivo</option>
                     </select>
+                @elseif($key === 'telegram_bot_paused')
+                    <select id="value" wire:model="value" class="block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm">
+                        <option value="0">✅ Activo (el bot responde normalmente)</option>
+                        <option value="1">⏸️ Pausado (el bot no responde)</option>
+                    </select>
+                @elseif(in_array($key, [
+                    'telegram_bot_token', 'telegram_webhook_secret',
+                    'anthropic_api_key', 'openai_api_key',
+                ]))
+                    <div x-data="{ show: false }" class="relative">
+                        <input
+                            :type="show ? 'text' : 'password'"
+                            id="value"
+                            wire:model="value"
+                            autocomplete="new-password"
+                            class="block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm pr-10"
+                            placeholder="Ingresa la clave o token..."
+                        >
+                        <button
+                            type="button"
+                            @click="show = !show"
+                            class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                            :title="show ? 'Ocultar' : 'Mostrar'"
+                        >
+                            <template x-if="!show">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                            </template>
+                            <template x-if="show">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21" />
+                                </svg>
+                            </template>
+                        </button>
+                    </div>
+                    <p class="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1 mt-1">
+                        🔒 Campo sensible — no compartas este valor con nadie.
+                    </p>
                 @elseif(in_array($key, ['currency_thousand_separator', 'currency_decimal_separator']))
                     <select id="value" wire:model="value" class="block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm">
                         <option value=".">Punto (.)</option>

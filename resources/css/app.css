@@ -46,6 +46,38 @@
         background-color: theme('colors.gray.300');
         border-radius: theme('borderRadius.full');
     }
+
+    /* Dark mode CSS variables — activadas con clase .dark en <html> */
+    .dark {
+        --background: 240 10% 3.9%;
+        --foreground: 0 0% 98%;
+        --card: 240 10% 3.9%;
+        --card-foreground: 0 0% 98%;
+        --popover: 240 10% 3.9%;
+        --popover-foreground: 0 0% 98%;
+        --primary: 0 0% 98%;
+        --primary-foreground: 240 5.9% 10%;
+        --secondary: 240 3.7% 15.9%;
+        --secondary-foreground: 0 0% 98%;
+        --muted: 240 3.7% 15.9%;
+        --muted-foreground: 240 5% 64.9%;
+        --accent: 240 3.7% 15.9%;
+        --accent-foreground: 0 0% 98%;
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 0 0% 98%;
+        --border: 240 3.7% 15.9%;
+        --input: 240 3.7% 15.9%;
+        --ring: 240 4.9% 83.9%;
+    }
+
+    /* Scrollbar oscuro */
+    .dark ::-webkit-scrollbar-track {
+        background-color: #1e1e2e;
+    }
+
+    .dark ::-webkit-scrollbar-thumb {
+        background-color: #3f3f5a;
+    }
 }
 
 /* Custom Tom Select overrides for Tailwind */
@@ -56,6 +88,38 @@
     min-height: 2.5rem; /* 40px - h-10 */
     background-color: #ffffff !important;
     color: #111827 !important; /* text-gray-900 */
+}
+
+/* Dark mode Tom Select */
+.dark .ts-control {
+    background-color: hsl(240 10% 3.9%) !important;
+    color: hsl(0 0% 98%) !important;
+    ring-color: hsl(240 3.7% 15.9%);
+}
+
+.dark .ts-dropdown {
+    background-color: hsl(240 10% 3.9%);
+    border-color: hsl(240 3.7% 15.9%);
+    color: hsl(0 0% 98%);
+}
+
+.dark .ts-dropdown .option {
+    color: hsl(0 0% 98%);
+}
+
+.dark .ts-dropdown .active {
+    background-color: hsl(240 3.7% 15.9%) !important;
+    color: hsl(0 0% 98%) !important;
+}
+
+.dark .ts-dropdown .option.selected {
+    background-color: hsl(240 5.9% 10%);
+    color: hsl(0 0% 98%);
+}
+
+.dark .ts-dropdown .active.selected {
+    background-color: hsl(240 3.7% 20%) !important;
+    color: hsl(0 0% 98%) !important;
 }
 
 /* Ensure selected item in single mode doesn't have background that looks like disabled */
