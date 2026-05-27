@@ -107,6 +107,11 @@ class SalesController extends Controller
 
     public function complete(Request $request, Sale $sale, SaleService $saleService)
     {
+        // Solo el creador o un admin puede completar la venta.
+        if (auth()->id() !== $sale->created_by && ! auth()->user()->isAdmin()) {
+            abort(403, 'Solo el vendedor asignado o un administrador puede completar esta venta.');
+        }
+
         try {
             $paymentData = $request->only(['cash_received', 'change']);
 

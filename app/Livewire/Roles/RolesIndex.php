@@ -59,7 +59,7 @@ class RolesIndex extends Component
     {
         return Role::query()
             ->withCount('permissions', 'users')
-            ->orderByRaw("FIELD(name, 'developer', 'admin', 'staff') DESC")
+            ->orderByRaw("CASE name WHEN 'developer' THEN 1 WHEN 'admin' THEN 2 WHEN 'staff' THEN 3 ELSE 4 END ASC")
             ->orderBy('name')
             ->get();
     }
