@@ -1,29 +1,32 @@
-FROM php:8.3-cli
+# ─── Stage 1: Assets (Node/Vite) ─────────────────────────────────────────────
+FROM node:20-alpine AS assets
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --frozen-lockfile
+COPY . .
+RUN npm run build
 
-# Node 20 (npm + vite build)
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs
+# ─── Stage 2: PHP vendor (Composer) ──────────────────────────────────────────
+FROM composer:latest AS vendor
+WORKDIR /app
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --optimize-autoloader --no-interaction
+
+# ─── Stage 3: Producción (Nginx + PHP-FPM) ───────────────────────────────────
+FROM php:8.3-fpm
 
 # System deps + PHP extensions.
-# libwebp-dev + --with-webp es CRÍTICO para el módulo Shop: ImageProcessor
-# genera variantes WebP (thumb/card/full) al subir imágenes de productos.
-# Sin el flag, intervention/image lanza "Encoder not supported" en runtime.
+# libwebp-dev + --with-webp: CRÍTICO para Shop/ImageProcessor (variantes WebP).
 RUN apt-get update && apt-get install -y \
+    nginx supervisor \
     unzip libzip-dev libpng-dev libonig-dev \
-    libxml2-dev git curl \
+    libxml2-dev curl \
     libfreetype6-dev libjpeg62-turbo-dev libwebp-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
-    && docker-php-ext-install zip pdo_mysql mbstring exif pcntl bcmath gd
+    && docker-php-ext-install zip pdo_mysql mbstring exif pcntl bcmath gd \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-
-# PHP runtime tuning para el módulo Shop:
-# - upload_max_filesize/post_max_size 50M: permite galería múltiple sin que
-#   PHP rechace requests grandes (cada imagen original puede llegar a 8MB).
-# - memory_limit 512M: intervention/image carga la imagen completa para
-#   redimensionar; con galería grande puede pasar de 128M.
-# - max_execution_time 120s: procesamiento de 3 variantes WebP × 10 imágenes
-#   tarda en CPUs lentas.
+# PHP runtime tuning
 RUN { \
     echo 'upload_max_filesize=50M'; \
     echo 'post_max_size=50M'; \
@@ -33,30 +36,25 @@ RUN { \
 
 WORKDIR /var/www
 
+# Copiar código fuente
 COPY . .
 
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+# Reemplazar con dependencias de producción de los stages anteriores
+COPY --from=vendor /app/vendor ./vendor
+COPY --from=assets /app/public/build ./public/build
 
-RUN npm install --frozen-lockfile
-RUN npm run build
+# Permisos y storage link
+RUN chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache \
+    && php artisan storage:link || true
 
-RUN php artisan storage:link || true
+# Configuraciones de Nginx y Supervisor
+COPY docker/nginx.conf /etc/nginx/nginx.conf
+COPY docker/supervisord.conf /etc/supervisor/conf.d/app.conf
+COPY docker/start.sh /usr/local/bin/start.sh
+RUN chmod +x /usr/local/bin/start.sh
 
 EXPOSE 8080
 
-# Startup: espera MySQL, corre migraciones, optimiza caches, arranca el
-# scheduler en background (cada 60s — necesario para
-# shop:cancel-expired-reservations y otros jobs programados) y sirve la app.
-#
-# El scheduler corre dentro del mismo contenedor en un loop sleep+exec
-# porque no tenemos cron del sistema; suficiente para una instancia única
-# (single-server). En cluster, mover scheduler a un sidecar dedicado.
-CMD sh -c "\
-until php artisan migrate --force; do \
-    echo 'Esperando MySQL...'; \
-    sleep 5; \
-done && \
-php artisan optimize:clear && \
-php artisan optimize && \
-(while true; do php artisan schedule:run --no-interaction >> /tmp/schedule.log 2>&1; sleep 60; done) & \
-php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"
+# start.sh: espera MySQL → migra → optimiza → arranca supervisor
+CMD ["/usr/local/bin/start.sh"]
