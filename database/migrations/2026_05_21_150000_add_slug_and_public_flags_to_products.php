@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\Product;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -20,11 +19,14 @@ return new class extends Migration
 
         // Backfill slugs for existing products. Append -{id} to guarantee uniqueness
         // even when two products share the same name.
-        Product::query()->orderBy('id')->chunkById(200, function ($products) {
+        // NOTE: usar DB::table() (no Eloquent) para evitar que el global scope
+        // de SoftDeletes añada WHERE deleted_at IS NULL cuando esa columna aún no existe.
+        DB::table('products')->orderBy('id')->chunkById(200, function ($products) {
             foreach ($products as $product) {
                 $base = Str::slug($product->name) ?: 'producto';
-                $product->slug = $base . '-' . $product->id;
-                $product->saveQuietly();
+                DB::table('products')
+                    ->where('id', $product->id)
+                    ->update(['slug' => $base . '-' . $product->id]);
             }
         });
 
