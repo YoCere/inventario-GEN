@@ -132,6 +132,6 @@ class SaleAuthorizationTest extends TestCase
         // Auth guard: admin pasa la verificación de autorización (no recibe 403).
         // El resultado de negocio (cancelar + revertir asiento) no se prueba aquí
         // porque requiere setup contable completo — eso pertenece a SaleServiceTest.
-        $response->assertNotForbidden();
+        $this->assertNotEquals(403, $response->getStatusCode());
     }
 }

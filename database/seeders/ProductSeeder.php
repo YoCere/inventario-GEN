@@ -75,11 +75,20 @@ $products = [
 ];
 
         foreach ($products as $item) {
+            $slug = Str::slug($item['n']);
+            // Garantizar slug único
+            $base  = $slug;
+            $count = 1;
+            while (Product::where('slug', $slug)->exists()) {
+                $slug = $base . '-' . $count++;
+            }
+
             Product::create([
                 'category_id' => $getCat($item['cat']),
                 'unit_id' => $getUnit($item['u']),
                 'sku' => 'P.' . date('ymd') . '.' . strtoupper(Str::random(4)),
                 'name' => $item['n'],
+                'slug' => $slug,
                 'description' => 'Stok tersedia untuk ' . $item['n'],
                 'purchase_price' => $item['p'] * 0.85, // Margin 15%
                 'selling_price' => $item['p'],
