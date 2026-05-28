@@ -1,16 +1,18 @@
-# ─── Stage 1: Assets (Node/Vite) ─────────────────────────────────────────────
+# ─── Stage 1: PHP vendor (Composer) ──────────────────────────────────────────
+FROM composer:latest AS vendor
+WORKDIR /app
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-scripts --no-autoloader --no-interaction --ignore-platform-reqs
+
+# ─── Stage 2: Assets (Node/Vite) ─────────────────────────────────────────────
 FROM node:20-alpine AS assets
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --frozen-lockfile
 COPY . .
+# powergrid importa su JS desde ../../vendor — necesita vendor disponible al buildear
+COPY --from=vendor /app/vendor ./vendor
 RUN npm run build
-
-# ─── Stage 2: PHP vendor (Composer) ──────────────────────────────────────────
-FROM composer:latest AS vendor
-WORKDIR /app
-COPY composer.json composer.lock ./
-RUN composer install --no-dev --no-scripts --no-autoloader --no-interaction --ignore-platform-reqs
 
 # ─── Stage 3: Producción (Nginx + PHP-FPM) ───────────────────────────────────
 FROM php:8.3-fpm
