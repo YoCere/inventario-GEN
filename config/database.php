@@ -63,6 +63,7 @@ return [
             ]) : [],
             'dump' => [
                 'dump_binary_path' => env('MYSQLDUMP_PATH', ''),
+                'add_extra_option' => '--ssl=0',
             ],
         ],
 
