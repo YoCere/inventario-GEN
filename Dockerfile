@@ -10,7 +10,7 @@ RUN npm run build
 FROM composer:latest AS vendor
 WORKDIR /app
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-reqs
+RUN composer install --no-dev --no-scripts --no-autoloader --no-interaction --ignore-platform-reqs
 
 # ─── Stage 3: Producción (Nginx + PHP-FPM) ───────────────────────────────────
 FROM php:8.3-fpm
@@ -43,6 +43,10 @@ COPY . .
 # Reemplazar con dependencias de producción de los stages anteriores
 COPY --from=vendor /app/vendor ./vendor
 COPY --from=assets /app/public/build ./public/build
+COPY --from=vendor /usr/bin/composer /usr/bin/composer
+
+# Generar autoloader optimizado con código completo disponible
+RUN composer dump-autoload --optimize --no-dev --no-scripts
 
 # Permisos y storage link
 RUN chown -R www-data:www-data storage bootstrap/cache \
