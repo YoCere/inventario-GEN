@@ -15,6 +15,7 @@
         "openspout/openspout": "^4.0",
         "power-components/livewire-powergrid": "^6.0",
         "simplesoftwareio/simple-qrcode": "^4.2",
+        "spatie/laravel-backup": "^10.2",
         "spatie/laravel-permission": "^7.4"
     },
     "require-dev": {

@@ -78,7 +78,7 @@
 
             <!-- Items list -->
             @if(!empty($items))
-                <div class="rounded-md border border-gray-200">
+                <div class="rounded-md border border-gray-200 overflow-x-auto">
                     <table class="w-full text-sm">
                         <thead class="bg-gray-50 text-xs uppercase">
                             <tr>

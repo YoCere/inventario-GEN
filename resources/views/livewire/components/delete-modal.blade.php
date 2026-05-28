@@ -31,7 +31,7 @@
                 x-transition:leave="ease-in duration-200"
                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                class="relative transform overflow-hidden rounded-lg bg-card text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg border border-border"
+                class="relative transform overflow-hidden rounded-lg bg-card text-left shadow-xl transition-all w-full sm:my-8 sm:max-w-lg border border-border"
                 @click.away="show = false"
             >
                 <div class="bg-card px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
@@ -48,7 +48,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="bg-card px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 gap-2">
+                <div class="bg-card px-4 py-3 flex flex-col-reverse gap-2 sm:flex-row-reverse sm:px-6">
                     <button
                         type="button"
                         wire:click="confirm"
@@ -64,7 +64,7 @@
                     <button
                         type="button"
                         @click="show = false"
-                        class="mt-3 inline-flex w-full justify-center rounded-md bg-background px-3 py-2 text-sm font-semibold text-foreground shadow-sm ring-1 ring-inset ring-border hover:bg-accent hover:text-accent-foreground sm:mt-0 sm:w-auto transition-colors"
+                        class="inline-flex w-full justify-center rounded-md bg-background px-3 py-2 text-sm font-semibold text-foreground shadow-sm ring-1 ring-inset ring-border hover:bg-accent hover:text-accent-foreground sm:w-auto transition-colors"
                     >
                         Cancelar
                     </button>

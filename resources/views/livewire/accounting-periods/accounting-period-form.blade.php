@@ -14,7 +14,7 @@
             {{-- Tipo de periodo --}}
             <div class="space-y-2">
                 <x-input-label :value="__('Tipo de periodo')" />
-                <div class="grid grid-cols-5 gap-1.5">
+                <div class="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
                     @foreach([
                         'monthly'   => 'Mensual',
                         'quarterly' => 'Trimestral',

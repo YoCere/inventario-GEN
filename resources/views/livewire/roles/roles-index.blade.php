@@ -9,10 +9,10 @@
 
         <div class="divide-y divide-border">
             @foreach($this->roles as $role)
-                <article class="px-5 py-3 flex items-center gap-3">
-                    <div class="flex-1">
-                        <div class="flex items-center gap-2">
-                            <span class="font-mono text-sm text-foreground">{{ $role->name }}</span>
+                <article class="px-5 py-3 flex flex-wrap items-center gap-3">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-mono text-sm text-foreground break-all">{{ $role->name }}</span>
                             @if(in_array($role->name, \App\Livewire\Roles\RolesIndex::BASE_ROLES, true))
                                 <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium uppercase">Base</span>
                             @endif
@@ -22,7 +22,7 @@
                             {{ $role->users_count }} {{ $role->users_count === 1 ? 'usuario' : 'usuarios' }}
                         </p>
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 shrink-0">
                         <x-secondary-button type="button" wire:click="startEdit({{ $role->id }})">Editar</x-secondary-button>
                         @if(!in_array($role->name, \App\Livewire\Roles\RolesIndex::BASE_ROLES, true))
                             <button type="button"

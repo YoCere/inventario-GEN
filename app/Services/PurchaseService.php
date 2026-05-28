@@ -238,7 +238,10 @@ class PurchaseService
     public function markAsPaid(Purchase $purchase): void
     {
         DB::transaction(function () use ($purchase) {
-            if (!in_array($purchase->status, [PurchaseStatus::ORDERED, PurchaseStatus::RECEIVED])) {
+            // Only RECEIVED purchases can be marked as paid.
+            // ORDERED → PAID would record an expense without any stock ever being received,
+            // creating phantom finance entries with no corresponding inventory movement.
+            if ($purchase->status !== PurchaseStatus::RECEIVED) {
                 throw PurchaseException::invalidStatus('pay', $purchase->status->label(), ['id' => $purchase->id]);
             }
 
@@ -261,13 +264,70 @@ class PurchaseService
     public function cancelPurchase(Purchase $purchase): void
     {
         DB::transaction(function () use ($purchase) {
-            if ($purchase->status === PurchaseStatus::RECEIVED || $purchase->status === PurchaseStatus::PAID) {
+            if ($purchase->status === PurchaseStatus::CANCELLED) {
                 throw PurchaseException::invalidStatus('cancel', $purchase->status->label(), ['id' => $purchase->id]);
+            }
+
+            $wasPaid     = $purchase->status === PurchaseStatus::PAID;
+            $wasReceived = $purchase->status === PurchaseStatus::RECEIVED;
+
+            // Restore stock for RECEIVED and PAID purchases (stock was incremented at RECEIVED)
+            if ($wasReceived || $wasPaid) {
+                $purchase->loadMissing('items');
+                $defaultLocationId = $this->stockService->defaultLocationId();
+
+                foreach ($purchase->items as $item) {
+                    $product = Product::where('id', $item->product_id)->lockForUpdate()->first();
+
+                    if (!$product) {
+                        continue;
+                    }
+
+                    $locationId = $item->location_id ?? $defaultLocationId;
+
+                    $this->stockService->decrementAt(
+                        $product->id,
+                        $locationId,
+                        $item->quantity
+                    );
+
+                    $product->refresh();
+
+                    $this->auditService->log(
+                        'stock.decremento.cancelacion_compra',
+                        $product,
+                        null,
+                        [
+                            'quantity_actual'     => $product->quantity,
+                            'cantidad_revertida'  => $item->quantity,
+                            'location_id'         => $locationId,
+                            'purchase_invoice'    => $purchase->invoice_number,
+                            'purchase_id'         => $purchase->id,
+                        ],
+                        $purchase->created_by
+                    );
+                }
             }
 
             $purchase->update(['status' => PurchaseStatus::CANCELLED]);
 
+            // Void finance transaction (safe for all statuses — no-op if none exists)
             $this->financeService->voidTransaction($purchase);
+
+            // Reverse the GL journal entry if the purchase was PAID
+            if ($wasPaid) {
+                $reversal = $this->purchaseAccountingService->reversePurchaseEntry(
+                    $purchase,
+                    (int) (auth()->id() ?? $purchase->created_by ?? 1)
+                );
+
+                if (!$reversal) {
+                    throw PurchaseException::cancellationFailed(
+                        'No se encontró asiento contable activo para revertir.',
+                        ['id' => $purchase->id, 'invoice' => $purchase->invoice_number]
+                    );
+                }
+            }
         });
     }
 

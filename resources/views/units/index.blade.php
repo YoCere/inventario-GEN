@@ -1,6 +1,6 @@
 <x-app-layout title="Unidades">
     <x-slot name="header">
-        <div class="flex justify-between items-center">
+        <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
             <h2 class="font-semibold text-xl text-foreground leading-tight">
                 {{ __('Unidades') }}
             </h2>

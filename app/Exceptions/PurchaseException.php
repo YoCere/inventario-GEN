@@ -38,4 +38,10 @@ class PurchaseException extends Exception
         Log::warning($message, $context);
         return new self($message);
     }
+
+    public static function cancellationFailed(string $message, array $context = []): self
+    {
+        Log::error("Purchase cancellation failed: {$message}", $context);
+        return new self("Error al cancelar compra: {$message}");
+    }
 }

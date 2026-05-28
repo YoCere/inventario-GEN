@@ -1,6 +1,6 @@
 <x-app-layout title="Transacciones Financieras">
     <x-slot name="header">
-        <div class="flex justify-between items-center gap-2">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
             <h2 class="font-semibold text-xl text-foreground leading-tight">
                 {{ __('Transacciones Financieras') }}
             </h2>

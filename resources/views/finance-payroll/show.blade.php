@@ -2,7 +2,7 @@
     <x-slot name="header">
         <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
             <h2 class="font-semibold text-xl text-foreground leading-tight">Detalle de planilla {{ $sheet->sheet_number }}</h2>
-            <div class="flex items-center gap-2">
+            <div class="flex flex-wrap items-center gap-2">
                 <a href="{{ route('finance.payroll.index') }}" class="inline-flex items-center px-3 py-2 rounded-md border border-border text-sm">Volver</a>
                 <a href="{{ route('finance.payroll.print', $sheet) }}" target="_blank" class="inline-flex items-center px-3 py-2 rounded-md border border-border text-sm">Imprimir</a>
                 @if($sheet->status->value === 'draft')

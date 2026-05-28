@@ -135,6 +135,11 @@ class SettingGroups extends Component
             'payroll_account_solidarity',
             'payroll_account_other_discounts',
         ],
+        'backups' => [
+            'backup_schedule_enabled',
+            'backup_retention_days',
+            'backup_notify_email',
+        ],
     ];
 
     /**
@@ -150,6 +155,7 @@ class SettingGroups extends Component
         'ia' => 'Agente IA y voz',
         'tienda' => 'Tienda en línea',
         'nomina' => 'Nomina y sueldos',
+        'backups' => 'Backups y respaldos',
         'otros' => 'Otros ajustes',
     ];
 
@@ -230,6 +236,9 @@ class SettingGroups extends Component
         'payroll_account_rc_iva' => '2.1.08',
         'payroll_account_solidarity' => '2.1.09',
         'payroll_account_other_discounts' => '2.1.10',
+        'backup_schedule_enabled' => '1',
+        'backup_retention_days'   => '30',
+        'backup_notify_email'     => '',
     ];
 
     public bool $shopEnabled = false;
@@ -300,7 +309,7 @@ class SettingGroups extends Component
      * Grupos sensibles: contienen credenciales API / tokens / config técnica
      * que un toque equivocado rompe integraciones. Solo el rol Developer los ve.
      */
-    private const DEVELOPER_ONLY_GROUPS = ['mensajeria', 'ia'];
+    private const DEVELOPER_ONLY_GROUPS = ['mensajeria', 'ia', 'backups'];
 
     public function mount(): void
     {
@@ -676,6 +685,9 @@ class SettingGroups extends Component
             'payroll_account_rc_iva' => 'Cuenta RC-IVA por pagar',
             'payroll_account_solidarity' => 'Cuenta aporte solidario por pagar',
             'payroll_account_other_discounts' => 'Cuenta otras retenciones',
+            'backup_schedule_enabled' => 'Backup automático diario (02:00 AM)',
+            'backup_retention_days'   => 'Días de retención',
+            'backup_notify_email'     => 'Email para notificaciones de backup',
             default => Str::title(str_replace('_', ' ', $key)),
         };
     }
@@ -713,6 +725,8 @@ class SettingGroups extends Component
                 default     => $value,
             },
             'auto_create_next_period' => $value === '1' ? 'Activo' : 'Inactivo',
+            'backup_schedule_enabled' => $value === '1' ? 'Activo' : 'Inactivo',
+            'backup_retention_days'   => $value . ' días',
             default => $value !== '' ? $value : '-',
         };
     }

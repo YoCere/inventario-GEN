@@ -15,3 +15,17 @@ Schedule::command('shop:cancel-expired-reservations')
     ->hourly()
     ->withoutOverlapping()
     ->onOneServer();
+
+// Backup automático diario a las 2am — configurable via backup_schedule_enabled setting
+Schedule::command('backup:run')
+    ->dailyAt('02:00')
+    ->when(fn () => \App\Models\Setting::get('backup_schedule_enabled', '1') === '1')
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->runInBackground();
+
+Schedule::command('backup:clean')
+    ->dailyAt('03:00')
+    ->when(fn () => \App\Models\Setting::get('backup_schedule_enabled', '1') === '1')
+    ->withoutOverlapping()
+    ->onOneServer();

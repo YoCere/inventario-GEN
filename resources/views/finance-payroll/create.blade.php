@@ -1,6 +1,6 @@
 <x-app-layout title="Nueva planilla de sueldo">
     <x-slot name="header">
-        <div class="flex justify-between items-center">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <h2 class="font-semibold text-xl text-foreground leading-tight">Nueva planilla de sueldo</h2>
             <a href="{{ route('finance.payroll.index') }}" class="text-sm text-muted-foreground hover:underline">Volver al listado</a>
         </div>
@@ -51,7 +51,7 @@
                     </p>
                 </div>
 
-                <div class="flex items-center justify-between">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                     <h3 class="text-sm font-semibold">Detalle de trabajadores</h3>
                     <button type="button" id="add-row" class="inline-flex items-center px-3 py-1.5 rounded-md border border-border text-sm hover:bg-muted/40">
                         Agregar fila
@@ -78,7 +78,7 @@
                     </table>
                 </div>
 
-                <div class="flex justify-end gap-2 pt-2 border-t border-border">
+                <div class="flex flex-wrap justify-end gap-2 pt-2 border-t border-border">
                     <a href="{{ route('finance.payroll.index') }}" class="inline-flex items-center px-4 py-2 rounded-md border border-border text-sm">Cancelar</a>
                     <button type="submit" class="inline-flex items-center px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium">
                         Guardar planilla

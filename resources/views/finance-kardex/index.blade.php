@@ -3,10 +3,18 @@
         <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
             <h2 class="font-semibold text-xl text-foreground leading-tight print:hidden">Kardex valorizado</h2>
             <div class="print:hidden">
-                <x-secondary-button type="button" onclick="window.print()">
+                @if($report)
+                <x-secondary-button type="button"
+                    onclick="window.open('{{ route('finance.kardex.print', ['product_id' => $productId, 'from' => $from, 'to' => $to]) }}', '_blank')">
                     <x-heroicon-o-printer class="w-4 h-4 mr-2" />
                     Imprimir
                 </x-secondary-button>
+                @else
+                <x-secondary-button type="button" onclick="alert('Genere el kardex primero seleccionando un producto.')">
+                    <x-heroicon-o-printer class="w-4 h-4 mr-2" />
+                    Imprimir
+                </x-secondary-button>
+                @endif
             </div>
         </div>
     </x-slot>

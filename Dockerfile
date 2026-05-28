@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install -y \
     unzip libzip-dev libpng-dev libonig-dev \
     libxml2-dev curl \
     libfreetype6-dev libjpeg62-turbo-dev libwebp-dev \
+    default-mysql-client \
     && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
     && docker-php-ext-install zip pdo_mysql mbstring exif pcntl bcmath gd \
     && rm -rf /var/lib/apt/lists/*

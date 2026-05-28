@@ -1,6 +1,6 @@
 <x-app-layout title="Crear compra">
     <x-slot name="header">
-        <div class="flex justify-between items-center">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <h2 class="font-semibold text-xl text-foreground leading-tight">
                 {{ __('Crear compra') }}
             </h2>

@@ -215,8 +215,17 @@
                         </x-dropdown-link>
 
                         @if(auth()->user()->isAdmin())
-                        <x-dropdown-link :href="route('settings.index')" :active="request()->routeIs('settings.*')">
+                        <x-dropdown-link :href="route('settings.index')" :active="request()->routeIs('settings.index')">
                             Ajustes
+                        </x-dropdown-link>
+                        @endif
+
+                        @if(auth()->user()->isDeveloper())
+                        <x-dropdown-link :href="route('settings.backups')" :active="request()->routeIs('settings.backups')">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="inline-block mr-1.5 h-4 w-4 align-text-bottom" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 15a4 4 0 004 4h10a4 4 0 10-.893-7.902A5 5 0 003 15z" />
+                            </svg>
+                            Backups
                         </x-dropdown-link>
                         @endif
 
@@ -425,8 +434,16 @@
                                     Perfil
                                 </a>
                                 @if(auth()->user()->isAdmin())
-                                <a href="{{ route('settings.index') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input h-9 px-4 py-2 w-full {{ request()->routeIs('settings.*') ? 'bg-accent text-accent-foreground' : 'bg-background hover:bg-accent hover:text-accent-foreground' }}">
+                                <a href="{{ route('settings.index') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input h-9 px-4 py-2 w-full {{ request()->routeIs('settings.index') ? 'bg-accent text-accent-foreground' : 'bg-background hover:bg-accent hover:text-accent-foreground' }}">
                                     Ajustes
+                                </a>
+                                @endif
+                                @if(auth()->user()->isDeveloper())
+                                <a href="{{ route('settings.backups') }}" class="inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md text-sm font-medium border border-input h-9 px-4 py-2 w-full {{ request()->routeIs('settings.backups') ? 'bg-accent text-accent-foreground' : 'bg-background hover:bg-accent hover:text-accent-foreground' }}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 15a4 4 0 004 4h10a4 4 0 10-.893-7.902A5 5 0 003 15z" />
+                                    </svg>
+                                    Backups
                                 </a>
                                 @endif
                                 @if(auth()->user()->isDeveloper())

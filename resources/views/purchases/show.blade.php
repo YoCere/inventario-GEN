@@ -1,10 +1,10 @@
 <x-app-layout title="Purchase Details">
     <x-slot name="header">
-        <div class="flex justify-between items-center">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <h2 class="font-semibold text-xl text-foreground leading-tight">
                 {{ __('Purchase Details') }} #{{ $purchase->invoice_number ?: $purchase->id }}
             </h2>
-            <div class="flex items-center gap-2">
+            <div class="flex flex-wrap items-center gap-2">
                 <x-secondary-button href="{{ route('purchases.index') }}">
                     &larr; {{ __('Volver al listado') }}
                 </x-secondary-button>
@@ -23,7 +23,7 @@
             <div class="bg-white shadow-sm sm:rounded-lg overflow-hidden border border-gray-200">
                 <div class="p-6">
                     <!-- Header Info -->
-                    <div class="flex items-start justify-between border-b border-gray-100 pb-4 mb-6">
+                    <div class="flex flex-wrap items-start justify-between gap-2 border-b border-gray-100 pb-4 mb-6">
                         <div>
                             <h3 class="text-lg font-medium text-gray-900">{{ __('Purchase Information') }}</h3>
                             <p class="text-sm text-gray-500">{{ __('Details of the purchase transaction') }}</p>

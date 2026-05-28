@@ -1,10 +1,10 @@
 <x-app-layout title="Productos">
     <x-slot name="header">
-        <div class="flex justify-between items-center">
+        <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
             <h2 class="font-semibold text-xl text-foreground leading-tight">
                 {{ __('Productos') }}
             </h2>
-            <div class="flex items-center gap-2">
+            <div class="flex flex-wrap gap-2">
                 <a href="{{ route('products.report') }}">
                     <x-secondary-button type="button">
                         <x-heroicon-o-chart-bar class="w-4 h-4 mr-2" />

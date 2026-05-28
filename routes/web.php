@@ -78,6 +78,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::view('chart-of-accounts', 'finance-chart-of-accounts.index')->name('chart-of-accounts.index');
         Route::view('journal-entries', 'finance-journal-entries.index')->name('journal-entries.index');
         Route::get('kardex', [KardexController::class, 'index'])->name('kardex.index');
+        Route::get('kardex/print', [KardexController::class, 'print'])->name('kardex.print');
         Route::get('statements', [FinancialStatementController::class, 'index'])->name('statements.index');
         Route::get('transactions/print/{printId}', [FinanceReportController::class, 'print'])->name('transactions.print');
     });
@@ -104,6 +105,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Roles y permisos — solo Developer (gate adicional dentro del componente).
     Route::middleware('developer')->group(function () {
         Route::view('roles', 'roles.index')->name('roles.index');
+        Route::get('settings/backups', function () {
+            abort_if(! auth()->user()?->isDeveloper(), 403);
+            return view('settings.backups');
+        })->name('settings.backups');
     });
 
     // =========================================================================

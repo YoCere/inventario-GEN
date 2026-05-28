@@ -1,6 +1,6 @@
 <x-app-layout title="Planillas de sueldo">
     <x-slot name="header">
-        <div class="flex justify-between items-center">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <h2 class="font-semibold text-xl text-foreground leading-tight">Planillas de sueldo</h2>
             <a href="{{ route('finance.payroll.create') }}" class="inline-flex items-center px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium">
                 Nueva planilla

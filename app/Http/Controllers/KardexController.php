@@ -31,5 +31,20 @@ class KardexController extends Controller
             'report' => $report,
         ]);
     }
+
+    public function print(Request $request, KardexService $kardexService)
+    {
+        $from = $request->input('from', now()->startOfMonth()->toDateString());
+        $to   = $request->input('to', now()->toDateString());
+        $productId = $request->integer('product_id');
+
+        if (!$productId) {
+            return redirect()->route('finance.kardex.index');
+        }
+
+        $report = $kardexService->build($productId, $from, $to);
+
+        return view('finance-kardex.print', compact('report', 'from', 'to'));
+    }
 }
 

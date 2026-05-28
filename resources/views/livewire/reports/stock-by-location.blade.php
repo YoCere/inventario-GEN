@@ -61,6 +61,7 @@
 
     <!-- Stock table -->
     <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead class="bg-gray-50 text-xs uppercase">
                 <tr>
@@ -93,6 +94,7 @@
                 @endforelse
             </tbody>
         </table>
+        </div>
 
         <div class="px-4 py-3 border-t border-gray-200">
             {{ $stocks->links() }}

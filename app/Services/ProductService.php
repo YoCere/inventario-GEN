@@ -48,13 +48,17 @@ class ProductService
 
                 // Create ProductStock row for selected (or default) location
                 $locationId = $data->location_id ?? Location::default()?->id;
-                if ($locationId) {
-                    ProductStock::create([
-                        'product_id' => $product->id,
-                        'location_id' => $locationId,
-                        'quantity' => $data->quantity,
-                    ]);
+                if (!$locationId) {
+                    throw ProductException::creationFailed(
+                        'No se encontró ubicación de destino para el stock inicial. Configure un almacén y ubicación por defecto.',
+                        ['location_id_provided' => $data->location_id]
+                    );
                 }
+                ProductStock::create([
+                    'product_id' => $product->id,
+                    'location_id' => $locationId,
+                    'quantity' => $data->quantity,
+                ]);
 
                 $this->auditService->log(
                     'producto.creado',
@@ -72,6 +76,8 @@ class ProductService
 
                 return $product;
 
+            } catch (ProductException $e) {
+                throw $e;
             } catch (Exception $e) {
                 throw ProductException::creationFailed($e->getMessage(), [
                     'data' => (array) $data,
@@ -169,7 +175,7 @@ class ProductService
                             'quantity' => $data->quantity,
                         ]);
                     }
-                } elseif ($stocks->count() > 1 && (int) $data->quantity !== (int) $product->quantity) {
+                } elseif ($stocks->count() > 1 && (int) $data->quantity !== (int) $oldValues['quantity']) {
                     // Multi-location stock: edición directa de cantidad NO se aplica desde el form
                     // (corrompería el balance entre locations). Antes el cambio se descartaba
                     // silenciosamente — ahora se bloquea explícitamente.
@@ -204,6 +210,8 @@ class ProductService
 
                 return $product->refresh();
 
+            } catch (ProductException $e) {
+                throw $e;
             } catch (Exception $e) {
                 throw ProductException::updateFailed($e->getMessage(), [
                     'id'   => $product->id,

@@ -105,7 +105,7 @@
                         <div class="flex-1 space-y-3">
                             <div>
                                 <label class="text-xs uppercase tracking-wide text-muted-foreground">Enlace público</label>
-                                <div class="flex items-center gap-2 mt-1"
+                                <div class="flex flex-col gap-2 mt-1 sm:flex-row sm:items-center"
                                      x-data="{
                                          copied: false,
                                          copy() {
@@ -115,13 +115,15 @@
                                          }
                                      }">
                                     <code class="flex-1 bg-background px-3 py-2 rounded border border-border text-sm break-all">{{ $this->shopPublicUrl }}</code>
-                                    <x-secondary-button type="button" @click="copy()">
-                                        <span x-show="!copied">Copiar</span>
-                                        <span x-show="copied" x-cloak>✓ Copiado</span>
-                                    </x-secondary-button>
-                                    <a href="{{ $this->shopPublicUrl }}" target="_blank" rel="noopener">
-                                        <x-secondary-button type="button">Abrir</x-secondary-button>
-                                    </a>
+                                    <div class="flex items-center gap-2">
+                                        <x-secondary-button type="button" @click="copy()">
+                                            <span x-show="!copied">Copiar</span>
+                                            <span x-show="copied" x-cloak>✓ Copiado</span>
+                                        </x-secondary-button>
+                                        <a href="{{ $this->shopPublicUrl }}" target="_blank" rel="noopener">
+                                            <x-secondary-button type="button">Abrir</x-secondary-button>
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
 

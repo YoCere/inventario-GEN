@@ -2,10 +2,10 @@
     <x-slot name="header">
         <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
             <h2 class="font-semibold text-xl text-foreground leading-tight print:hidden">Estados Financieros</h2>
-            <div class="flex items-center gap-2 print:hidden">
-                <form method="GET" action="{{ route('finance.statements.index') }}" class="flex items-center gap-2">
-                    <input type="date" name="from" value="{{ $from }}" class="rounded-md border-input bg-background text-sm" />
-                    <input type="date" name="to" value="{{ $to }}" class="rounded-md border-input bg-background text-sm" />
+            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 print:hidden">
+                <form method="GET" action="{{ route('finance.statements.index') }}" class="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                    <input type="date" name="from" value="{{ $from }}" class="w-full sm:w-auto rounded-md border-input bg-background text-sm" />
+                    <input type="date" name="to" value="{{ $to }}" class="w-full sm:w-auto rounded-md border-input bg-background text-sm" />
                     <label class="inline-flex items-center gap-2 text-sm text-foreground border border-input rounded-md px-3 py-2">
                         <input type="checkbox" name="with_taxes" value="1" class="rounded border-input" {{ $withTaxes ? 'checked' : '' }} onchange="this.form.submit()" />
                         Con impuestos (Bolivia)
@@ -224,10 +224,10 @@
                 <h3 class="text-lg font-semibold mb-3">5. Estado de Cambios de la Situacion Financiera / Flujo de Efectivo</h3>
                 <div class="text-sm space-y-2">
                     @forelse($statements['flujo_efectivo']['cash_accounts'] as $row)
-                        <p class="flex justify-between gap-2">
+                        <div class="flex flex-col sm:flex-row sm:justify-between gap-1">
                             <span>{{ $row->code }} - {{ $row->name }}</span>
-                            <span>Entrada: @money($row->inflow) | Salida: @money($row->outflow) | Neto: @money($row->net)</span>
-                        </p>
+                            <span class="text-xs sm:text-sm whitespace-nowrap">Entrada: @money($row->inflow) | Salida: @money($row->outflow) | Neto: @money($row->net)</span>
+                        </div>
                     @empty
                         <p>-</p>
                     @endforelse

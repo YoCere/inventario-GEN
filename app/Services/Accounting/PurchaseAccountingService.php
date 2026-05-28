@@ -89,6 +89,26 @@ class PurchaseAccountingService
         return $this->postPurchase($purchase, $userId);
     }
 
+    /**
+     * Reverse the GL journal entry for a purchase (used when a PAID purchase is cancelled).
+     * Returns the reversal entry, or null if no posted entry exists (idempotent).
+     */
+    public function reversePurchaseEntry(Purchase $purchase, int $userId, ?string $reason = null): ?JournalEntry
+    {
+        $original = $this->journalEntryService->findPostedSourceEntry(Purchase::class, $purchase->id);
+
+        if (!$original) {
+            return null;
+        }
+
+        $description = 'Reverso contable por cancelación de compra ' . $purchase->invoice_number;
+        if ($reason) {
+            $description .= ' | Motivo: ' . $reason;
+        }
+
+        return $this->journalEntryService->reverseEntry($original, $userId, $description);
+    }
+
     protected function resolveOpenPeriod(string $entryDate): AccountingPeriod
     {
         return AccountingPeriod::resolveOpenForDate($entryDate);
