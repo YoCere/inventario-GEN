@@ -36,9 +36,10 @@ class BotRefundHandler
     {
         // Get latest sales from today
         $today = now()->toDateString();
-        $sales = Sale::whereDate('sale_date', $today)
+        $sales = Sale::whereDate('created_at', $today)
             ->where('status', 'completed')
-            ->orderBy('sale_date', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->with(['items.product'])
             ->limit(10)
             ->get();
 
@@ -56,10 +57,10 @@ class BotRefundHandler
             return [
                 'id' => $sale->id,
                 'invoice' => $sale->invoice_number,
-                'time' => $sale->sale_date->format('H:i'),
+                'time' => $sale->created_at->format('H:i'),
                 'total' => $sale->total,
                 'items' => $sale->items->map(fn ($item) => [
-                    'product_name' => $item->product->name,
+                    'product_name' => $item->product?->name ?? '(producto eliminado)',
                     'quantity' => $item->quantity,
                 ])->toArray(),
             ];

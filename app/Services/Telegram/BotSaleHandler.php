@@ -18,6 +18,7 @@ class BotSaleHandler
     public function __construct(
         protected TelegramService $telegram,
         protected SaleService $saleService,
+        protected BotAuthHandler $authHandler,
     ) {}
 
     public function handle(string $chatId, array $message): void
@@ -261,7 +262,7 @@ class BotSaleHandler
             $saleData = SaleData::fromArray([
                 'sale_date' => now(),
                 'payment_method' => $data['metodo_pago'],
-                'created_by' => auth()->id() ?? 1,
+                'created_by' => $this->authHandler->getAuthenticatedUser($chatId)?->id ?? 1,
                 'items' => [
                     [
                         'product_id' => $data['product_id'],
@@ -300,8 +301,7 @@ class BotSaleHandler
             $conversation->delete();
             $this->telegram->sendMessage(
                 $chatId,
-                "❌ Error al registrar venta.\n\n" .
-                "Error: " . $e->getMessage()
+                "❌ Error al registrar la venta. Verifica el stock y vuelve a intentarlo."
             );
         }
     }

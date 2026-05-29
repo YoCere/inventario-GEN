@@ -45,8 +45,12 @@ class BotHandler
             $chatId = (string) $fromId;
 
             // CHECK AUTHENTICATION FIRST
+            // Exclude expired conversations so stale flows from yesterday don't reactivate.
             $conversation = TelegramConversation::where('chat_id', $chatId)
                 ->where('step', '!=', 'idle')
+                ->where(function ($q) {
+                    $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                })
                 ->first();
 
             // Handle auth conversations
@@ -122,13 +126,19 @@ class BotHandler
 
             $text = trim($message['text']);
 
-            // Commands escape search/report/agent states — only active sale flows intercept them
+            // Commands escape search/report/agent states — only active sale flows intercept them.
+            // Exception: /cancelar ALWAYS escapes any flow so users can never get trapped.
             if (str_starts_with($text, '/')) {
                 $isActiveFlow = $conversation && (
                     str_starts_with($conversation->step, 'nuevo:') ||
                     str_starts_with($conversation->step, 'venta_rapida:') ||
                     str_starts_with($conversation->step, 'devolver:')
                 );
+                if ($text === '/cancelar' && $isActiveFlow) {
+                    $conversation->delete();
+                    $this->telegram->sendMessage($chatId, "✅ Proceso cancelado. Escribe un producto para buscar o /ayuda para ver opciones.");
+                    return;
+                }
                 if (!$isActiveFlow) {
                     $conversation?->delete();
                     $this->handleCommand($chatId, $text);
@@ -226,7 +236,15 @@ class BotHandler
                 }
             }
         } catch (\Exception $e) {
-            Log::error('Bot dispatch error', ['error' => $e->getMessage()]);
+            Log::error('Bot dispatch error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            // Never leave the user with no response — send a generic fallback
+            try {
+                if (isset($chatId)) {
+                    $this->telegram->sendMessage($chatId, "⚠️ Ocurrió un error inesperado. Intenta de nuevo o escribe /ayuda.");
+                }
+            } catch (\Throwable) {
+                // If even the fallback fails (Telegram down), log and give up silently
+            }
         }
     }
 
@@ -420,6 +438,7 @@ class BotHandler
             '/activar' => $this->cmdActivar($chatId),
             '/logout', '/salir' => $this->cmdLogout($chatId),
             '/cambiar', '/cambiarusuario' => $this->cmdSwitchUser($chatId),
+            '/cancelar' => $this->telegram->sendMessage($chatId, "✅ No hay ningún proceso activo para cancelar."),
             default => $this->telegram->sendMessage($chatId, "❓ Comando no reconocido. Escribe /ayuda para ver opciones."),
         };
     }
@@ -789,7 +808,7 @@ class BotHandler
                 'chat_id' => $chatId,
                 'error' => $e->getMessage(),
             ]);
-            $this->telegram->sendMessage($chatId, "❌ Error procesando la imagen: " . $e->getMessage());
+            $this->telegram->sendMessage($chatId, "❌ Error al procesar la imagen. Intenta con otra foto o escribe el nombre del producto.");
         }
     }
 

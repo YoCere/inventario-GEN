@@ -119,7 +119,7 @@ class BotAuthHandler
 
         $this->telegram->sendMessage(
             $chatId,
-            "🔐 Bienvenido <b>{$telegramUser->user->name}</b> ({$telegramUser->identifier})\n\n" .
+            "🔐 Bienvenido <b>" . ($telegramUser->user?->name ?? 'Usuario') . "</b> ({$telegramUser->identifier})\n\n" .
             "Ingresa tu contraseña:\n" .
             "(Escribe /cancelar para salir)"
         );

@@ -87,7 +87,7 @@ class BotAgentHandler
             ]);
             $this->telegram->sendMessage(
                 $chatId,
-                "⚠️ Error: " . $e->getMessage()
+                "⚠️ No pude procesar tu mensaje. Intenta de nuevo."
             );
         }
     }

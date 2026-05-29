@@ -245,7 +245,8 @@ class ProductSearchService
         try {
             $products = $this->applyScope(Product::query())
                 ->select(['id', 'name', 'sku'])
-                ->limit(50)
+                ->orderBy('name')
+                ->limit(100)
                 ->get();
 
             if ($products->isEmpty()) {

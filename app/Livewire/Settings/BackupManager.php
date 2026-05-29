@@ -23,40 +23,19 @@ class BackupManager extends Component
     #[Computed]
     public function backups(): array
     {
+        clearstatcache(true);
         $disk = Storage::disk('backups');
         $files = [];
 
         try {
-            // Scan all top-level directories (one per app name)
-            $directories = $disk->directories('/');
-
-            foreach ($directories as $directory) {
-                foreach ($disk->files($directory) as $filePath) {
-                    if (pathinfo($filePath, PATHINFO_EXTENSION) !== 'zip') {
-                        continue;
-                    }
-
-                    $sizeBytes = $disk->size($filePath);
-                    $lastModified = $disk->lastModified($filePath);
-
-                    $files[] = [
-                        'name'       => basename($filePath),
-                        'path'       => $filePath,
-                        'size'       => Number::fileSize($sizeBytes),
-                        'size_bytes' => $sizeBytes,
-                        'date'       => Carbon::createFromTimestamp($lastModified)->format('d/m/Y H:i'),
-                        'timestamp'  => $lastModified,
-                    ];
-                }
-            }
-
-            // Also check files directly in the root (edge case)
-            foreach ($disk->files('/') as $filePath) {
+            // allFiles recurses into subdirectories — works regardless of how
+            // spatie nests the backups (by app name, by date, flat, etc.)
+            foreach ($disk->allFiles('/') as $filePath) {
                 if (pathinfo($filePath, PATHINFO_EXTENSION) !== 'zip') {
                     continue;
                 }
 
-                $sizeBytes = $disk->size($filePath);
+                $sizeBytes    = $disk->size($filePath);
                 $lastModified = $disk->lastModified($filePath);
 
                 $files[] = [
@@ -72,10 +51,14 @@ class BackupManager extends Component
             // Disk not configured or not accessible yet — return empty list
         }
 
-        // Sort newest first
         usort($files, fn ($a, $b) => $b['timestamp'] <=> $a['timestamp']);
 
         return $files;
+    }
+
+    public function refreshList(): void
+    {
+        unset($this->backups);
     }
 
     public function runBackup(): void
