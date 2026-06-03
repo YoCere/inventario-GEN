@@ -37,6 +37,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::view('warehouses', 'warehouses.index')->name('warehouses.index');
         Route::view('locations', 'locations.index')->name('locations.index');
         Route::view('transfers', 'transfers.index')->name('transfers.index');
+        Route::get('kardex', [KardexController::class, 'index'])->name('products.kardex.index');
+        Route::get('kardex/print', [KardexController::class, 'print'])->name('products.kardex.print');
     });
 
     // =========================================================================
@@ -77,8 +79,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::view('transactions', 'finance-transactions.index')->name('transactions.index');
         Route::view('chart-of-accounts', 'finance-chart-of-accounts.index')->name('chart-of-accounts.index');
         Route::view('journal-entries', 'finance-journal-entries.index')->name('journal-entries.index');
-        Route::get('kardex', [KardexController::class, 'index'])->name('kardex.index');
-        Route::get('kardex/print', [KardexController::class, 'print'])->name('kardex.print');
+        Route::permanentRedirect('kardex', 'master/kardex')->name('kardex.legacy-redirect');
         Route::get('statements', [FinancialStatementController::class, 'index'])->name('statements.index');
         Route::get('transactions/print/{printId}', [FinanceReportController::class, 'print'])->name('transactions.print');
     });

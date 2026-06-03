@@ -56,7 +56,7 @@ class RolesAndPermissionsSeeder extends Seeder
         'finance.view' => 'Ver resumen y transacciones financieras',
         'finance.accounting' => 'Plan de cuentas + libro diario + estados',
         'finance.payroll' => 'Planilla de sueldos',
-        'finance.kardex' => 'Kardex valorizado',
+        'products.kardex' => 'Kardex valorizado',
 
         // Auditoría
         'audit.view' => 'Ver bitácora de auditoría',
@@ -87,7 +87,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'customers.manage', 'suppliers.manage',
             'sales.view', 'sales.create', 'sales.complete', 'sales.cancel',
             'purchases.view', 'purchases.manage',
-            'finance.view', 'finance.accounting', 'finance.payroll', 'finance.kardex',
+            'finance.view', 'finance.accounting', 'finance.payroll', 'products.kardex',
             'audit.view',
             'settings.view', 'settings.edit-business',
             'shop.admin',
