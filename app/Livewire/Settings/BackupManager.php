@@ -4,6 +4,7 @@ namespace App\Livewire\Settings;
 
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Number;
 use Livewire\Attributes\Computed;
@@ -47,8 +48,10 @@ class BackupManager extends Component
                     'timestamp'  => $lastModified,
                 ];
             }
-        } catch (\Throwable) {
-            // Disk not configured or not accessible yet — return empty list
+        } catch (\Throwable $e) {
+            // Disk inaccesible o dependencia faltante (ej. ext-intl para Number::fileSize).
+            // No reventamos la vista, pero registramos para no ocultar fallos como antes.
+            Log::warning('No se pudo listar backups', ['error' => $e->getMessage()]);
         }
 
         usort($files, fn ($a, $b) => $b['timestamp'] <=> $a['timestamp']);

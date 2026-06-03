@@ -22,11 +22,11 @@ FROM php:8.3-fpm
 RUN apt-get update && apt-get install -y \
     nginx supervisor \
     unzip libzip-dev libpng-dev libonig-dev \
-    libxml2-dev curl \
+    libxml2-dev curl libicu-dev \
     libfreetype6-dev libjpeg62-turbo-dev libwebp-dev \
     default-mysql-client \
     && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
-    && docker-php-ext-install zip pdo_mysql mbstring exif pcntl bcmath gd \
+    && docker-php-ext-install zip pdo_mysql mbstring exif pcntl bcmath gd intl \
     && rm -rf /var/lib/apt/lists/*
 
 # PHP runtime tuning
