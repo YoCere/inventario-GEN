@@ -87,12 +87,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('finance')->name('finance.')->middleware('admin')->group(function () {
         Route::view('accounting-periods', 'finance-accounting-periods.index')->name('accounting-periods.index');
 
-        Route::get('payroll', [PayrollController::class, 'index'])->name('payroll.index');
-        Route::get('payroll/create', [PayrollController::class, 'create'])->name('payroll.create');
-        Route::post('payroll', [PayrollController::class, 'store'])->name('payroll.store');
-        Route::get('payroll/{sheet}', [PayrollController::class, 'show'])->name('payroll.show');
-        Route::post('payroll/{sheet}/post', [PayrollController::class, 'post'])->name('payroll.post');
-        Route::get('payroll/{sheet}/print', [PayrollController::class, 'print'])->name('payroll.print');
+        Route::permanentRedirect('payroll', 'users/payroll')->name('payroll.legacy-redirect');
     });
 
     // =========================================================================
@@ -100,6 +95,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // =========================================================================
     Route::middleware('admin')->group(function () {
         Route::view('users', 'users.index')->name('users.index');
+        Route::get('users/payroll', [PayrollController::class, 'index'])->name('users.payroll.index');
+        Route::get('users/payroll/create', [PayrollController::class, 'create'])->name('users.payroll.create');
+        Route::post('users/payroll', [PayrollController::class, 'store'])->name('users.payroll.store');
+        Route::get('users/payroll/{sheet}', [PayrollController::class, 'show'])->name('users.payroll.show');
+        Route::post('users/payroll/{sheet}/post', [PayrollController::class, 'post'])->name('users.payroll.post');
+        Route::get('users/payroll/{sheet}/print', [PayrollController::class, 'print'])->name('users.payroll.print');
         Route::view('settings', 'settings.index')->name('settings.index');
     });
 
