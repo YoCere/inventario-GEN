@@ -23,7 +23,7 @@ class KardexController extends Controller
             $report = $kardexService->build($productId, $from, $to);
         }
 
-        return view('finance-kardex.index', [
+        return view('products-kardex.index', [
             'products' => $products,
             'productId' => $productId,
             'from' => $from,
@@ -39,12 +39,12 @@ class KardexController extends Controller
         $productId = $request->integer('product_id');
 
         if (!$productId) {
-            return redirect()->route('finance.kardex.index');
+            return redirect()->route('products.kardex.index');
         }
 
         $report = $kardexService->build($productId, $from, $to);
 
-        return view('finance-kardex.print', compact('report', 'from', 'to'));
+        return view('products-kardex.print', compact('report', 'from', 'to'));
     }
 }
 

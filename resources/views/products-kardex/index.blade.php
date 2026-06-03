@@ -5,7 +5,7 @@
             <div class="print:hidden">
                 @if($report)
                 <x-secondary-button type="button"
-                    onclick="window.open('{{ route('finance.kardex.print', ['product_id' => $productId, 'from' => $from, 'to' => $to]) }}', '_blank')">
+                    onclick="window.open('{{ route('products.kardex.print', ['product_id' => $productId, 'from' => $from, 'to' => $to]) }}', '_blank')">
                     <x-heroicon-o-printer class="w-4 h-4 mr-2" />
                     Imprimir
                 </x-secondary-button>
@@ -51,7 +51,7 @@
     <div class="py-4">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
             <div class="bg-card border border-border rounded-lg p-4">
-                <form method="GET" action="{{ route('finance.kardex.index') }}" class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <form method="GET" action="{{ route('products.kardex.index') }}" class="grid grid-cols-1 md:grid-cols-4 gap-3">
                     <div>
                         <label for="product_id" class="block text-sm font-medium text-foreground mb-1">Producto</label>
                         <select name="product_id" id="product_id" class="w-full rounded-md border-input bg-background text-sm" required>
