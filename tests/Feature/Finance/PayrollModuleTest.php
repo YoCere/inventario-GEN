@@ -62,8 +62,8 @@ class PayrollModuleTest extends TestCase
         $this->assertEquals($expected['total_employer_cost'], $sheet->total_employer_cost);
 
         $this->actingAs($admin)
-            ->post(route('finance.payroll.post', $sheet))
-            ->assertRedirect(route('finance.payroll.show', $sheet));
+            ->post(route('users.payroll.post', $sheet))
+            ->assertRedirect(route('users.payroll.show', $sheet));
 
         $sheet->refresh();
         $this->assertEquals('posted', $sheet->status->value);
@@ -83,7 +83,7 @@ class PayrollModuleTest extends TestCase
         $staff = User::factory()->staff()->create(['email_verified_at' => now()]);
 
         $this->actingAs($staff)
-            ->get(route('finance.payroll.index'))
+            ->get(route('users.payroll.index'))
             ->assertForbidden();
     }
 
@@ -92,12 +92,12 @@ class PayrollModuleTest extends TestCase
         $admin = User::factory()->admin()->create(['email_verified_at' => now()]);
 
         $this->actingAs($admin)
-            ->get(route('finance.payroll.index'))
+            ->get(route('users.payroll.index'))
             ->assertOk()
             ->assertSeeText('Planillas de sueldo');
 
         $this->actingAs($admin)
-            ->get(route('finance.payroll.create'))
+            ->get(route('users.payroll.create'))
             ->assertOk()
             ->assertSeeText('Nueva planilla de sueldo');
     }
