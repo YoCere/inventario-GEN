@@ -253,4 +253,64 @@ class ChartOfAccountCrudTest extends TestCase
         $reactivated = $this->service->setActive($deactivated, true);
         $this->assertTrue($reactivated->is_active);
     }
+
+    /** Test 9: Editar cuenta SIN movimientos rechaza padre de tipo distinto. */
+    public function test_editar_sin_movimientos_rechaza_padre_de_tipo_distinto(): void
+    {
+        $parentLiability = $this->makeAccount([
+            'code'           => '2',
+            'name'           => 'Pasivo',
+            'account_type'   => AccountType::Liability,
+            'normal_balance' => AccountNormalBalance::Credit,
+            'allows_posting' => false,
+        ]);
+
+        $assetAccount = $this->makeAccount([
+            'code'         => '1.9',
+            'name'         => 'Cuenta Activo',
+            'account_type' => AccountType::Asset,
+        ]);
+
+        $this->expectException(RuntimeException::class);
+
+        // Sin movimientos: asignar un padre de tipo Liability a una cuenta Asset debe fallar.
+        $this->service->update($assetAccount, [
+            'code'           => '1.9',
+            'name'           => 'Cuenta Activo',
+            'parent_id'      => $parentLiability->id,
+            'account_type'   => AccountType::Asset,
+            'normal_balance' => AccountNormalBalance::Debit,
+            'allows_posting' => true,
+        ]);
+    }
+
+    /** Test 10: Editar cuenta SIN movimientos deriva level del nuevo padre. */
+    public function test_editar_sin_movimientos_deriva_level_del_padre(): void
+    {
+        $parent = $this->makeAccount([
+            'code'           => '1.1',
+            'name'           => 'Activo Corriente',
+            'level'          => 2,
+            'account_type'   => AccountType::Asset,
+            'allows_posting' => false,
+        ]);
+
+        $account = $this->makeAccount([
+            'code'         => '1.1.99',
+            'name'         => 'Sub Activo',
+            'account_type' => AccountType::Asset,
+        ]);
+
+        $updated = $this->service->update($account, [
+            'code'           => '1.1.99',
+            'name'           => 'Sub Activo',
+            'parent_id'      => $parent->id,
+            'account_type'   => AccountType::Asset,
+            'normal_balance' => AccountNormalBalance::Debit,
+            'allows_posting' => true,
+        ]);
+
+        $this->assertEquals($parent->id, $updated->parent_id);
+        $this->assertEquals(3, $updated->level);
+    }
 }
