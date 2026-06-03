@@ -3,6 +3,7 @@
 namespace App\Services\Accounting;
 
 use App\Models\ChartOfAccount;
+use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 class ChartOfAccountService
@@ -29,39 +30,43 @@ class ChartOfAccountService
             );
         }
 
-        // Regla 2-4: validar padre y derivar level
-        if (!empty($data['parent_id'])) {
-            $parent = ChartOfAccount::findOrFail($data['parent_id']);
+        // El volteo del padre a no-imputable y la inserción de la hija deben ser
+        // atómicos: si falla la creación, el padre no debe quedar modificado.
+        return DB::transaction(function () use ($data) {
+            // Regla 2-4: validar padre y derivar level
+            if (!empty($data['parent_id'])) {
+                $parent = ChartOfAccount::findOrFail($data['parent_id']);
 
-            // Regla 3: tipo de cuenta debe coincidir
-            $childType = $data['account_type'] instanceof \App\Enums\AccountType
-                ? $data['account_type']
-                : \App\Enums\AccountType::from($data['account_type']);
+                // Regla 3: tipo de cuenta debe coincidir
+                $childType = $data['account_type'] instanceof \App\Enums\AccountType
+                    ? $data['account_type']
+                    : \App\Enums\AccountType::from($data['account_type']);
 
-            if ($parent->account_type !== $childType) {
-                throw new RuntimeException(
-                    "El tipo de cuenta del hijo ({$childType->label()}) debe coincidir con el tipo del padre ({$parent->account_type->label()})."
-                );
-            }
-
-            // Regla 2: si el padre es imputable, verificar si tiene movimientos
-            if ($parent->allows_posting) {
-                if ($this->hasMovements($parent)) {
+                if ($parent->account_type !== $childType) {
                     throw new RuntimeException(
-                        "La cuenta padre ya tiene movimientos; no puede agrupar sub-cuentas."
+                        "El tipo de cuenta del hijo ({$childType->label()}) debe coincidir con el tipo del padre ({$parent->account_type->label()})."
                     );
                 }
-                // Padre imputable sin movimientos → voltearlo a no-imputable
-                $parent->update(['allows_posting' => false]);
+
+                // Regla 2: si el padre es imputable, verificar si tiene movimientos
+                if ($parent->allows_posting) {
+                    if ($this->hasMovements($parent)) {
+                        throw new RuntimeException(
+                            "La cuenta padre ya tiene movimientos; no puede agrupar sub-cuentas."
+                        );
+                    }
+                    // Padre imputable sin movimientos → voltearlo a no-imputable
+                    $parent->update(['allows_posting' => false]);
+                }
+
+                // Regla 4: derivar level
+                $data['level'] = $parent->level + 1;
+            } else {
+                $data['level'] = 1;
             }
 
-            // Regla 4: derivar level
-            $data['level'] = $parent->level + 1;
-        } else {
-            $data['level'] = 1;
-        }
-
-        return ChartOfAccount::create($data);
+            return ChartOfAccount::create($data);
+        });
     }
 
     /**
