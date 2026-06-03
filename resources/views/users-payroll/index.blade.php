@@ -2,7 +2,7 @@
     <x-slot name="header">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <h2 class="font-semibold text-xl text-foreground leading-tight">Planillas de sueldo</h2>
-            <a href="{{ route('finance.payroll.create') }}" class="inline-flex items-center px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium">
+            <a href="{{ route('users.payroll.create') }}" class="inline-flex items-center px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium">
                 Nueva planilla
             </a>
         </div>
@@ -43,8 +43,8 @@
                                     <td class="px-4 py-3">{{ $sheet->status->label() }}</td>
                                     <td class="px-4 py-3">
                                         <div class="flex gap-2">
-                                            <a href="{{ route('finance.payroll.show', $sheet) }}" class="text-blue-600 hover:underline">Ver</a>
-                                            <a href="{{ route('finance.payroll.print', $sheet) }}" target="_blank" class="text-indigo-600 hover:underline">Imprimir</a>
+                                            <a href="{{ route('users.payroll.show', $sheet) }}" class="text-blue-600 hover:underline">Ver</a>
+                                            <a href="{{ route('users.payroll.print', $sheet) }}" target="_blank" class="text-indigo-600 hover:underline">Imprimir</a>
                                         </div>
                                     </td>
                                 </tr>

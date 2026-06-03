@@ -17,14 +17,14 @@ class PayrollController extends Controller
             ->orderByDesc('id')
             ->paginate(15);
 
-        return view('finance-payroll.index', compact('sheets'));
+        return view('users-payroll.index', compact('sheets'));
     }
 
     public function create(PayrollService $payrollService)
     {
         $rates = $payrollService->getRates();
 
-        return view('finance-payroll.create', compact('rates'));
+        return view('users-payroll.create', compact('rates'));
     }
 
     public function store(Request $request, PayrollService $payrollService)
@@ -56,7 +56,7 @@ class PayrollController extends Controller
         $sheet = $payrollService->createSheet($validated, (int) auth()->id());
 
         return redirect()
-            ->route('finance.payroll.show', $sheet)
+            ->route('users.payroll.show', $sheet)
             ->with('success', 'Planilla creada correctamente.');
     }
 
@@ -64,7 +64,7 @@ class PayrollController extends Controller
     {
         $sheet->load(['items', 'creator', 'postedBy', 'journalEntry']);
 
-        return view('finance-payroll.show', compact('sheet'));
+        return view('users-payroll.show', compact('sheet'));
     }
 
     public function post(PayrollSheet $sheet, PayrollAccountingService $payrollAccountingService)
@@ -72,7 +72,7 @@ class PayrollController extends Controller
         $payrollAccountingService->postSheet($sheet, (int) auth()->id());
 
         return redirect()
-            ->route('finance.payroll.show', $sheet)
+            ->route('users.payroll.show', $sheet)
             ->with('success', 'Planilla contabilizada en libro diario.');
     }
 
@@ -80,7 +80,7 @@ class PayrollController extends Controller
     {
         $sheet->load(['items', 'creator', 'postedBy', 'journalEntry']);
 
-        return view('finance-payroll.print', compact('sheet'));
+        return view('users-payroll.print', compact('sheet'));
     }
 }
 

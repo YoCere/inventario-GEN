@@ -2,7 +2,7 @@
     <x-slot name="header">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <h2 class="font-semibold text-xl text-foreground leading-tight">Nueva planilla de sueldo</h2>
-            <a href="{{ route('finance.payroll.index') }}" class="text-sm text-muted-foreground hover:underline">Volver al listado</a>
+            <a href="{{ route('users.payroll.index') }}" class="text-sm text-muted-foreground hover:underline">Volver al listado</a>
         </div>
     </x-slot>
 
@@ -19,7 +19,7 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('finance.payroll.store') }}" class="bg-card border border-border rounded-lg p-5 space-y-5">
+            <form method="POST" action="{{ route('users.payroll.store') }}" class="bg-card border border-border rounded-lg p-5 space-y-5">
                 @csrf
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -79,7 +79,7 @@
                 </div>
 
                 <div class="flex flex-wrap justify-end gap-2 pt-2 border-t border-border">
-                    <a href="{{ route('finance.payroll.index') }}" class="inline-flex items-center px-4 py-2 rounded-md border border-border text-sm">Cancelar</a>
+                    <a href="{{ route('users.payroll.index') }}" class="inline-flex items-center px-4 py-2 rounded-md border border-border text-sm">Cancelar</a>
                     <button type="submit" class="inline-flex items-center px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium">
                         Guardar planilla
                     </button>
