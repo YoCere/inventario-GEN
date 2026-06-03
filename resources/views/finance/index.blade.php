@@ -32,7 +32,7 @@
                         <p class="font-medium">Libro diario</p>
                         <p class="text-xs text-muted-foreground mt-1">Asientos y detalle Debe/Haber</p>
                     </a>
-                    <a href="{{ route('finance.kardex.index') }}" class="rounded-md border border-border px-4 py-3 hover:bg-muted/40">
+                    <a href="{{ route('products.kardex.index') }}" class="rounded-md border border-border px-4 py-3 hover:bg-muted/40">
                         <p class="font-medium">Kardex valorizado</p>
                         <p class="text-xs text-muted-foreground mt-1">Entradas, salidas y saldo por producto</p>
                     </a>

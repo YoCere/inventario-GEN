@@ -112,9 +112,6 @@
                                 <x-dropdown-link :href="route('finance.journal-entries.index')" :active="request()->routeIs('finance.journal-entries.index')">
                                     Libro diario
                                 </x-dropdown-link>
-                                <x-dropdown-link :href="route('finance.kardex.index')" :active="request()->routeIs('finance.kardex.index')">
-                                    Kardex valorizado
-                                </x-dropdown-link>
                                 @if(auth()->user()->isAdmin())
                                     <x-dropdown-link :href="route('finance.payroll.index')" :active="request()->routeIs('finance.payroll.*')">
                                         Planilla de sueldos
@@ -168,6 +165,9 @@
                                 </x-dropdown-link>
                                 <x-dropdown-link :href="route('transfers.index')" :active="request()->routeIs('transfers.*')">
                                     Transferencias
+                                </x-dropdown-link>
+                                <x-dropdown-link :href="route('products.kardex.index')" :active="request()->routeIs('products.kardex.index')">
+                                    Kardex valorizado
                                 </x-dropdown-link>
                             </x-slot>
                         </x-nav-dropdown>
@@ -368,7 +368,6 @@
                                     <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mt-2">Contabilidad</p>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.chart-of-accounts.index') ? 'text-primary' : '' }}" href="{{ route('finance.chart-of-accounts.index') }}">Plan de cuentas</a>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.journal-entries.index') ? 'text-primary' : '' }}" href="{{ route('finance.journal-entries.index') }}">Libro diario</a>
-                                    <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.kardex.index') ? 'text-primary' : '' }}" href="{{ route('finance.kardex.index') }}">Kardex valorizado</a>
                                     @if(auth()->user()->isAdmin())
                                         <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.payroll.*') ? 'text-primary' : '' }}" href="{{ route('finance.payroll.index') }}">Planilla de sueldos</a>
                                     @endif
@@ -399,6 +398,7 @@
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('warehouses.index') ? 'text-primary' : '' }}" href="{{ route('warehouses.index') }}">Almacenes</a>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('locations.index') ? 'text-primary' : '' }}" href="{{ route('locations.index') }}">Ubicaciones</a>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('transfers.index') ? 'text-primary' : '' }}" href="{{ route('transfers.index') }}">Transferencias</a>
+                                    <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('products.kardex.index') ? 'text-primary' : '' }}" href="{{ route('products.kardex.index') }}">Kardex valorizado</a>
                                 </div>
                             </div>
                         </div>
