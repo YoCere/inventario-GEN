@@ -112,11 +112,6 @@
                                 <x-dropdown-link :href="route('finance.journal-entries.index')" :active="request()->routeIs('finance.journal-entries.index')">
                                     Libro diario
                                 </x-dropdown-link>
-                                @if(auth()->user()->isAdmin())
-                                    <x-dropdown-link :href="route('finance.payroll.index')" :active="request()->routeIs('finance.payroll.*')">
-                                        Planilla de sueldos
-                                    </x-dropdown-link>
-                                @endif
                                 <x-dropdown-link :href="route('finance.statements.index')" :active="request()->routeIs('finance.statements.index')">
                                     Estados financieros
                                 </x-dropdown-link>
@@ -131,12 +126,24 @@
                             </x-slot>
                         </x-nav-dropdown>
 
-                        <!-- Users Link (Admin Only) -->
+                        <!-- Users Dropdown (Admin Only) -->
                         @if(auth()->user()->isAdmin())
-                        <a href="{{ route('users.index') }}" class="group inline-flex h-10 w-max items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-muted hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 {{ request()->routeIs('users.*') ? 'bg-accent/50 text-accent-foreground' : 'bg-background' }}">
-                            <x-heroicon-o-users class="mr-2 h-4 w-4" />
-                            Usuarios
-                        </a>
+                        <x-nav-dropdown active="{{ request()->routeIs('users.*') }}">
+                            <x-slot name="icon">
+                                <x-heroicon-o-users class="mr-2 h-4 w-4" />
+                            </x-slot>
+                            <x-slot name="trigger">
+                                Usuarios
+                            </x-slot>
+                            <x-slot name="content">
+                                <x-dropdown-link :href="route('users.index')" :active="request()->routeIs('users.index')">
+                                    Usuarios
+                                </x-dropdown-link>
+                                <x-dropdown-link :href="route('users.payroll.index')" :active="request()->routeIs('users.payroll.*')">
+                                    Planilla de sueldos
+                                </x-dropdown-link>
+                            </x-slot>
+                        </x-nav-dropdown>
                         @endif
 
                         <!-- Products Dropdown -->
@@ -368,9 +375,6 @@
                                     <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mt-2">Contabilidad</p>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.chart-of-accounts.index') ? 'text-primary' : '' }}" href="{{ route('finance.chart-of-accounts.index') }}">Plan de cuentas</a>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.journal-entries.index') ? 'text-primary' : '' }}" href="{{ route('finance.journal-entries.index') }}">Libro diario</a>
-                                    @if(auth()->user()->isAdmin())
-                                        <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.payroll.*') ? 'text-primary' : '' }}" href="{{ route('finance.payroll.index') }}">Planilla de sueldos</a>
-                                    @endif
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.statements.index') ? 'text-primary' : '' }}" href="{{ route('finance.statements.index') }}">Estados financieros</a>
                                     <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mt-2">Tesorería</p>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.transactions.index') ? 'text-primary' : '' }}" href="{{ route('finance.transactions.index') }}">Transacciones</a>
@@ -379,9 +383,20 @@
                             </div>
                         </div>
 
-                        <!-- Mobile Users Link (Admin Only) -->
+                        <!-- Mobile Users Accordion (Admin Only) -->
                         @if(auth()->user()->isAdmin())
-                        <a href="{{ route('users.index') }}" class="text-md font-semibold hover:underline border-b pb-4 {{ request()->routeIs('users.*') ? 'text-primary' : '' }}">Usuarios</a>
+                        <div x-data="{ expanded: {{ request()->routeIs(['users.*']) ? 'true' : 'false' }} }" class="border-b-0">
+                            <button @click="expanded = !expanded" class="flex flex-1 items-center justify-between py-0 font-semibold transition-all hover:underline w-full text-left text-md {{ request()->routeIs(['users.*']) ? 'text-primary' : '' }}">
+                                Usuarios
+                                <x-heroicon-o-chevron-down :class="{'rotate-180': expanded}" class="h-4 w-4 shrink-0 transition-transform duration-200" />
+                            </button>
+                            <div x-show="expanded" x-collapse>
+                                <div class="mt-2 flex flex-col gap-2 pl-4 border-l border-border ml-2">
+                                    <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('users.index') ? 'text-primary' : '' }}" href="{{ route('users.index') }}">Usuarios</a>
+                                    <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('users.payroll.*') ? 'text-primary' : '' }}" href="{{ route('users.payroll.index') }}">Planilla de sueldos</a>
+                                </div>
+                            </div>
+                        </div>
                         @endif
 
                         <!-- Mobile Products Accordion -->

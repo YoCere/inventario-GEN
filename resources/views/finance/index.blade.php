@@ -37,7 +37,7 @@
                         <p class="text-xs text-muted-foreground mt-1">Entradas, salidas y saldo por producto</p>
                     </a>
                     @if(auth()->user()->isAdmin())
-                        <a href="{{ route('finance.payroll.index') }}" class="rounded-md border border-border px-4 py-3 hover:bg-muted/40">
+                        <a href="{{ route('users.payroll.index') }}" class="rounded-md border border-border px-4 py-3 hover:bg-muted/40">
                             <p class="font-medium">Planilla de sueldos</p>
                             <p class="text-xs text-muted-foreground mt-1">Nomina, descuentos y asiento automatico</p>
                         </a>
