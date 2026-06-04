@@ -15,6 +15,14 @@
                         Nuevo asiento
                     </x-primary-button>
                 @endif
+                <x-secondary-button
+                    type="button"
+                    wire:navigate
+                    href="{{ route('finance.journal-entries.book') }}"
+                >
+                    <x-heroicon-o-book-open class="w-4 h-4 mr-2" />
+                    Libro Diario
+                </x-secondary-button>
                 <x-secondary-button type="button" onclick="window.print()">
                     <x-heroicon-o-printer class="w-4 h-4 mr-2" />
                     Imprimir
