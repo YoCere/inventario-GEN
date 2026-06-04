@@ -20,6 +20,12 @@ class LedgerBalanceService
         return $this->aggregate(null, $asOf, $includeAdjustments, adjustmentsOnly: false);
     }
 
+    /**
+     * Movimientos por cuenta en el rango [$from,$to].
+     * $adjustmentsOnly=true → solo entry_type 'ajuste'; en otro caso, normal + ajuste.
+     *
+     * @return Collection<int, object> mismas propiedades que balancesAt()
+     */
     public function movementsBetween(string $from, string $to, bool $adjustmentsOnly = false): Collection
     {
         return $this->aggregate($from, $to, includeAdjustments: true, adjustmentsOnly: $adjustmentsOnly);

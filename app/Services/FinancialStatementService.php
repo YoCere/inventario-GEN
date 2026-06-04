@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Setting;
+use App\Services\Accounting\LedgerBalanceService;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Support\Collection;
@@ -10,6 +11,10 @@ use Illuminate\Support\Facades\DB;
 
 class FinancialStatementService
 {
+    public function __construct(private readonly LedgerBalanceService $ledger)
+    {
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -55,8 +60,8 @@ class FinancialStatementService
     protected function calculateAccountBalances(?string $from, string $to): Collection
     {
         $rows = $from === null
-            ? app(\App\Services\Accounting\LedgerBalanceService::class)->balancesAt($to, true)
-            : app(\App\Services\Accounting\LedgerBalanceService::class)->movementsBetween($from, $to, false);
+            ? $this->ledger->balancesAt($to, true)
+            : $this->ledger->movementsBetween($from, $to, false);
 
         return $rows->map(function ($r) {
             return (object) [
