@@ -17,6 +17,11 @@
                         Filtrar
                     </x-primary-button>
                 </form>
+                <x-secondary-button type="button"
+                    onclick="window.open('{{ route('finance.journal-entries.book.print', ['from' => $from, 'to' => $to]) }}', '_blank')">
+                    <x-heroicon-o-printer class="w-4 h-4 mr-2" />
+                    Imprimir
+                </x-secondary-button>
             </div>
         </div>
     </x-slot>

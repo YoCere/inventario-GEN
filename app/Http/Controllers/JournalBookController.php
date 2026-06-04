@@ -13,6 +13,20 @@ class JournalBookController extends Controller
 {
     public function index(Request $request)
     {
+        $data = $this->buildReport($request);
+
+        return view('finance-journal-book.index', $data);
+    }
+
+    public function print(Request $request)
+    {
+        $data = $this->buildReport($request);
+
+        return view('finance-journal-book.print', $data);
+    }
+
+    private function buildReport(Request $request): array
+    {
         // ── 1. Resolve date range ────────────────────────────────────────────
         $from = $request->input('from');
         $to   = $request->input('to');
@@ -85,7 +99,7 @@ class JournalBookController extends Controller
         $storeAddress = Setting::get('store_address', '');
         $storePhone   = Setting::get('store_phone',   '');
 
-        return view('finance-journal-book.index', compact(
+        return compact(
             'rows',
             'from',
             'to',
@@ -94,6 +108,6 @@ class JournalBookController extends Controller
             'storeName',
             'storeAddress',
             'storePhone',
-        ));
+        );
     }
 }

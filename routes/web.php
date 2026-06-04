@@ -80,6 +80,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::view('chart-of-accounts', 'finance-chart-of-accounts.index')->name('chart-of-accounts.index');
         Route::view('journal-entries', 'finance-journal-entries.index')->name('journal-entries.index');
         Route::get('journal-entries/book', [\App\Http\Controllers\JournalBookController::class, 'index'])->name('journal-entries.book');
+        Route::get('journal-entries/book/print', [\App\Http\Controllers\JournalBookController::class, 'print'])->name('journal-entries.book.print');
         Route::permanentRedirect('kardex', 'master/kardex')->name('kardex.legacy-redirect');
         Route::get('statements', [FinancialStatementController::class, 'index'])->name('statements.index');
         Route::get('transactions/print/{printId}', [FinanceReportController::class, 'print'])->name('transactions.print');
