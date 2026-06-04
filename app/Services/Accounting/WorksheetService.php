@@ -69,9 +69,10 @@ class WorksheetService
         ];
         $liquidityCodes = explode(',', (string) Setting::get('worksheet_liquidity_accounts', '1.1.1.01'));
 
-        $prevEnd = $dayBefore;
-        $prevBalances = $this->balances->balancesAt($prevEnd, includeAdjustments: true)->keyBy('chart_of_account_id');
+        // Variación vs saldo previo al periodo == saldo inicial; reusa $opening.
+        $prevBalances = $opening;
 
+        DB::transaction(function () use ($prelim, $prevBalances, $liquidityCodes, $ctx, $totalIngresos, $totalGastos, $period) {
         foreach ($prelim as $p) {
             $acc = $p['acc'];
             $accountType = $p['accountType'];
@@ -117,9 +118,10 @@ class WorksheetService
                 ]
             );
         }
+        });
     }
 
-    private function periodSums(string $from, string $to, string $type)
+    private function periodSums(string $from, string $to, string $type): \Illuminate\Support\Collection
     {
         return DB::table('ledger_account_daily')
             ->whereDate('movement_date', '>=', $from)
