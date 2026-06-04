@@ -149,9 +149,14 @@ class JournalEntryService
     {
         $typeValue = $type instanceof VoucherType ? $type->value : $type;
 
+        // lockForUpdate: bloquea las filas del mismo (periodo, tipo) durante la
+        // transacción de createPostedEntry para evitar que dos asientos
+        // concurrentes lean el mismo max y colisionen. El índice único
+        // je_period_voucher_unique es el guard final.
         $max = JournalEntry::query()
             ->where('accounting_period_id', $periodId)
             ->where('voucher_type', $typeValue)
+            ->lockForUpdate()
             ->max('voucher_number');
 
         return $max === null ? 1 : (int) $max + 1;
