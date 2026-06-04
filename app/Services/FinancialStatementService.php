@@ -54,40 +54,21 @@ class FinancialStatementService
      */
     protected function calculateAccountBalances(?string $from, string $to): Collection
     {
-        $query = DB::table('journal_entry_lines as jel')
-            ->join('journal_entries as je', 'je.id', '=', 'jel.journal_entry_id')
-            ->join('chart_of_accounts as coa', 'coa.id', '=', 'jel.chart_of_account_id')
-            ->select(
-                'coa.id',
-                'coa.code',
-                'coa.name',
-                'coa.account_type',
-                'coa.normal_balance',
-                DB::raw('SUM(jel.debit_amount) as debit_total'),
-                DB::raw('SUM(jel.credit_amount) as credit_total')
-            )
-            ->where('je.status', 'posted')
-            ->whereDate('je.entry_date', '<=', $to)
-            ->groupBy('coa.id', 'coa.code', 'coa.name', 'coa.account_type', 'coa.normal_balance')
-            ->orderBy('coa.code');
+        $rows = $from === null
+            ? app(\App\Services\Accounting\LedgerBalanceService::class)->balancesAt($to, true)
+            : app(\App\Services\Accounting\LedgerBalanceService::class)->movementsBetween($from, $to, false);
 
-        if ($from) {
-            $query->whereDate('je.entry_date', '>=', $from);
-        }
-
-        return $query->get()->map(function ($row) {
-            $debit = (int) $row->debit_total;
-            $credit = (int) $row->credit_total;
-
-            $balance = $row->normal_balance === 'debit'
-                ? ($debit - $credit)
-                : ($credit - $debit);
-
-            $row->debit_total = $debit;
-            $row->credit_total = $credit;
-            $row->balance = $balance;
-
-            return $row;
+        return $rows->map(function ($r) {
+            return (object) [
+                'id'             => (int) $r->chart_of_account_id,
+                'code'           => $r->code,
+                'name'           => $r->name,
+                'account_type'   => $r->account_type,
+                'normal_balance' => $r->normal_balance,
+                'debit_total'    => (int) $r->debit,
+                'credit_total'   => (int) $r->credit,
+                'balance'        => (int) $r->balance,
+            ];
         });
     }
 
