@@ -58,4 +58,23 @@ class EntryTypeTest extends TestCase
         $this->assertEquals(JournalEntryType::Ajuste, $entry->entry_type);
         $this->assertEquals(1, \App\Models\JournalEntry::ajustes()->count());
     }
+
+    public function test_enum_instance_entry_type_is_normalized(): void
+    {
+        $user = User::factory()->admin()->create();
+        $period = \App\Models\AccountingPeriod::resolveOpenForDate('2026-01-15');
+        $coa = \App\Models\ChartOfAccount::where('allows_posting', true)->take(2)->get();
+
+        $entry = app(JournalEntryService::class)->createPostedEntry([
+            'entry_date' => '2026-01-15',
+            'accounting_period_id' => $period->id,
+            'entry_type' => JournalEntryType::Ajuste, // enum instance, not ->value
+            'created_by' => $user->id,
+        ], [
+            ['chart_of_account_id' => $coa[0]->id, 'debit_amount' => 7000],
+            ['chart_of_account_id' => $coa[1]->id, 'credit_amount' => 7000],
+        ]);
+
+        $this->assertEquals(JournalEntryType::Ajuste, $entry->entry_type);
+    }
 }

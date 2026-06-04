@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\JournalEntryStatus;
 use App\Enums\JournalEntryType;
 use App\Enums\VoucherType;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -66,12 +67,12 @@ class JournalEntry extends Model
         return $this->belongsTo(self::class, 'reversed_entry_id');
     }
 
-    public function scopeMovimientos($query)
+    public function scopeMovimientos(Builder $query): Builder
     {
         return $query->where('entry_type', JournalEntryType::Normal);
     }
 
-    public function scopeAjustes($query)
+    public function scopeAjustes(Builder $query): Builder
     {
         return $query->where('entry_type', JournalEntryType::Ajuste);
     }
