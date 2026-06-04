@@ -89,6 +89,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('finance')->name('finance.')->middleware('admin')->group(function () {
         Route::view('accounting-periods', 'finance-accounting-periods.index')->name('accounting-periods.index');
         Route::view('journal-entries/create', 'finance-journal-entries.create')->name('journal-entries.create');
+        Route::view('trial-balance', 'accounting.trial-balance')->name('trial-balance');
+        Route::view('worksheet', 'accounting.worksheet')->name('worksheet');
 
         Route::permanentRedirect('payroll', 'users/payroll')->name('payroll.legacy-redirect');
     });

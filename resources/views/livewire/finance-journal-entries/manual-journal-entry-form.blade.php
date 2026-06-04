@@ -8,8 +8,8 @@
 
             <form wire:submit="save" class="p-6 space-y-6">
 
-                {{-- Fila superior: Fecha + Tipo de comprobante --}}
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {{-- Fila superior: Fecha + Tipo de comprobante + Tipo de asiento --}}
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {{-- Fecha --}}
                     <div class="space-y-2">
                         <x-input-label for="entry_date" value="Fecha" :required="true" />
@@ -35,6 +35,20 @@
                             @endforeach
                         </select>
                         <x-input-error :messages="$errors->get('voucher_type')" />
+                    </div>
+
+                    {{-- Tipo de asiento --}}
+                    <div class="space-y-2">
+                        <x-input-label for="entry_type" value="Tipo de Asiento" :required="true" />
+                        <select
+                            id="entry_type"
+                            wire:model="entry_type"
+                            class="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
+                        >
+                            <option value="normal">Normal</option>
+                            <option value="ajuste">Ajuste</option>
+                        </select>
+                        <x-input-error :messages="$errors->get('entry_type')" />
                     </div>
                 </div>
 

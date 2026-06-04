@@ -2,6 +2,7 @@
 
 namespace App\Livewire\FinanceJournalEntries;
 
+use App\Enums\JournalEntryType;
 use App\Enums\VoucherType;
 use App\Models\AccountingPeriod;
 use App\Models\ChartOfAccount;
@@ -12,6 +13,7 @@ class ManualJournalEntryForm extends Component
 {
     public string $entry_date = '';
     public string $voucher_type = 'ingreso';
+    public string $entry_type = 'normal';
     public ?string $description = null;
     public array $lines = [];
     public array $accountOptions = [];
@@ -78,6 +80,7 @@ class ManualJournalEntryForm extends Component
         return [
             'entry_date'                       => ['required', 'date'],
             'voucher_type'                     => ['required', Rule::enum(VoucherType::class)],
+            'entry_type'                       => ['required', Rule::enum(JournalEntryType::class)],
             'description'                      => ['nullable', 'string'],
             'lines'                            => ['array', 'min:2'],
             'lines.*.chart_of_account_id'      => ['required', 'exists:chart_of_accounts,id'],
@@ -107,6 +110,7 @@ class ManualJournalEntryForm extends Component
                 'accounting_period_id' => $period->id,
                 'description'          => $this->description,
                 'voucher_type'         => $this->voucher_type,
+                'entry_type'           => $this->entry_type,
                 'created_by'           => auth()->id(),
             ], $lines);
 
