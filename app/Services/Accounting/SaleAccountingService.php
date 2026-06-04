@@ -2,6 +2,7 @@
 
 namespace App\Services\Accounting;
 
+use App\Enums\VoucherType;
 use App\Models\Sale;
 use App\Models\Setting;
 use App\Models\ChartOfAccount;
@@ -84,13 +85,14 @@ class SaleAccountingService
         }
 
         return $this->journalEntryService->createPostedEntry([
-            'entry_date' => $entryDate,
+            'entry_date'           => $entryDate,
             'accounting_period_id' => $period->id,
-            'description' => 'Asiento automático de venta ' . $sale->invoice_number,
-            'source_type' => Sale::class,
-            'source_id' => $sale->id,
-            'created_by' => $userId,
-            'posted_by' => $userId,
+            'description'          => 'Asiento automático de venta ' . $sale->invoice_number,
+            'source_type'          => Sale::class,
+            'source_id'            => $sale->id,
+            'voucher_type'         => VoucherType::Ingreso->value,
+            'created_by'           => $userId,
+            'posted_by'            => $userId,
         ], $lines);
     }
 

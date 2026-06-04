@@ -2,6 +2,7 @@
 
 namespace App\Services\Accounting;
 
+use App\Enums\VoucherType;
 use App\Models\Purchase;
 use App\Models\Setting;
 use App\Models\ChartOfAccount;
@@ -71,13 +72,14 @@ class PurchaseAccountingService
         ];
 
         return $this->journalEntryService->createPostedEntry([
-            'entry_date' => $entryDate,
+            'entry_date'           => $entryDate,
             'accounting_period_id' => $period->id,
-            'description' => 'Asiento automático de compra ' . $purchase->invoice_number,
-            'source_type' => Purchase::class,
-            'source_id' => $purchase->id,
-            'created_by' => $userId,
-            'posted_by' => $userId,
+            'description'          => 'Asiento automático de compra ' . $purchase->invoice_number,
+            'source_type'          => Purchase::class,
+            'source_id'            => $purchase->id,
+            'voucher_type'         => VoucherType::Egreso->value,
+            'created_by'           => $userId,
+            'posted_by'            => $userId,
         ], $lines);
     }
 

@@ -4,6 +4,7 @@ namespace App\Services\Accounting;
 
 use App\Enums\AccountingPeriodStatus;
 use App\Enums\JournalEntryStatus;
+use App\Enums\VoucherType;
 use App\Models\AccountingPeriod;
 use App\Models\JournalEntry;
 use Carbon\Carbon;
@@ -21,6 +22,7 @@ class JournalEntryService
      *     description?: string|null,
      *     source_type?: string|null,
      *     source_id?: int|null,
+     *     voucher_type?: string|null,
      *     created_by: int,
      *     posted_by?: int|null
      * } $payload
@@ -50,14 +52,22 @@ class JournalEntryService
                 );
             }
 
+            $voucherType = $payload['voucher_type'] ?? VoucherType::Traspaso->value;
+            if ($voucherType instanceof VoucherType) {
+                $voucherType = $voucherType->value;
+            }
+            $voucherNumber = $this->nextVoucherNumber($payload['accounting_period_id'], $voucherType);
+
             $entry = JournalEntry::create([
-                'entry_number' => $payload['entry_number'] ?? $this->generateEntryNumber(),
-                'entry_date' => $payload['entry_date'],
+                'entry_number'         => $payload['entry_number'] ?? $this->generateEntryNumber(),
+                'voucher_type'         => $voucherType,
+                'voucher_number'       => $voucherNumber,
+                'entry_date'           => $payload['entry_date'],
                 'accounting_period_id' => $payload['accounting_period_id'],
-                'description' => $payload['description'] ?? null,
-                'source_type' => $payload['source_type'] ?? null,
-                'source_id' => $payload['source_id'] ?? null,
-                'status' => JournalEntryStatus::Posted,
+                'description'          => $payload['description'] ?? null,
+                'source_type'          => $payload['source_type'] ?? null,
+                'source_id'            => $payload['source_id'] ?? null,
+                'status'               => JournalEntryStatus::Posted,
                 'posted_at' => now(),
                 'posted_by' => $payload['posted_by'] ?? $payload['created_by'],
                 'created_by' => $payload['created_by'],
@@ -119,19 +129,32 @@ class JournalEntryService
         })->all();
 
         $reverse = $this->createPostedEntry([
-            'entry_date' => $reverseDate,
+            'entry_date'           => $reverseDate,
             'accounting_period_id' => $period->id,
-            'description' => $description ?? ('Reverso de asiento ' . $entry->entry_number),
-            'source_type' => $entry->source_type,
-            'source_id' => $entry->source_id,
-            'created_by' => $userId,
-            'posted_by' => $userId,
+            'description'          => $description ?? ('Reverso de asiento ' . $entry->entry_number),
+            'source_type'          => $entry->source_type,
+            'source_id'            => $entry->source_id,
+            'voucher_type'         => VoucherType::Traspaso->value,
+            'created_by'           => $userId,
+            'posted_by'            => $userId,
         ], $reverseLines);
 
         $reverse->update(['reversed_entry_id' => $entry->id]);
         $entry->update(['status' => JournalEntryStatus::Reversed]);
 
         return $reverse->fresh('lines');
+    }
+
+    public function nextVoucherNumber(int $periodId, VoucherType|string $type): int
+    {
+        $typeValue = $type instanceof VoucherType ? $type->value : $type;
+
+        $max = JournalEntry::query()
+            ->where('accounting_period_id', $periodId)
+            ->where('voucher_type', $typeValue)
+            ->max('voucher_number');
+
+        return $max === null ? 1 : (int) $max + 1;
     }
 
     /**

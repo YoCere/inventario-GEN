@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\JournalEntryStatus;
+use App\Enums\VoucherType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -21,6 +22,8 @@ class JournalEntry extends Model
         'description',
         'source_type',
         'source_id',
+        'voucher_type',
+        'voucher_number',
         'status',
         'posted_at',
         'posted_by',
@@ -29,9 +32,10 @@ class JournalEntry extends Model
     ];
 
     protected $casts = [
-        'entry_date' => 'date',
-        'status' => JournalEntryStatus::class,
-        'posted_at' => 'datetime',
+        'entry_date'   => 'date',
+        'status'       => JournalEntryStatus::class,
+        'voucher_type' => VoucherType::class,
+        'posted_at'    => 'datetime',
     ];
 
     public function accountingPeriod(): BelongsTo

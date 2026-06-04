@@ -3,6 +3,7 @@
 namespace App\Services\Accounting;
 
 use App\Enums\PayrollSheetStatus;
+use App\Enums\VoucherType;
 use App\Models\AccountingPeriod;
 use App\Models\ChartOfAccount;
 use App\Models\PayrollSheet;
@@ -102,13 +103,14 @@ class PayrollAccountingService
             }
 
             $entry = $this->journalEntryService->createPostedEntry([
-                'entry_date' => $entryDate,
+                'entry_date'           => $entryDate,
                 'accounting_period_id' => $period->id,
-                'description' => 'Asiento automatico de planilla ' . $sheet->sheet_number,
-                'source_type' => PayrollSheet::class,
-                'source_id' => $sheet->id,
-                'created_by' => $userId,
-                'posted_by' => $userId,
+                'description'          => 'Asiento automatico de planilla ' . $sheet->sheet_number,
+                'source_type'          => PayrollSheet::class,
+                'source_id'            => $sheet->id,
+                'voucher_type'         => VoucherType::Traspaso->value,
+                'created_by'           => $userId,
+                'posted_by'            => $userId,
             ], $lines);
 
             $sheet->update([
