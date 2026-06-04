@@ -4,7 +4,17 @@
             <h2 class="font-semibold text-xl text-foreground leading-tight print:hidden">
                 {{ __('Libro Diario') }}
             </h2>
-            <div class="print:hidden">
+            <div class="print:hidden flex items-center gap-2">
+                @if(auth()->user()->isAdmin())
+                    <x-primary-button
+                        type="button"
+                        wire:navigate
+                        href="{{ route('finance.journal-entries.create') }}"
+                    >
+                        <x-heroicon-o-plus class="w-4 h-4 mr-2" />
+                        Nuevo asiento
+                    </x-primary-button>
+                @endif
                 <x-secondary-button type="button" onclick="window.print()">
                     <x-heroicon-o-printer class="w-4 h-4 mr-2" />
                     Imprimir
