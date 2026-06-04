@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\JournalEntryStatus;
+use App\Enums\JournalEntryType;
 use App\Enums\VoucherType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -24,6 +25,7 @@ class JournalEntry extends Model
         'source_id',
         'voucher_type',
         'voucher_number',
+        'entry_type',
         'status',
         'posted_at',
         'posted_by',
@@ -35,6 +37,7 @@ class JournalEntry extends Model
         'entry_date'   => 'date',
         'status'       => JournalEntryStatus::class,
         'voucher_type' => VoucherType::class,
+        'entry_type'   => JournalEntryType::class,
         'posted_at'    => 'datetime',
     ];
 
@@ -61,5 +64,15 @@ class JournalEntry extends Model
     public function reversedEntry(): BelongsTo
     {
         return $this->belongsTo(self::class, 'reversed_entry_id');
+    }
+
+    public function scopeMovimientos($query)
+    {
+        return $query->where('entry_type', JournalEntryType::Normal);
+    }
+
+    public function scopeAjustes($query)
+    {
+        return $query->where('entry_type', JournalEntryType::Ajuste);
     }
 }

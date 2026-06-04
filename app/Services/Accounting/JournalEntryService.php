@@ -23,6 +23,7 @@ class JournalEntryService
      *     source_type?: string|null,
      *     source_id?: int|null,
      *     voucher_type?: string|null,
+     *     entry_type?: string|null,
      *     created_by: int,
      *     posted_by?: int|null
      * } $payload
@@ -62,6 +63,9 @@ class JournalEntryService
                 'entry_number'         => $payload['entry_number'] ?? $this->generateEntryNumber(),
                 'voucher_type'         => $voucherType,
                 'voucher_number'       => $voucherNumber,
+                'entry_type'           => ($payload['entry_type'] ?? \App\Enums\JournalEntryType::Normal->value) instanceof \App\Enums\JournalEntryType
+                    ? ($payload['entry_type'])->value
+                    : (string) ($payload['entry_type'] ?? \App\Enums\JournalEntryType::Normal->value),
                 'entry_date'           => $payload['entry_date'],
                 'accounting_period_id' => $payload['accounting_period_id'],
                 'description'          => $payload['description'] ?? null,
