@@ -17,6 +17,10 @@ class LedgerAccountDaily extends Model
         'credit_total',
     ];
 
+    // Las lecturas usan Eloquent (cast 'date'); las escrituras incrementales
+    // las hace UpdateLedgerSnapshot con DB::table() para evitar que el cast
+    // convierta la fecha y rompa el lookup por unique key. No "arreglar" el
+    // listener a Eloquent sin resolver eso primero.
     protected $casts = [
         'movement_date' => 'date',
         'debit_total'   => 'integer',

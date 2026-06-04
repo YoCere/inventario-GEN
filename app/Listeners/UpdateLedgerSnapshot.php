@@ -6,6 +6,13 @@ use App\Events\JournalEntryPosted;
 use App\Models\LedgerAccountDaily;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Mantiene el read model incremental `ledger_account_daily` (cuenta × día ×
+ * entry_type) sumando cada línea del asiento posteado. Escribe con el query
+ * builder a propósito (ver comentario en handle) para no romper el lookup por
+ * el cast 'date'. Registrado por auto-discovery de Laravel 11; NO agregar un
+ * Event::listen manual (duplicaría el conteo).
+ */
 class UpdateLedgerSnapshot
 {
     public function handle(JournalEntryPosted $event): void
