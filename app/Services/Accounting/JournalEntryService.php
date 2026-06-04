@@ -6,6 +6,7 @@ use App\Enums\AccountingPeriodStatus;
 use App\Enums\JournalEntryStatus;
 use App\Enums\JournalEntryType;
 use App\Enums\VoucherType;
+use App\Events\JournalEntryPosted;
 use App\Models\AccountingPeriod;
 use App\Models\JournalEntry;
 use Carbon\Carbon;
@@ -40,7 +41,7 @@ class JournalEntryService
     {
         $this->validateLines($lines);
 
-        return DB::transaction(function () use ($payload, $lines) {
+        $entry = DB::transaction(function () use ($payload, $lines) {
             // Garantizar que no se posteen asientos a periodos cerrados.
             // Callers (Sale/Purchase services) pasan accounting_period_id directo,
             // sin pasar por resolveOpenPeriod() — validar aquí cubre todos los paths.
@@ -94,6 +95,10 @@ class JournalEntryService
 
             return $entry->load('lines');
         });
+
+        event(new JournalEntryPosted($entry));
+
+        return $entry;
     }
 
     public function findPostedSourceEntry(string $sourceType, int $sourceId): ?JournalEntry
