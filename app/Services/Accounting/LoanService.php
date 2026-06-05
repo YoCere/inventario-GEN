@@ -67,7 +67,10 @@ class LoanService
 
             $lastPaid = $loan->installments()->where('status', 'paid')->orderByDesc('number')->first();
             $outstanding = $lastPaid ? (int) $lastPaid->balance_after : (int) $loan->principal;
-            $loan->update(['outstanding_balance' => $outstanding]);
+            $loan->update([
+                'outstanding_balance' => $outstanding,
+                'status' => $outstanding <= 0 ? LoanStatus::PaidOff->value : LoanStatus::Active->value,
+            ]);
 
             return $loan->fresh();
         });
@@ -146,7 +149,7 @@ class LoanService
             ]);
 
             $loan->installments()->where('status', 'pending')->update([
-                'status' => InstallmentStatus::Paid->value,
+                'status' => InstallmentStatus::Cancelled->value,
                 'paid_date' => $date,
                 'journal_entry_id' => $entry->id,
             ]);

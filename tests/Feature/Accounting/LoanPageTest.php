@@ -43,4 +43,17 @@ class LoanPageTest extends TestCase
         $this->assertEquals(12, $loan->installments()->count());
         $this->assertNotNull($loan->disbursement_entry_id);
     }
+
+    public function test_non_admin_cannot_save_loan(): void
+    {
+        $user = User::factory()->create(); // no admin
+        Livewire::actingAs($user)->test(LoanForm::class)
+            ->set('mode', 'new')->set('lender', 'X')->set('code', 'L-NA')->set('principal', 12000)
+            ->set('annual_rate_pct', 12)->set('term_months', 12)->set('start_date', '2026-01-01')->set('payment_day', 5)
+            ->set('liability_account_code', '2.2.01')->set('interest_account_code', '6.3')->set('payment_account_code', '1.1.02')
+            ->call('save')
+            ->assertStatus(403);
+
+        $this->assertNull(Loan::where('code', 'L-NA')->first());
+    }
 }

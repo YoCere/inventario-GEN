@@ -56,8 +56,9 @@ final class LoanScheduleTable extends PowerGridComponent
             ->add('balance_fmt', fn (LoanInstallment $model) => format_money($model->balance_after))
             ->add('status_badge', function (LoanInstallment $model) {
                 $colors = [
-                    InstallmentStatus::Pending->value => 'bg-amber-100 text-amber-800',
-                    InstallmentStatus::Paid->value    => 'bg-green-100 text-green-800',
+                    InstallmentStatus::Pending->value   => 'bg-amber-100 text-amber-800',
+                    InstallmentStatus::Paid->value      => 'bg-green-100 text-green-800',
+                    InstallmentStatus::Cancelled->value => 'bg-gray-100 text-gray-500',
                 ];
                 $color = $colors[$model->status->value] ?? 'bg-gray-100 text-gray-800';
                 $label = $model->status->label();
@@ -118,6 +119,7 @@ final class LoanScheduleTable extends PowerGridComponent
         $this->dispatch('pg:eventRefresh-' . $this->tableName);
     }
 
+    #[On('payoff-loan')]
     public function payoffLoan(): void
     {
         abort_unless(auth()->user()->isAdmin(), 403);

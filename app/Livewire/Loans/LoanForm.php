@@ -37,7 +37,7 @@ class LoanForm extends Component
             'liability_account_code'  => ['required', 'exists:chart_of_accounts,code'],
             'interest_account_code'   => ['required', 'exists:chart_of_accounts,code'],
             'payment_account_code'    => ['required', 'exists:chart_of_accounts,code'],
-            'as_of_date'              => ['required_if:mode,opening', 'nullable', 'date'],
+            'as_of_date'              => ['nullable', 'required_if:mode,opening', 'date', 'after_or_equal:start_date'],
         ];
     }
 

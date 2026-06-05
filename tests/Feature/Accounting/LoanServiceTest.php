@@ -113,5 +113,8 @@ class LoanServiceTest extends TestCase
         $this->assertEquals(LoanStatus::PaidOff, $loan->status);
         $this->assertEquals(0, $loan->outstanding_balance);
         $this->assertEquals(0, $loan->installments()->where('status', 'pending')->count());
+        // Cuotas pendientes quedan 'cancelled' (no 'paid'): el cronograma no miente con interés fantasma.
+        $this->assertEquals(0, $loan->installments()->where('status', 'paid')->count());
+        $this->assertEquals(12, $loan->installments()->where('status', 'cancelled')->count());
     }
 }
