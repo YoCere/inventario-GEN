@@ -95,6 +95,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::view('fixed-assets', 'fixed-assets.index')->name('fixed-assets.index');
         Route::view('fixed-assets/{assetId}/schedule', 'fixed-assets.schedule')->name('fixed-assets.schedule');
 
+        Route::view('loans', 'loans.index')->name('loans.index');
+        Route::view('loans/{loan}/schedule', 'loans.schedule')->name('loans.schedule');
+
         Route::permanentRedirect('payroll', 'users/payroll')->name('payroll.legacy-redirect');
     });
 
