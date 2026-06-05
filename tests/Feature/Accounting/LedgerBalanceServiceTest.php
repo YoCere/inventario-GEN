@@ -22,8 +22,12 @@ class LedgerBalanceServiceTest extends TestCase
         $this->seed([AccountingPeriodSeeder::class, ChartOfAccountSeeder::class, SettingSeeder::class]);
         $user = User::factory()->admin()->create();
         $period = AccountingPeriod::resolveOpenForDate('2026-01-15');
-        $caja = ChartOfAccount::where('allows_posting', true)->where('account_type', 'asset')->first();
-        $cap  = ChartOfAccount::where('allows_posting', true)->where('account_type', 'equity')->first();
+        // Selección determinística: activo de naturaleza deudora (excluye contra-activos
+        // como Depreciación Acumulada, naturaleza acreedora) y patrimonio acreedor.
+        $caja = ChartOfAccount::where('allows_posting', true)->where('account_type', 'asset')
+            ->where('normal_balance', 'debit')->orderBy('code')->first();
+        $cap  = ChartOfAccount::where('allows_posting', true)->where('account_type', 'equity')
+            ->where('normal_balance', 'credit')->orderBy('code')->first();
 
         app(JournalEntryService::class)->createPostedEntry([
             'entry_date' => '2026-01-01', 'accounting_period_id' => $period->id, 'created_by' => $user->id,

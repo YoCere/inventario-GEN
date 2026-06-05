@@ -81,7 +81,8 @@ class DepreciationServiceTest extends TestCase
         $this->assertEquals(FixedAssetStatus::FullyDepreciated, $asset->status);
         $this->assertEquals(0, $asset->bookValue());
 
-        $first12 = DepreciationRun::where('fixed_asset_id', $asset->id)->orderBy('year_month')->limit(12)->sum('amount');
+        // sum en PHP: SQLite ignora LIMIT en agregados SQL; materializar las 12 filas primero.
+        $first12 = DepreciationRun::where('fixed_asset_id', $asset->id)->orderBy('year_month')->limit(12)->get()->sum('amount');
         $this->assertEqualsWithDelta(1400000, $first12, 60);
     }
 
