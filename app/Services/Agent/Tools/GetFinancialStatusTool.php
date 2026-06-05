@@ -34,6 +34,10 @@ class GetFinancialStatusTool extends BaseTool
 
     public function execute(array $input, AgentContext $context): array
     {
+        if (!$context->user || !$context->user->isAdmin()) {
+            return ['error' => 'Solo el administrador puede consultar información financiera.'];
+        }
+
         $date = (string) ($input['date'] ?? now()->toDateString());
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
             return ['error' => "Formato de fecha inválido: usa YYYY-MM-DD."];

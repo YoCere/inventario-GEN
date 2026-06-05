@@ -48,4 +48,26 @@ class FinancialToolsTest extends TestCase
         $out = app(GetIncomeAndExpensesTool::class)->execute(['from' => 'ayer', 'to' => '2026-01-31'], new AgentContext($user, 'test-chat'));
         $this->assertArrayHasKey('error', $out);
     }
+
+    public function test_tool_blocks_non_admin_user(): void
+    {
+        $this->seed([AccountingPeriodSeeder::class, ChartOfAccountSeeder::class, SettingSeeder::class]);
+        $nonAdmin = User::factory()->create();
+
+        $out = app(GetIncomeAndExpensesTool::class)
+            ->execute(['from' => '2026-01-01', 'to' => '2026-01-31'], new AgentContext($nonAdmin, 'test-chat'));
+
+        $this->assertArrayHasKey('error', $out);
+        $this->assertStringContainsString('administrador', $out['error']);
+    }
+
+    public function test_tool_blocks_null_user(): void
+    {
+        $this->seed([AccountingPeriodSeeder::class, ChartOfAccountSeeder::class, SettingSeeder::class]);
+
+        $out = app(GetIncomeAndExpensesTool::class)
+            ->execute(['from' => '2026-01-01', 'to' => '2026-01-31'], new AgentContext(null, 'test-chat'));
+
+        $this->assertArrayHasKey('error', $out);
+    }
 }

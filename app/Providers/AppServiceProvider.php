@@ -4,11 +4,8 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Blade;
-use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Console\Scheduling\Schedule;
-use App\Events\LowStockDetected;
-use App\Listeners\NotifyLowStock;
 use App\Console\Commands\SendDailySummaryCommand;
 use App\Services\AuditService;
 use App\Services\Agent\ToolRegistry;
@@ -64,7 +61,9 @@ class AppServiceProvider extends ServiceProvider
           //  \Illuminate\Support\Facades\URL::forceScheme('https');
         //}
 
-        Event::listen(LowStockDetected::class, NotifyLowStock::class);
+        // NotifyLowStock se registra por auto-discovery de Laravel 11
+        // (handle(LowStockDetected)). No agregar Event::listen manual aquí:
+        // duplicaría el listener y enviaría la alerta de Telegram dos veces.
 
         // Developer = super-usuario absoluto. Gate::before corre antes que
         // cualquier policy / permission y, si retorna true, autoriza la

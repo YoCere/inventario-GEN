@@ -36,6 +36,10 @@ class GetIncomeAndExpensesTool extends BaseTool
 
     public function execute(array $input, AgentContext $context): array
     {
+        if (!$context->user || !$context->user->isAdmin()) {
+            return ['error' => 'Solo el administrador puede consultar información financiera.'];
+        }
+
         foreach (['from', 'to'] as $k) {
             $v = (string) ($input[$k] ?? '');
             if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $v)) {
