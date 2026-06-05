@@ -122,6 +122,14 @@
                                 <x-dropdown-link :href="route('finance.worksheet')" :active="request()->routeIs('finance.worksheet')">
                                     Hoja Teórica
                                 </x-dropdown-link>
+                                <div class="my-1 border-t border-border"></div>
+                                <div class="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Activos Fijos</div>
+                                <x-dropdown-link :href="route('finance.asset-categories.index')" :active="request()->routeIs('finance.asset-categories.index')">
+                                    Categorías de Activo
+                                </x-dropdown-link>
+                                <x-dropdown-link :href="route('finance.fixed-assets.index')" :active="request()->routeIs('finance.fixed-assets.*')">
+                                    Activos Fijos
+                                </x-dropdown-link>
                                 @endif
                                 <div class="my-1 border-t border-border"></div>
                                 <div class="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Tesorería</div>
@@ -387,6 +395,9 @@
                                     @if(auth()->user()->isAdmin())
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.trial-balance') ? 'text-primary' : '' }}" href="{{ route('finance.trial-balance') }}">Balance de Sumas y Saldos</a>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.worksheet') ? 'text-primary' : '' }}" href="{{ route('finance.worksheet') }}">Hoja Teórica</a>
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mt-2">Activos Fijos</p>
+                                    <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.asset-categories.index') ? 'text-primary' : '' }}" href="{{ route('finance.asset-categories.index') }}">Categorías de Activo</a>
+                                    <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.fixed-assets.*') ? 'text-primary' : '' }}" href="{{ route('finance.fixed-assets.index') }}">Activos Fijos</a>
                                     @endif
                                     <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mt-2">Tesorería</p>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.transactions.index') ? 'text-primary' : '' }}" href="{{ route('finance.transactions.index') }}">Transacciones</a>

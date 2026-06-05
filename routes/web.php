@@ -91,6 +91,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::view('journal-entries/create', 'finance-journal-entries.create')->name('journal-entries.create');
         Route::view('trial-balance', 'accounting.trial-balance')->name('trial-balance');
         Route::view('worksheet', 'accounting.worksheet')->name('worksheet');
+        Route::view('asset-categories', 'asset-categories.index')->name('asset-categories.index');
+        Route::view('fixed-assets', 'fixed-assets.index')->name('fixed-assets.index');
+        Route::view('fixed-assets/{assetId}/schedule', 'fixed-assets.schedule')->name('fixed-assets.schedule');
 
         Route::permanentRedirect('payroll', 'users/payroll')->name('payroll.legacy-redirect');
     });
