@@ -20,7 +20,7 @@ class RebuildLedgerSnapshot extends Command
 
         $query = DB::table('journal_entry_lines as l')
             ->join('journal_entries as e', 'e.id', '=', 'l.journal_entry_id')
-            ->where('e.status', JournalEntryStatus::Posted->value)
+            ->whereIn('e.status', [JournalEntryStatus::Posted->value, JournalEntryStatus::Reversed->value])
             ->selectRaw('l.chart_of_account_id, e.entry_date as movement_date, e.entry_type,
                 SUM(l.debit_amount) as debit_total, SUM(l.credit_amount) as credit_total')
             ->groupBy('l.chart_of_account_id', 'e.entry_date', 'e.entry_type');

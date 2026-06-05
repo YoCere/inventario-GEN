@@ -220,7 +220,7 @@ class FinancialStatementService
                 DB::raw('SUM(jel.debit_amount) as inflow'),
                 DB::raw('SUM(jel.credit_amount) as outflow')
             )
-            ->where('je.status', 'posted')
+            ->whereIn('je.status', ['posted', 'reversed'])
             ->whereDate('je.entry_date', '>=', $from)
             ->whereDate('je.entry_date', '<=', $to)
             ->whereIn('coa.code', $cashCodes)
@@ -312,7 +312,7 @@ class FinancialStatementService
             ->select('je.entry_date')
             ->selectRaw('SUM(jel.debit_amount) as day_debit')
             ->selectRaw('SUM(jel.credit_amount) as day_credit')
-            ->where('je.status', 'posted')
+            ->whereIn('je.status', ['posted', 'reversed'])
             ->whereDate('je.entry_date', '>=', $from)
             ->whereDate('je.entry_date', '<=', $to)
             ->whereIn('coa.code', $cashCodes)

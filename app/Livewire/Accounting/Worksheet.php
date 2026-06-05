@@ -14,6 +14,18 @@ class Worksheet extends Component
     public function mount(): void
     {
         $this->periodId ??= AccountingPeriod::orderByDesc('start_date')->value('id');
+        $period = $this->periodId ? AccountingPeriod::find($this->periodId) : null;
+        if ($period) {
+            app(WorksheetService::class)->generate($period);
+        }
+    }
+
+    public function updatedPeriodId(): void
+    {
+        $period = $this->periodId ? AccountingPeriod::find($this->periodId) : null;
+        if ($period) {
+            app(WorksheetService::class)->generate($period);
+        }
     }
 
     public function saveNote(int $accountId, ?string $note, string $status): void
@@ -31,9 +43,7 @@ class Worksheet extends Component
         $period = $this->periodId ? AccountingPeriod::find($this->periodId) : null;
         $data = null;
         if ($period) {
-            $svc = app(WorksheetService::class);
-            $svc->generate($period);
-            $data = $svc->present($period);
+            $data = app(WorksheetService::class)->present($period);
         }
 
         return view('livewire.accounting.worksheet', [
