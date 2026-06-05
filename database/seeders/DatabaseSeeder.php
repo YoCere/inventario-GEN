@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             AccountingPeriodSeeder::class,
             ChartOfAccountSeeder::class,
+            AssetCategorySeeder::class,
             CustomerSeeder::class,
             SupplierSeeder::class,
             UnitSeeder::class,

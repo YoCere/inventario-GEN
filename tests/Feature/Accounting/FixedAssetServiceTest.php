@@ -95,4 +95,13 @@ class FixedAssetServiceTest extends TestCase
         $loss = ChartOfAccount::where('code', '6.6')->first();
         $this->assertEquals(100000, $entry->lines->where('chart_of_account_id', $loss->id)->sum('debit_amount'));
     }
+
+    public function test_redispose_throws(): void
+    {
+        $asset = app(FixedAssetService::class)->registerNew($this->data(['code' => 'VEH-RD']), '1.1.1.01', $this->userId);
+        app(FixedAssetService::class)->dispose($asset, '2026-03-31', 100000, '1.1.1.01', '4.2', $this->userId);
+
+        $this->expectException(\RuntimeException::class);
+        app(FixedAssetService::class)->dispose($asset->fresh(), '2026-04-30', 50000, '1.1.1.01', '4.2', $this->userId);
+    }
 }

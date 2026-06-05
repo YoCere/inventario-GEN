@@ -63,6 +63,10 @@ class FixedAssetService
 
     public function dispose(FixedAsset $asset, string $date, int $saleAmount, ?string $cashAccountCode, string $resultAccountCode, int $userId): FixedAsset
     {
+        if ($asset->status === FixedAssetStatus::Disposed) {
+            throw new \RuntimeException("El activo {$asset->code} ya fue dado de baja.");
+        }
+
         return DB::transaction(function () use ($asset, $date, $saleAmount, $cashAccountCode, $resultAccountCode, $userId) {
             $cat = AssetCategory::findOrFail($asset->asset_category_id);
             $ppe = ChartOfAccount::where('code', $cat->ppe_account_code)->firstOrFail();

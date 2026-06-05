@@ -32,4 +32,20 @@ class InvestmentBaseConsolidationTest extends TestCase
         $this->assertNotNull($base, 'buildInvestmentIndicators debe exponer investment_base');
         $this->assertGreaterThanOrEqual(7000000, (int) $base);
     }
+
+    public function test_disposed_asset_excluded_from_investment_base(): void
+    {
+        $this->seed([AccountingPeriodSeeder::class, ChartOfAccountSeeder::class, SettingSeeder::class, AssetCategorySeeder::class]);
+        $cat = AssetCategory::where('name', 'Vehículos')->first();
+        FixedAsset::create([
+            'asset_category_id' => $cat->id, 'code' => 'VEH-DIS', 'name' => 'Baja',
+            'acquisition_date' => '2026-01-01', 'acquisition_cost' => 7000000, 'residual_value' => 0,
+            'useful_life_months' => 60, 'depreciation_start_date' => '2026-02-01',
+            'status' => 'disposed', 'accumulated_depreciation' => 0,
+        ]);
+
+        $data = app(\App\Services\FinancialStatementService::class)->build('2026-01-01', '2026-01-31', false);
+        // Activo dado de baja NO infla la base de inversión (sin otros activos, base = 0 → fallback al setting).
+        $this->assertLessThan(7000000, (int) ($data['indicadores_inversion']['investment_base'] ?? 0));
+    }
 }

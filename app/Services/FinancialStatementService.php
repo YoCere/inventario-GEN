@@ -248,7 +248,10 @@ class FinancialStatementService
      */
     protected function buildInvestmentIndicators(string $from, string $to, int $netResult): array
     {
-        $assetsBase = (int) \App\Models\FixedAsset::query()->sum('acquisition_cost');
+        // Excluye activos dados de baja: ya no son capital invertido vigente.
+        $assetsBase = (int) \App\Models\FixedAsset::query()
+            ->where('status', '!=', \App\Enums\FixedAssetStatus::Disposed->value)
+            ->sum('acquisition_cost');
         $settingBase = (int) round((float) Setting::get('opening_balance_amount', '0'));
         $investmentBase = $assetsBase > 0 ? $assetsBase : $settingBase;
         $openingBalanceDate = Setting::get('opening_balance_date');

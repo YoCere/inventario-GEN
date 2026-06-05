@@ -24,6 +24,10 @@ class ChartOfAccountSeeder extends Seeder
             ['code' => '1.1.05', 'name' => 'Credito Fiscal IVA', 'level' => 3, 'parent_code' => '1.1', 'account_type' => 'asset', 'normal_balance' => 'debit', 'allows_posting' => true],
             ['code' => '1.2', 'name' => 'ACTIVO NO CORRIENTE', 'level' => 2, 'parent_code' => '1', 'account_type' => 'asset', 'normal_balance' => 'debit', 'allows_posting' => false],
             ['code' => '1.2.01', 'name' => 'Propiedad, Planta y Equipo', 'level' => 3, 'parent_code' => '1.2', 'account_type' => 'asset', 'normal_balance' => 'debit', 'allows_posting' => true],
+            // Activos fijos / depreciación (contra-activos naturaleza acreedora)
+            ['code' => '1.2.02', 'name' => 'Depreciacion Acumulada', 'level' => 3, 'parent_code' => '1.2', 'account_type' => 'asset', 'normal_balance' => 'credit', 'allows_posting' => true],
+            ['code' => '1.2.03', 'name' => 'Activo Diferido', 'level' => 3, 'parent_code' => '1.2', 'account_type' => 'asset', 'normal_balance' => 'debit', 'allows_posting' => true],
+            ['code' => '1.2.04', 'name' => 'Amortizacion Acumulada Diferido', 'level' => 3, 'parent_code' => '1.2', 'account_type' => 'asset', 'normal_balance' => 'credit', 'allows_posting' => true],
 
             // 2 - PASIVO
             ['code' => '2', 'name' => 'PASIVO', 'level' => 1, 'parent_code' => null, 'account_type' => 'liability', 'normal_balance' => 'credit', 'allows_posting' => false],
@@ -67,6 +71,9 @@ class ChartOfAccountSeeder extends Seeder
             ['code' => '6.1', 'name' => 'Gastos Administrativos', 'level' => 2, 'parent_code' => '6', 'account_type' => 'expense', 'normal_balance' => 'debit', 'allows_posting' => true],
             ['code' => '6.2', 'name' => 'Gastos de Venta', 'level' => 2, 'parent_code' => '6', 'account_type' => 'expense', 'normal_balance' => 'debit', 'allows_posting' => true],
             ['code' => '6.3', 'name' => 'Gastos Financieros', 'level' => 2, 'parent_code' => '6', 'account_type' => 'expense', 'normal_balance' => 'debit', 'allows_posting' => true],
+            ['code' => '6.4', 'name' => 'Gasto Depreciacion', 'level' => 2, 'parent_code' => '6', 'account_type' => 'expense', 'normal_balance' => 'debit', 'allows_posting' => true],
+            ['code' => '6.5', 'name' => 'Gasto Amortizacion', 'level' => 2, 'parent_code' => '6', 'account_type' => 'expense', 'normal_balance' => 'debit', 'allows_posting' => true],
+            ['code' => '6.6', 'name' => 'Perdida en Venta de Activos', 'level' => 2, 'parent_code' => '6', 'account_type' => 'expense', 'normal_balance' => 'debit', 'allows_posting' => true],
         ];
 
         foreach ($accounts as $account) {
