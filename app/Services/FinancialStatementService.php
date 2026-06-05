@@ -248,7 +248,9 @@ class FinancialStatementService
      */
     protected function buildInvestmentIndicators(string $from, string $to, int $netResult): array
     {
-        $investmentBase = (int) round((float) Setting::get('opening_balance_amount', '0'));
+        $assetsBase = (int) \App\Models\FixedAsset::query()->sum('acquisition_cost');
+        $settingBase = (int) round((float) Setting::get('opening_balance_amount', '0'));
+        $investmentBase = $assetsBase > 0 ? $assetsBase : $settingBase;
         $openingBalanceDate = Setting::get('opening_balance_date');
         $discountRateAnnual = (float) Setting::get('discount_rate_annual', '12');
         $discountRateMonthly = (($discountRateAnnual / 100) > -1)
