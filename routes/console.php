@@ -29,3 +29,8 @@ Schedule::command('backup:clean')
     ->when(fn () => \App\Models\Setting::get('backup_schedule_enabled', '1') === '1')
     ->withoutOverlapping()
     ->onOneServer();
+
+// Activos fijos: postea la depreciación del mes recién cerrado el día 1 a las 02:00.
+Schedule::command('depreciation:run', ['--month' => now()->subMonthNoOverflow()->format('Y-m')])
+    ->monthlyOn(1, '02:00')
+    ->description('Depreciación mensual de activos fijos');
