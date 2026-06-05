@@ -85,8 +85,7 @@ final class AssetCategoryTable extends PowerGridComponent
             Column::make('Tasa anual (%)', 'annual_rate_pct')
                 ->sortable(),
 
-            Column::make('Diferido', 'is_deferred_badge')
-                ->html(),
+            Column::make('Diferido', 'is_deferred_badge'),
 
             Column::make('Cta. PPE', 'ppe_account_code')
                 ->sortable()
