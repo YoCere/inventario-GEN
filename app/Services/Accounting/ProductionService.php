@@ -29,8 +29,10 @@ class ProductionService
             $est = $this->calculator->estimate($bom, $quantity, $locationId);
 
             foreach ($est['components'] as $c) {
-                $needed = (int) round($c['quantity']);
-                $available = $this->stock->totalStock($c['component_product_id']);
+                $needed = (int) $c['quantity'];
+                $available = (int) \App\Models\ProductStock::where('product_id', $c['component_product_id'])
+                    ->where('location_id', $locationId)
+                    ->value('quantity');
                 if ($available < $needed) {
                     $prod = Product::find($c['component_product_id']);
                     throw new \RuntimeException("Stock insuficiente de {$prod->name}: requiere {$needed}, hay {$available}.");
@@ -55,7 +57,7 @@ class ProductionService
             ]);
 
             foreach ($est['components'] as $c) {
-                $needed = (int) round($c['quantity']);
+                $needed = (int) $c['quantity'];
                 $this->stock->decrementAt($c['component_product_id'], $locationId, $needed);
                 $order->consumptions()->create([
                     'component_product_id' => $c['component_product_id'],

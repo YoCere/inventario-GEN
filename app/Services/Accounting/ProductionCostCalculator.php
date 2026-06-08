@@ -27,9 +27,9 @@ class ProductionCostCalculator
         $materialCost = 0;
 
         foreach ($bom->components as $component) {
-            $qty      = (float) $component->quantity_per_unit * $quantity;
+            $qty      = (int) round((float) $component->quantity_per_unit * $quantity);
             $unitCost = $this->kardex->averageUnitCost($component->component_product_id, null, $locationId);
-            $total    = (int) round($qty * $unitCost);
+            $total    = $qty * $unitCost;
             $materialCost += $total;
             $components[] = [
                 'component_product_id' => (int) $component->component_product_id,
@@ -43,6 +43,8 @@ class ProductionCostCalculator
         $moiCost   = $quantity * (int) $bom->moi_rate;
         $cifCost   = $quantity * (int) $bom->cif_rate;
         $totalCost = $materialCost + $modCost + $moiCost + $cifCost;
+        // unit_cost is intentionally floored (intdiv). The resulting per-unit×qty may be
+        // a few cents under total_cost (accepted rounding policy; the GL is valued at total_cost).
         $unitCost  = $quantity > 0 ? intdiv($totalCost, $quantity) : 0;
 
         return [

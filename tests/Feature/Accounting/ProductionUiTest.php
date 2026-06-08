@@ -45,10 +45,12 @@ class ProductionUiTest extends TestCase
         $this->userId     = User::factory()->create()->id;
     }
 
+    private static int $invoiceSeq = 0;
+
     private function buyStock(int $productId, int $qty, int $unitPriceCents): void
     {
         $purchase = Purchase::create([
-            'invoice_number' => 'FAC-TEST-' . $productId,
+            'invoice_number' => 'FAC-TEST-' . $productId . '-' . (++self::$invoiceSeq),
             'purchase_date'  => '2026-01-01',
             'status'         => 'received',
             'total'          => $qty * $unitPriceCents,
@@ -96,5 +98,17 @@ class ProductionUiTest extends TestCase
         Livewire::actingAs($user)->test(\App\Livewire\Production\ProduceForm::class)
             ->set('bomId', 1)->set('quantity', 10)->set('production_date', '2026-01-05')->set('location_id', $this->locationId)
             ->call('save')->assertStatus(403);
+    }
+
+    public function test_non_admin_cannot_save_bom(): void
+    {
+        $user = User::factory()->create();
+        $pt = Product::factory()->create();
+        $mp = Product::factory()->create();
+        Livewire::actingAs($user)->test(\App\Livewire\Boms\BomForm::class)
+            ->set('productId', $pt->id)->set('mod_rate', 5)->set('moi_rate', 2)->set('cif_rate', 3)
+            ->set('components', [['component_product_id' => $mp->id, 'quantity_per_unit' => 2]])
+            ->call('save')->assertStatus(403);
+        $this->assertEquals(0, BillOfMaterial::count());
     }
 }

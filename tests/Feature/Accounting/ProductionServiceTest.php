@@ -48,10 +48,12 @@ class ProductionServiceTest extends TestCase
         $this->userId     = User::factory()->create()->id;
     }
 
+    private static int $invoiceSeq = 0;
+
     private function buyStock(int $productId, int $qty, int $unitPriceCents): void
     {
         $purchase = Purchase::create([
-            'invoice_number' => 'FAC-TEST-' . $productId,
+            'invoice_number' => 'FAC-TEST-' . $productId . '-' . (++self::$invoiceSeq),
             'purchase_date'  => '2026-01-01',
             'status'         => 'received',
             'total'          => $qty * $unitPriceCents,
@@ -110,6 +112,26 @@ class ProductionServiceTest extends TestCase
         $this->assertEquals(30, $entry->lines->where('chart_of_account_id', $cif54->id)->sum('credit_amount'));
 
         $this->assertEquals(60, $pt->fresh()->purchase_price);
+    }
+
+    public function test_produce_with_blended_average_cost_balances(): void
+    {
+        $pt = Product::factory()->create();
+        $mp = Product::factory()->create();
+        // Compra 1: 100 @ 20 ; Compra 2: 100 @ 21 → promedio 20.5 → round() = 21
+        $this->buyStock($mp->id, 100, 20);
+        $this->buyStock($mp->id, 100, 21);
+        $bom = BillOfMaterial::create(['product_id' => $pt->id, 'mod_rate' => 5, 'moi_rate' => 2, 'cif_rate' => 3]);
+        $bom->components()->create(['component_product_id' => $mp->id, 'quantity_per_unit' => 2]);
+        $user = User::factory()->admin()->create();
+
+        $order = app(ProductionService::class)->produce($bom->fresh('components'), 10, '2026-01-10', $this->locationId, $user->id);
+
+        // material = 20 units * round(avg 20.5)=21 = 420; the entry ALWAYS balances
+        $entry = JournalEntry::with('lines')->find($order->journal_entry_id);
+        $this->assertEquals($entry->lines->sum('debit_amount'), $entry->lines->sum('credit_amount'));
+        $this->assertEquals(420, $order->material_cost); // 20 * 21
+        $this->assertEquals($order->material_cost + $order->mod_cost + $order->moi_cost + $order->cif_cost, $order->total_cost);
     }
 
     public function test_insufficient_stock_throws_and_rolls_back(): void

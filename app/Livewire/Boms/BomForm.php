@@ -102,6 +102,13 @@ class BomForm extends Component
         abort_unless(auth()->user()->isAdmin(), 403);
         $this->validate();
 
+        foreach ($this->components as $c) {
+            if ((int) ($c['component_product_id'] ?? 0) === (int) $this->productId) {
+                $this->addError('components', 'Un producto no puede ser componente de sí mismo.');
+                return;
+            }
+        }
+
         $bom = BillOfMaterial::updateOrCreate(
             ['product_id' => $this->productId],
             [
