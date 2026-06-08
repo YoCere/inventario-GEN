@@ -190,6 +190,19 @@ class KardexService
     }
 
     /**
+     * Returns the current weighted-average unit cost for a product (in cents),
+     * calculated from the Kardex balance at the given date.
+     */
+    public function averageUnitCost(int $productId, ?string $asOf = null, ?int $locationId = null): int
+    {
+        $to = $asOf ?: now()->toDateString();
+        $kardex = $this->build($productId, '1900-01-01', $to, $locationId);
+        $qty = (int) $kardex['totals']['closing_qty'];
+        $value = (float) $kardex['totals']['closing_total'];
+        return $qty > 0 ? (int) round($value / $qty) : 0;
+    }
+
+    /**
      * @return Collection<int, array{date:string,type:string,qty:int,unit_cost:float,reference:string,sort_time:string}>
      */
     protected function loadMovements(int $productId, Carbon $toDate, ?int $locationId = null): Collection
@@ -240,8 +253,53 @@ class KardexService
                 'sort_time' => (string) $row->sort_time,
             ]);
 
+        $consumptions = \App\Models\ProductionConsumption::query()
+            ->join('production_orders', 'production_orders.id', '=', 'production_consumptions.production_order_id')
+            ->where('production_consumptions.component_product_id', $productId)
+            ->when($locationId, fn ($q) => $q->where('production_orders.location_id', $locationId))
+            ->whereDate('production_orders.production_date', '<=', $toDate->toDateString())
+            ->select([
+                'production_orders.production_date as date',
+                'production_orders.code as reference',
+                'production_consumptions.quantity as qty',
+                'production_consumptions.unit_cost as unit_cost',
+                'production_orders.created_at as sort_time',
+            ])
+            ->get()
+            ->map(fn ($row) => [
+                'date'      => Carbon::parse($row->date)->toDateString(),
+                'type'      => 'exit',
+                'qty'       => (int) round((float) $row->qty),
+                'unit_cost' => (float) $row->unit_cost,
+                'reference' => (string) ($row->reference ?: 'PRD'),
+                'sort_time' => (string) $row->sort_time,
+            ]);
+
+        $productions = \App\Models\ProductionOrder::query()
+            ->where('product_id', $productId)
+            ->when($locationId, fn ($q) => $q->where('location_id', $locationId))
+            ->whereDate('production_date', '<=', $toDate->toDateString())
+            ->select([
+                'production_date as date',
+                'code as reference',
+                'quantity as qty',
+                'total_cost',
+                'created_at as sort_time',
+            ])
+            ->get()
+            ->map(fn ($row) => [
+                'date'      => Carbon::parse($row->date)->toDateString(),
+                'type'      => 'entry',
+                'qty'       => (int) $row->qty,
+                'unit_cost' => (int) $row->qty > 0 ? ((float) $row->total_cost / (int) $row->qty) : 0.0,
+                'reference' => (string) ($row->reference ?: 'PRD'),
+                'sort_time' => (string) $row->sort_time,
+            ]);
+
         return $entries
             ->concat($exits)
+            ->concat($consumptions)
+            ->concat($productions)
             ->sortBy([
                 ['date', 'asc'],
                 ['type', 'asc'], // entry first, then exit
