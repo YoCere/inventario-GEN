@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Setting;
+use App\Services\Accounting\InvestmentMetrics;
 use App\Services\Accounting\LedgerBalanceService;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
@@ -11,7 +12,7 @@ use Illuminate\Support\Facades\DB;
 
 class FinancialStatementService
 {
-    public function __construct(private readonly LedgerBalanceService $ledger)
+    public function __construct(private readonly LedgerBalanceService $ledger, private readonly InvestmentMetrics $metrics)
     {
     }
 
@@ -274,8 +275,8 @@ class FinancialStatementService
 
         if ($investmentBase > 0) {
             $series = array_merge([-1 * $investmentBase], $monthlyCashFlows['values']);
-            $irr = $this->estimateIrr($series);
-            $paybackMonths = $this->estimatePaybackMonths($investmentBase, $monthlyCashFlows['values']);
+            $irr = $this->metrics->irr($series);
+            $paybackMonths = $this->metrics->payback($investmentBase, $monthlyCashFlows['values']);
             $paybackLabel = $this->formatPayback($paybackMonths);
 
             if ($irr !== null) {
@@ -284,7 +285,7 @@ class FinancialStatementService
             }
 
             if ($discountRateMonthly !== null) {
-                $vanAmount = $this->calculateNpv($series, $discountRateMonthly);
+                $vanAmount = $this->metrics->npv($series, $discountRateMonthly);
             }
         }
 
@@ -351,99 +352,6 @@ class FinancialStatementService
             'months' => $months,
             'values' => $values,
         ];
-    }
-
-    protected function estimateIrr(array $cashFlows): ?float
-    {
-        if (count($cashFlows) < 2) {
-            return null;
-        }
-
-        $hasPositive = false;
-        $hasNegative = false;
-
-        foreach ($cashFlows as $flow) {
-            if ($flow > 0) {
-                $hasPositive = true;
-            }
-
-            if ($flow < 0) {
-                $hasNegative = true;
-            }
-        }
-
-        if (! $hasPositive || ! $hasNegative) {
-            return null;
-        }
-
-        $rate = 0.1;
-
-        for ($i = 0; $i < 100; $i++) {
-            $npv = 0.0;
-            $derivative = 0.0;
-
-            foreach ($cashFlows as $t => $flow) {
-                $base = (1 + $rate) ** $t;
-                $npv += $flow / $base;
-
-                if ($t > 0) {
-                    $derivative -= ($t * $flow) / ((1 + $rate) ** ($t + 1));
-                }
-            }
-
-            if (abs($derivative) < 1e-10) {
-                return null;
-            }
-
-            $nextRate = $rate - ($npv / $derivative);
-
-            if ($nextRate <= -0.9999) {
-                return null;
-            }
-
-            if (abs($nextRate - $rate) < 1e-7) {
-                return $nextRate;
-            }
-
-            $rate = $nextRate;
-        }
-
-        return null;
-    }
-
-    protected function calculateNpv(array $cashFlows, float $monthlyDiscountRate): float
-    {
-        $npv = 0.0;
-
-        foreach ($cashFlows as $t => $flow) {
-            $npv += $flow / ((1 + $monthlyDiscountRate) ** $t);
-        }
-
-        return $npv;
-    }
-
-    protected function estimatePaybackMonths(int $investmentBase, array $monthlyFlows): ?float
-    {
-        if ($investmentBase <= 0) {
-            return null;
-        }
-
-        $remaining = $investmentBase;
-
-        foreach ($monthlyFlows as $index => $flow) {
-            if ($flow <= 0) {
-                continue;
-            }
-
-            if ($flow >= $remaining) {
-                $fraction = $remaining / $flow;
-                return round($index + $fraction, 2);
-            }
-
-            $remaining -= $flow;
-        }
-
-        return null;
     }
 
     protected function formatPayback(?float $months): ?string
