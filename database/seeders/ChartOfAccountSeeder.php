@@ -22,6 +22,7 @@ class ChartOfAccountSeeder extends Seeder
             ['code' => '1.1.04', 'name' => 'Inventario Mercaderias', 'level' => 3, 'parent_code' => '1.1', 'account_type' => 'asset', 'normal_balance' => 'debit', 'allows_posting' => true],
             // IVA — Crédito Fiscal (IVA pagado en compras, deducible del Débito Fiscal)
             ['code' => '1.1.05', 'name' => 'Credito Fiscal IVA', 'level' => 3, 'parent_code' => '1.1', 'account_type' => 'asset', 'normal_balance' => 'debit', 'allows_posting' => true],
+            ['code' => '1.1.06', 'name' => 'Inventario Productos Terminados', 'level' => 3, 'parent_code' => '1.1', 'account_type' => 'asset', 'normal_balance' => 'debit', 'allows_posting' => true],
             ['code' => '1.2', 'name' => 'ACTIVO NO CORRIENTE', 'level' => 2, 'parent_code' => '1', 'account_type' => 'asset', 'normal_balance' => 'debit', 'allows_posting' => false],
             ['code' => '1.2.01', 'name' => 'Propiedad, Planta y Equipo', 'level' => 3, 'parent_code' => '1.2', 'account_type' => 'asset', 'normal_balance' => 'debit', 'allows_posting' => true],
             // Activos fijos / depreciación (contra-activos naturaleza acreedora)
@@ -65,6 +66,7 @@ class ChartOfAccountSeeder extends Seeder
             ['code' => '5.1', 'name' => 'Costo de Ventas', 'level' => 2, 'parent_code' => '5', 'account_type' => 'cost', 'normal_balance' => 'debit', 'allows_posting' => true],
             ['code' => '5.2', 'name' => 'Mano de Obra Directa', 'level' => 2, 'parent_code' => '5', 'account_type' => 'cost', 'normal_balance' => 'debit', 'allows_posting' => true],
             ['code' => '5.3', 'name' => 'Mano de Obra Indirecta', 'level' => 2, 'parent_code' => '5', 'account_type' => 'cost', 'normal_balance' => 'debit', 'allows_posting' => true],
+            ['code' => '5.4', 'name' => 'Costos Indirectos de Fabricacion', 'level' => 2, 'parent_code' => '5', 'account_type' => 'cost', 'normal_balance' => 'debit', 'allows_posting' => true],
 
             // 6 - GASTOS
             ['code' => '6', 'name' => 'GASTOS', 'level' => 1, 'parent_code' => null, 'account_type' => 'expense', 'normal_balance' => 'debit', 'allows_posting' => false],
