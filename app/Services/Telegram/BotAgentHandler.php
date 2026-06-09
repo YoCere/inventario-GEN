@@ -37,6 +37,7 @@ class BotAgentHandler
 
             // Load conversation memory (last N turns)
             $conversation = TelegramConversation::getOrCreate($chatId);
+            $stepBefore = $conversation->step; // capturar ANTES de run: detectar si una tool cambia el flujo
             $history = $this->loadHistory($conversation);
 
             // Show "thinking" indicator (best effort)
@@ -50,14 +51,20 @@ class BotAgentHandler
 
             // Check if a tool set a bot flow state (e.g. start_sale → busqueda:resultado,
             // start_product_creation → nuevo:*). Tool already sent UI; skip agent text.
+            // IMPORTANTE: solo suprimir si el step CAMBIÓ a un flujo en ESTE turno. Un step
+            // de flujo preexistente (ej: busqueda:resultado dejado por una búsqueda por imagen)
+            // NO lo seteó una tool ahora → suprimir mutearía la respuesta del agente (bug:
+            // voz tras búsqueda por imagen quedaba muda).
             $conversation->refresh();
             $step = $conversation->step;
-            $botFlowOwned = in_array($step, ['busqueda:resultado', 'busqueda:multiple', 'venta_rapida:cantidad'], true)
+            $botFlowOwned = $step !== $stepBefore && (
+                in_array($step, ['busqueda:resultado', 'busqueda:multiple', 'venta_rapida:cantidad'], true)
                 || str_starts_with($step, 'nuevo:')
                 || str_starts_with($step, 'venta_rapida:')
-                || str_starts_with($step, 'devolver:');
+                || str_starts_with($step, 'devolver:')
+            );
             if ($botFlowOwned) {
-                return; // bot flow owns step now; saveHistory would overwrite it
+                return; // una tool inició un flujo este turno y ya mandó su UI
             }
 
             $replyText = trim($result['text']);
