@@ -448,6 +448,7 @@ class BotProductHandler
                 'quantity' => $data['cantidad'],
                 'min_stock' => max(1, intval($data['cantidad'] * 0.2)), // 20% of initial qty
                 'is_active' => true,
+                'is_public' => true, // productos de Telegram salen al catálogo público automáticamente
                 'description' => null,
                 'notes' => "Creado vía Telegram",
                 'image_path' => $data['foto_path'] ?? null,
