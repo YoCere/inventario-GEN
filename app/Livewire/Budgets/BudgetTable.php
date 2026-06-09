@@ -50,8 +50,8 @@ final class BudgetTable extends PowerGridComponent
         return PowerGrid::fields()
             ->add('id')
             ->add('name')
-            ->add('base_from', fn (Budget $model) => $model->base_from->format('d/m/Y'))
-            ->add('base_to', fn (Budget $model) => $model->base_to->format('d/m/Y'))
+            ->add('base_from_fmt', fn (Budget $model) => $model->base_from->format('d/m/Y'))
+            ->add('base_to_fmt', fn (Budget $model) => $model->base_to->format('d/m/Y'))
             ->add('years')
             ->add('growth_fmt', fn (Budget $model) => $model->growth_pct . '%')
             ->add('active_badge', function (Budget $model) {
@@ -76,11 +76,9 @@ final class BudgetTable extends PowerGridComponent
                 ->sortable()
                 ->searchable(),
 
-            Column::make('Desde', 'base_from')
-                ->sortable(),
+            Column::make('Desde', 'base_from_fmt'),
 
-            Column::make('Hasta', 'base_to')
-                ->sortable(),
+            Column::make('Hasta', 'base_to_fmt'),
 
             Column::make('Años', 'years')
                 ->sortable(),

@@ -9,11 +9,11 @@ use App\Services\Accounting\BudgetProjectionService;
 
 class BudgetDetail extends Component
 {
-    public int $budget;
+    public int $budgetId;
 
     public function mount(int $budget): void
     {
-        $this->budget = $budget;
+        $this->budgetId = $budget;
     }
 
     public function updateLine(int $lineId, string $field, $value): void
@@ -33,7 +33,7 @@ class BudgetDetail extends Component
 
     public function render()
     {
-        $b   = Budget::with('lines')->findOrFail($this->budget);
+        $b   = Budget::with('lines')->findOrFail($this->budgetId);
         $svc = app(BudgetProjectionService::class);
 
         return view('livewire.budgets.budget-detail', [
