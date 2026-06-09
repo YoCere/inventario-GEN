@@ -20,7 +20,8 @@ class BudgetDetail extends Component
     {
         abort_unless(auth()->user()->isAdmin(), 403);
 
-        $line = BudgetLine::findOrFail($lineId);
+        // Acota la línea a ESTE presupuesto (evita editar líneas de otro por id).
+        $line = BudgetLine::where('budget_id', $this->budgetId)->findOrFail($lineId);
 
         if ($field === 'growth_pct') {
             $line->growth_pct = ($value === '' || $value === null) ? null : (float) $value;

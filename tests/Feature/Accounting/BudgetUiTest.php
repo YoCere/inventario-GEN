@@ -68,4 +68,30 @@ class BudgetUiTest extends TestCase
             ->call('save')->assertStatus(403);
         $this->assertEquals(0, Budget::count());
     }
+
+    public function test_non_admin_cannot_update_line(): void
+    {
+        $user = User::factory()->create();
+        $b = Budget::create(['name' => 'P', 'base_from' => '2025-01-01', 'base_to' => '2025-12-31', 'years' => 5, 'growth_pct' => 3]);
+        $line = $b->lines()->create(['chart_of_account_code' => '4.1', 'name' => 'Ventas', 'line_type' => 'income', 'base_amount' => 10000000]);
+
+        Livewire::actingAs($user)->test(\App\Livewire\Budgets\BudgetDetail::class, ['budget' => $b->id])
+            ->call('updateLine', $line->id, 'base_amount', 50000)
+            ->assertStatus(403);
+
+        $this->assertEquals(10000000, $line->fresh()->base_amount);
+    }
+
+    public function test_update_line_scoped_to_budget(): void
+    {
+        // Una línea de OTRO presupuesto no se edita desde este detalle (no IDOR).
+        $admin = User::factory()->admin()->create();
+        $b1 = Budget::create(['name' => 'B1', 'base_from' => '2025-01-01', 'base_to' => '2025-12-31', 'years' => 5, 'growth_pct' => 3]);
+        $b2 = Budget::create(['name' => 'B2', 'base_from' => '2025-01-01', 'base_to' => '2025-12-31', 'years' => 5, 'growth_pct' => 3]);
+        $otherLine = $b2->lines()->create(['chart_of_account_code' => '4.1', 'name' => 'X', 'line_type' => 'income', 'base_amount' => 999]);
+
+        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
+        Livewire::actingAs($admin)->test(\App\Livewire\Budgets\BudgetDetail::class, ['budget' => $b1->id])
+            ->call('updateLine', $otherLine->id, 'base_amount', 50000);
+    }
 }
