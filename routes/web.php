@@ -98,6 +98,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::view('loans', 'loans.index')->name('loans.index');
         Route::view('loans/{loan}/schedule', 'loans.schedule')->name('loans.schedule');
 
+        Route::view('budgets', 'budgets.index')->name('budgets.index');
+        Route::view('budgets/{budget}/show', 'budgets.show')->name('budgets.show');
+
         Route::view('boms', 'boms.index')->name('boms.index');
         Route::view('production', 'production.index')->name('production.index');
 
