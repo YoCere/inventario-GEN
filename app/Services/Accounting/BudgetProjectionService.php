@@ -112,6 +112,50 @@ class BudgetProjectionService
     }
 
     /**
+     * Compares projected figures for a given year index against real ledger movements
+     * for the equivalent date range (base range shifted by yearIndex-1 years).
+     *
+     * @return array{year:int,totals:array{projected_income:int,actual_income:int,variance_income:int,projected_cost:int,actual_cost:int,variance_cost:int,projected_expense:int,actual_expense:int,variance_expense:int}}
+     */
+    public function budgetVsActual(Budget $budget, int $yearIndex): array
+    {
+        $proj    = $this->project($budget);
+        $idx     = max(1, $yearIndex);
+        $projYear = $proj['years'][$idx - 1] ?? ['income' => 0, 'cost' => 0, 'expense' => 0];
+
+        $from = $budget->base_from->copy()->addYears($idx - 1)->toDateString();
+        $to   = $budget->base_to->copy()->addYears($idx - 1)->toDateString();
+        $rows = $this->ledger->movementsBetween($from, $to);
+
+        $actualIncome = 0; $actualCost = 0; $actualExpense = 0;
+        foreach ($rows as $row) {
+            $amount = (int) $row->balance;
+            if ($row->account_type === 'income') {
+                $actualIncome += $amount;
+            } elseif ($row->account_type === 'cost') {
+                $actualCost += $amount;
+            } elseif ($row->account_type === 'expense') {
+                $actualExpense += $amount;
+            }
+        }
+
+        return [
+            'year'   => $idx,
+            'totals' => [
+                'projected_income'   => $projYear['income'],
+                'actual_income'      => $actualIncome,
+                'variance_income'    => $actualIncome - $projYear['income'],
+                'projected_cost'     => $projYear['cost'],
+                'actual_cost'        => $actualCost,
+                'variance_cost'      => $actualCost - $projYear['cost'],
+                'projected_expense'  => $projYear['expense'],
+                'actual_expense'     => $actualExpense,
+                'variance_expense'   => $actualExpense - $projYear['expense'],
+            ],
+        ];
+    }
+
+    /**
      * Siembra budget_lines desde los movimientos reales del rango base
      * (cuentas income/cost/expense con saldo del periodo).
      */
