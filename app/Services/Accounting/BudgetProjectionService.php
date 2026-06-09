@@ -59,6 +59,59 @@ class BudgetProjectionService
     }
 
     /**
+     * Returns key investment indicators (VAN/NPV, TIR/IRR, payback, benefit-cost ratio)
+     * computed over the multi-year projected net flows.
+     *
+     * @return array{investment_base:int,discount_rate_pct:float,van:int|null,tir_annual_pct:float|null,payback_years:float|null,benefit_cost_ratio:float|null}
+     */
+    public function indicators(Budget $budget): array
+    {
+        $proj         = $this->project($budget);
+        $netFlows     = array_map(fn ($y) => $y['net_flow'], $proj['years']);
+        $investmentBase = $this->investmentBase();
+        $discount     = (float) $budget->discount_rate_pct / 100;
+
+        $van = null; $tirAnnual = null; $payback = null;
+        if ($investmentBase > 0) {
+            $series   = array_merge([-1 * $investmentBase], $netFlows);
+            $van      = (int) round($this->metrics->npv($series, $discount));
+            $irr      = $this->metrics->irr($series);
+            $tirAnnual = $irr !== null ? round($irr * 100, 2) : null;
+            $payback  = $this->metrics->payback($investmentBase, $netFlows);
+        }
+
+        $incomeFlows = array_map(fn ($y) => $y['income'], $proj['years']);
+        $costFlows   = array_map(fn ($y) => $y['cost'] + $y['expense'], $proj['years']);
+        $vanIncome   = $this->metrics->npv(array_merge([0], $incomeFlows), $discount);
+        $vanCost     = $this->metrics->npv(array_merge([0], $costFlows), $discount);
+        $bc          = $vanCost > 0 ? round($vanIncome / $vanCost, 2) : null;
+
+        return [
+            'investment_base'   => $investmentBase,
+            'discount_rate_pct' => (float) $budget->discount_rate_pct,
+            'van'               => $van,
+            'tir_annual_pct'    => $tirAnnual,
+            'payback_years'     => $payback,
+            'benefit_cost_ratio' => $bc,
+        ];
+    }
+
+    /**
+     * Determines the investment base from active fixed assets.
+     * Falls back to the `opening_balance_amount` setting when no assets exist.
+     */
+    private function investmentBase(): int
+    {
+        $assets = (int) \App\Models\FixedAsset::query()
+            ->where('status', '!=', \App\Enums\FixedAssetStatus::Disposed->value)
+            ->sum('acquisition_cost');
+        if ($assets > 0) {
+            return $assets;
+        }
+        return (int) round((float) \App\Models\Setting::get('opening_balance_amount', '0'));
+    }
+
+    /**
      * Siembra budget_lines desde los movimientos reales del rango base
      * (cuentas income/cost/expense con saldo del periodo).
      */
