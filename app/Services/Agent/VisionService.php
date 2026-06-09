@@ -167,7 +167,10 @@ PROMPT;
     private function describeWithOpenAi(string $imageBinary, string $mimeType, string $prompt): string
     {
         $apiKey  = Setting::get('openai_api_key', '');
-        $baseUrl = rtrim(Setting::get('ai_api_base_url', 'https://api.openai.com/v1'), '/');
+        // ai_api_base_url puede estar guardado como string vacío (no null), por lo que
+        // el default de Setting::get no aplica. Tratamos vacío igual que AgentService.
+        $rawBase = trim((string) Setting::get('ai_api_base_url', ''));
+        $baseUrl = rtrim($rawBase !== '' ? $rawBase : 'https://api.openai.com/v1', '/');
         $model   = Setting::get('ai_vision_model', 'gpt-4o-mini');
 
         $dataUri = 'data:' . $mimeType . ';base64,' . base64_encode($imageBinary);
