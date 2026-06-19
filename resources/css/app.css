@@ -175,3 +175,6 @@
     max-height: 300px !important;
     @apply p-1; /* Add internal padding for options container */
 }
+
+/* Hide Alpine x-cloak elements until initialized */
+[x-cloak] { display: none !important; }

@@ -51,6 +51,11 @@
         </div>
         <x-toaster />
         <livewire:components.delete-modal />
+        @auth
+            @if (auth()->user()->can('dashboard.view') && \App\Models\Setting::get('anthropic_api_key', '') !== '')
+                <livewire:assistant.assistant-chat :current-route="request()->route()?->getName() ?? request()->path()" />
+            @endif
+        @endauth
         @livewireScripts
         @stack('scripts')
         <script>
