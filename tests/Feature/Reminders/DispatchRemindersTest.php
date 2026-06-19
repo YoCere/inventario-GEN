@@ -111,4 +111,36 @@ class DispatchRemindersTest extends TestCase
             fn ($job) => $job->chatId === '999',
         );
     }
+
+    public function test_one_corrupt_reminder_does_not_block_others(): void
+    {
+        $user = \App\Models\User::factory()->create();
+
+        // Recordatorio corrupto: regla semanal con weekday inválido (9) → next() lanza LogicException.
+        \App\Models\Reminder::factory()->create([
+            'user_id'          => $user->id,
+            'chat_id'          => '111',
+            'remind_at'        => now()->subMinutes(2),
+            'recurrence'       => 'weekly',
+            'recurrence_rule'  => ['days' => [9]],
+            'status'           => 'pending',
+        ]);
+
+        // Recordatorio sano que debe enviarse igual.
+        \App\Models\Reminder::factory()->create([
+            'user_id'    => $user->id,
+            'chat_id'    => '222',
+            'remind_at'  => now()->subMinute(),
+            'recurrence' => 'none',
+            'status'     => 'pending',
+        ]);
+
+        $this->artisan('reminders:dispatch')->assertSuccessful();
+
+        // El sano se envió pese al fallo del corrupto.
+        Queue::assertPushed(
+            \App\Jobs\SendTelegramMessage::class,
+            fn ($job) => $job->chatId === '222'
+        );
+    }
 }
