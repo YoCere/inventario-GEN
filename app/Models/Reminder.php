@@ -24,6 +24,7 @@ class Reminder extends Model
         'last_sent_at' => 'datetime',
         'recurrence_rule' => 'array',
         'sent_count' => 'integer',
+        'chat_id' => 'string',
     ];
 
     public function user(): BelongsTo

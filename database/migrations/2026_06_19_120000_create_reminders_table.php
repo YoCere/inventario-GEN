@@ -18,8 +18,7 @@ return new class extends Migration
             $table->string('timezone')->default('UTC');
             $table->enum('recurrence', ['none', 'daily', 'weekly', 'monthly', 'custom'])->default('none');
             $table->json('recurrence_rule')->nullable();
-            $table->string('remindable_type')->nullable();
-            $table->unsignedBigInteger('remindable_id')->nullable();
+            $table->nullableMorphs('remindable');
             $table->enum('status', ['pending', 'sent', 'done', 'cancelled', 'snoozed'])->default('pending');
             $table->dateTime('last_sent_at')->nullable();
             $table->unsignedInteger('sent_count')->default(0);
