@@ -1,8 +1,10 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -18,8 +20,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // 1. Default de columna → true (MySQL).
-        DB::statement('ALTER TABLE products ALTER COLUMN is_public SET DEFAULT 1');
+        // 1. Default de columna → true.
+        // MySQL usa ALTER … SET DEFAULT; SQLite (tests) usa Schema::table+change().
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE products ALTER COLUMN is_public SET DEFAULT 1');
+        } else {
+            Schema::table('products', function (Blueprint $table) {
+                $table->boolean('is_public')->default(true)->change();
+            });
+        }
 
         // 2. Backfill solo activos no eliminados.
         DB::table('products')
@@ -37,6 +46,12 @@ return new class extends Migration
     {
         // Revertir solo el default. El backfill no es reversible (no se guardó
         // qué productos estaban en false antes).
-        DB::statement('ALTER TABLE products ALTER COLUMN is_public SET DEFAULT 0');
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE products ALTER COLUMN is_public SET DEFAULT 0');
+        } else {
+            Schema::table('products', function (Blueprint $table) {
+                $table->boolean('is_public')->default(false)->change();
+            });
+        }
     }
 };
