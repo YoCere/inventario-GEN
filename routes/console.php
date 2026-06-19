@@ -34,3 +34,9 @@ Schedule::command('backup:clean')
 Schedule::command('depreciation:run', ['--month' => now()->subMonthNoOverflow()->format('Y-m')])
     ->monthlyOn(1, '02:00')
     ->description('Depreciación mensual de activos fijos');
+
+// Recordatorios personales: revisa cada minuto los vencidos y los envía por Telegram.
+Schedule::command('reminders:dispatch')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->onOneServer();
