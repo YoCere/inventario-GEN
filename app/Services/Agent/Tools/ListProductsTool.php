@@ -39,6 +39,11 @@ class ListProductsTool extends BaseTool
         ];
     }
 
+    public function requiredPermission(): ?string
+    {
+        return 'products.view';
+    }
+
     public function execute(array $input, AgentContext $context): array
     {
         $limit = max(1, min(20, (int) ($input['limit'] ?? 10)));

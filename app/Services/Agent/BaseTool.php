@@ -45,6 +45,26 @@ abstract class BaseTool
     }
 
     /**
+     * Permiso Spatie requerido para que un usuario use esta tool.
+     * null = pública (ayuda/how-to sin restricción). El ToolRegistry::forUser()
+     * filtra por este valor; AgentService no expone tools que el usuario no pueda usar.
+     */
+    public function requiredPermission(): ?string
+    {
+        return null;
+    }
+
+    /**
+     * Si la tool puede usarse desde el canal web (la burbuja). Default true.
+     * Las tools que MODIFICAN datos (crear venta/producto) la ponen en false:
+     * el asistente web es solo lectura. ToolRegistry::forWeb() las excluye.
+     */
+    public function webExposed(): bool
+    {
+        return true;
+    }
+
+    /**
      * Anthropic tool definition (passed to API).
      */
     public function toAnthropicSchema(): array

@@ -30,6 +30,11 @@ class GetTopSellersTool extends BaseTool
         ];
     }
 
+    public function requiredPermission(): ?string
+    {
+        return 'sales.view';
+    }
+
     public function execute(array $input, AgentContext $context): array
     {
         $days = max(1, min(365, (int) ($input['days'] ?? 30)));

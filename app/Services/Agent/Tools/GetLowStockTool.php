@@ -26,6 +26,11 @@ class GetLowStockTool extends BaseTool
         ];
     }
 
+    public function requiredPermission(): ?string
+    {
+        return 'products.view';
+    }
+
     public function execute(array $input, AgentContext $context): array
     {
         $products = Product::with('unit')

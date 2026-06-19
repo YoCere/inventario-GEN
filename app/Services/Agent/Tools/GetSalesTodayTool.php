@@ -37,6 +37,11 @@ class GetSalesTodayTool extends BaseTool
         ];
     }
 
+    public function requiredPermission(): ?string
+    {
+        return 'sales.view';
+    }
+
     public function execute(array $input, AgentContext $context): array
     {
         if (!empty($input['date'])) {

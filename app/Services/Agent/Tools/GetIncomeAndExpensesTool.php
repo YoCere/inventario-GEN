@@ -34,6 +34,11 @@ class GetIncomeAndExpensesTool extends BaseTool
         ];
     }
 
+    public function requiredPermission(): ?string
+    {
+        return 'finance.view';
+    }
+
     public function execute(array $input, AgentContext $context): array
     {
         if (!$context->user || !$context->user->isAdmin()) {

@@ -31,6 +31,11 @@ class SearchProductsTool extends BaseTool
         ];
     }
 
+    public function requiredPermission(): ?string
+    {
+        return 'products.view';
+    }
+
     public function execute(array $input, AgentContext $context): array
     {
         $results = $this->search->search($input['query'] ?? '');
