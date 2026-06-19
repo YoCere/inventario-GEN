@@ -26,6 +26,7 @@ class BotHandler
         protected BotAgentHandler $agentHandler,
         protected WhisperService $whisperService,
         protected VisionService $visionService,
+        protected ReminderHandler $reminderHandler,
     ) {}
 
     public function dispatch(array $update): void
@@ -132,7 +133,9 @@ class BotHandler
                 $isActiveFlow = $conversation && (
                     str_starts_with($conversation->step, 'nuevo:') ||
                     str_starts_with($conversation->step, 'venta_rapida:') ||
-                    str_starts_with($conversation->step, 'devolver:')
+                    str_starts_with($conversation->step, 'devolver:') ||
+                    str_starts_with($conversation->step, 'recordar:') ||
+                    $conversation->step === 'recordatorios:gestionar'
                 );
                 if ($text === '/cancelar' && $isActiveFlow) {
                     $conversation->delete();
@@ -206,6 +209,9 @@ class BotHandler
                 } elseif ($conversation->step === 'agent:active') {
                     // Ongoing agent conversation — route directly, skip product search
                     $this->agentHandler->handle($chatId, $text);
+                    return;
+                } elseif (str_starts_with($conversation->step, 'recordar:') || $conversation->step === 'recordatorios:gestionar') {
+                    $this->reminderHandler->handle($chatId, $message);
                     return;
                 }
             }
@@ -433,6 +439,8 @@ class BotHandler
             '/nuevo' => $this->cmdNewProduct($chatId),
             '/listar' => $this->cmdList($chatId, $args),
             '/devolver' => $this->cmdRefund($chatId),
+            '/recordar' => $this->reminderHandler->start($chatId),
+            '/recordatorios' => $this->reminderHandler->listAndManage($chatId),
             '/reportes' => $this->cmdReports($chatId),
             '/detener' => $this->cmdDetener($chatId),
             '/activar' => $this->cmdActivar($chatId),
@@ -453,7 +461,9 @@ class BotHandler
             "/ventas — Resumen de ventas de hoy\n" .
             "/nuevo — Registrar un nuevo producto\n" .
             "/listar — Listar productos (todas categorías o filtrar)\n" .
-            "/devolver — Procesar devoluciones\n";
+            "/devolver — Procesar devoluciones\n" .
+            "/recordar — Crear un recordatorio personal\n" .
+            "/recordatorios — Ver y cancelar tus recordatorios\n";
 
         // Reportes solo para admin (gerencia financiera, no operación diaria)
         if ($isAdmin) {
