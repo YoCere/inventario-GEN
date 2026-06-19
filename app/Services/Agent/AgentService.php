@@ -55,7 +55,7 @@ class AgentService
 
         $model     = Setting::get('ai_model', 'claude-haiku-4-5-20251001');
         $maxTokens = (int) Setting::get('ai_max_tokens_response', '1024');
-        $sysPrompt = Setting::get('ai_system_prompt', '');
+        $sysPrompt = $context->systemPrompt ?? Setting::get('ai_system_prompt', '');
 
         $messages    = $history;
         $messages[]  = ['role' => 'user', 'content' => $userMessage];
@@ -103,6 +103,7 @@ class AgentService
                 userId: $context->user?->id,
                 chatId: $context->chatId,
                 model: $model,
+                channel: $context->channel,
                 action: 'agent.text',
                 tokensIn: $usage['input_tokens'] ?? 0,
                 tokensOut: $usage['output_tokens'] ?? 0,
@@ -174,7 +175,7 @@ class AgentService
 
         $model     = Setting::get('ai_model', 'deepseek-chat');
         $maxTokens = (int) Setting::get('ai_max_tokens_response', '1024');
-        $sysPrompt = Setting::get('ai_system_prompt', '');
+        $sysPrompt = $context->systemPrompt ?? Setting::get('ai_system_prompt', '');
         $rawBase   = trim((string) Setting::get('ai_api_base_url', ''));
         $baseUrl   = rtrim($rawBase !== '' ? $rawBase : 'https://api.openai.com/v1', '/');
         if (!preg_match('#^https?://#i', $baseUrl)) {
@@ -246,6 +247,7 @@ class AgentService
                 userId: $context->user?->id,
                 chatId: $context->chatId,
                 model: $model,
+                channel: $context->channel,
                 action: 'agent.text',
                 tokensIn: $promptTokens,
                 tokensOut: $completionTokens,

@@ -14,5 +14,7 @@ class AgentContext
         public readonly ?User $user,
         public readonly string $chatId,
         public readonly string $channel = 'telegram',
+        public readonly ?string $route = null,
+        public readonly ?string $systemPrompt = null,
     ) {}
 }

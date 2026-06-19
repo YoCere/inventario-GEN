@@ -44,6 +44,7 @@ class CostTracker
         int $cacheRead = 0,
         int $cacheWrite = 0,
         int $audioSeconds = 0,
+        string $channel = 'telegram',
         ?string $summary = null,
     ): AiUsageLog {
         $cost = $this->calculateCost($model, $tokensIn, $tokensOut, $cacheRead, $cacheWrite, $audioSeconds);
@@ -51,7 +52,7 @@ class CostTracker
         $log = AiUsageLog::create([
             'user_id' => $userId,
             'chat_id' => $chatId,
-            'channel' => 'telegram',
+            'channel' => $channel,
             'model' => $model,
             'action' => $action,
             'tokens_input' => $tokensIn,
