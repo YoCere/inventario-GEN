@@ -14,7 +14,7 @@ class RecurrenceCalculator
     /**
      * @param  Carbon  $current  Instante que acaba de dispararse (UTC).
      * @param  string  $recurrence  none|daily|weekly|monthly|custom
-     * @param  array<string,mixed>|null  $rule
+     * @param  array<string,mixed>|null  $rule  weekly: ['days'=>[int...]] (null = día actual); monthly: ['day'=>int]; custom: ['interval_days'=>int]
      * @return Carbon|null  Próxima ocurrencia en UTC, o null si no recurre.
      */
     public function next(Carbon $current, string $recurrence, ?array $rule, string $tz): ?Carbon
@@ -30,7 +30,7 @@ class RecurrenceCalculator
             'weekly' => $this->nextWeekly($local, $rule),
             'monthly' => $this->nextMonthly($local, $rule),
             'custom' => $local->copy()->addDays(max(1, (int) ($rule['interval_days'] ?? 1))),
-            default => null,
+            default => null, // tipo de recurrencia desconocido; se trata como no-recurrente
         };
 
         return $next?->setTimezone('UTC');
@@ -45,7 +45,9 @@ class RecurrenceCalculator
                 return $candidate;
             }
         }
-        return $local->copy()->addWeek();
+        // Unreachable for valid ISO weekdays (1–7): a 7-day window contains every weekday.
+        // Reaching here means $rule['days'] held an invalid value.
+        throw new \LogicException('nextWeekly: no match in 7-day window; invalid weekday in rule.');
     }
 
     private function nextMonthly(Carbon $local, ?array $rule): Carbon

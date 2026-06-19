@@ -73,4 +73,19 @@ class RecurrenceCalculatorTest extends TestCase
             $result->setTimezone('UTC')->toDateTimeString()
         );
     }
+
+    public function test_custom_interval_advances_and_guards_zero(): void
+    {
+        $from = \Carbon\Carbon::parse('2026-06-19 12:00', 'UTC');
+        // interval 3 days
+        $this->assertSame(
+            '2026-06-22 12:00:00',
+            $this->calc->next($from, 'custom', ['interval_days' => 3], 'UTC')->toDateTimeString()
+        );
+        // zero/missing interval is clamped to 1 day (never no-advance)
+        $this->assertSame(
+            '2026-06-20 12:00:00',
+            $this->calc->next($from, 'custom', ['interval_days' => 0], 'UTC')->toDateTimeString()
+        );
+    }
 }
