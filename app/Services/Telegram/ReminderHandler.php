@@ -143,7 +143,7 @@ class ReminderHandler
             'chat_id' => $chatId,
             'title' => $conv->data['title'],
             'remind_at' => Carbon::parse($conv->data['remind_at'])->setTimezone('UTC'),
-            'timezone' => config('app.timezone'),
+            'timezone' => \App\Support\BusinessTime::timezone(),
             'recurrence' => $conv->data['recurrence'],
             'recurrence_rule' => $conv->data['recurrence_rule'],
             'status' => 'pending',
@@ -180,7 +180,8 @@ class ReminderHandler
             $n = $idx + 1;
             $ids[(string) $n] = $r->id;
             $title = htmlspecialchars($r->title, ENT_QUOTES, 'UTF-8');
-            $msg .= "{$n}. <b>{$title}</b> — {$r->remind_at->format('d/m/Y H:i')}\n";
+            $localWhen = $r->remind_at->copy()->setTimezone(\App\Support\BusinessTime::timezone());
+            $msg .= "{$n}. <b>{$title}</b> — {$localWhen->format('d/m/Y H:i')}\n";
         }
         $msg .= "\n<i>Escribe el número para cancelar uno, o /cancelar para salir.</i>";
 
@@ -229,7 +230,7 @@ class ReminderHandler
         $text = trim($text);
         foreach (['d/m/Y H:i', 'd/m H:i'] as $format) {
             try {
-                $date = Carbon::createFromFormat($format, $text, config('app.timezone'));
+                $date = Carbon::createFromFormat($format, $text, \App\Support\BusinessTime::timezone());
                 if ($date === false) {
                     continue;
                 }

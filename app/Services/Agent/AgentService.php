@@ -3,6 +3,7 @@
 namespace App\Services\Agent;
 
 use App\Models\Setting;
+use App\Support\BusinessTime;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -60,7 +61,11 @@ class AgentService
         $messages[]  = ['role' => 'user', 'content' => $userMessage];
         $toolSchemas = $this->tools->anthropicSchemas();
         $systemBlocks = [
+            // Bloque estático cacheado (prompt grande). El breakpoint de cache va aquí.
             ['type' => 'text', 'text' => $sysPrompt, 'cache_control' => ['type' => 'ephemeral']],
+            // Fecha/hora actual: dinámica (cambia cada minuto), va DESPUÉS del breakpoint
+            // para no invalidar la cache del bloque estático.
+            ['type' => 'text', 'text' => BusinessTime::promptContext()],
         ];
 
         $finalText  = '';
@@ -180,6 +185,8 @@ class AgentService
         if ($sysPrompt) {
             $messages[] = ['role' => 'system', 'content' => $sysPrompt];
         }
+        // Fecha/hora actual para resolver fechas relativas ("mañana", "hoy").
+        $messages[] = ['role' => 'system', 'content' => BusinessTime::promptContext()];
         foreach ($history as $msg) {
             $converted = $this->convertHistoryToOpenAi($msg);
             if ($converted !== null) {

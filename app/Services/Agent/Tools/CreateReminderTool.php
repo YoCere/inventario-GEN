@@ -74,8 +74,9 @@ class CreateReminderTool extends BaseTool
             return ['error' => 'Usuario no autenticado.'];
         }
 
+        $tz = \App\Support\BusinessTime::timezone();
         try {
-            $when = Carbon::parse($input['remind_at'], config('app.timezone'));
+            $when = Carbon::parse($input['remind_at'], $tz);
         } catch (\Throwable) {
             return ['error' => 'Fecha inválida. Usa formato ISO 8601, ej. 2026-06-20T15:00:00.'];
         }
@@ -100,8 +101,8 @@ class CreateReminderTool extends BaseTool
             'user_id'          => $context->user->id,
             'chat_id'          => $context->chatId,
             'title'            => $input['title'],
-            'remind_at'        => $when->setTimezone('UTC'),
-            'timezone'         => config('app.timezone'),
+            'remind_at'        => $when->copy()->setTimezone('UTC'),
+            'timezone'         => $tz,
             'recurrence'       => $recurrence,
             'recurrence_rule'  => $rule,
             'status'           => 'pending',
