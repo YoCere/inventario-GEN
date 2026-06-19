@@ -6,6 +6,8 @@ use App\Models\Reminder;
 use App\Models\User;
 use App\Services\Agent\AgentContext;
 use App\Services\Agent\Tools\CreateReminderTool;
+use App\Services\Agent\Tools\ListRemindersTool;
+use App\Services\Agent\Tools\CancelReminderTool;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -133,5 +135,45 @@ class ReminderToolsTest extends TestCase
         $summary = (new CreateReminderTool())
             ->confirmationSummary(['title' => 'X', 'remind_at' => 'no-es-fecha']);
         $this->assertStringContainsString('X', $summary);
+    }
+
+    public function test_list_reminders_tool_returns_only_own(): void
+    {
+        $other = User::factory()->create();
+        Reminder::factory()->create(['user_id' => $other->id, 'status' => 'pending']);
+        Reminder::factory()->create([
+            'user_id'   => $this->user->id,
+            'status'    => 'pending',
+            'remind_at' => now()->addDay(),
+        ]);
+
+        $result = (new ListRemindersTool())->execute([], $this->context);
+
+        $this->assertSame(1, $result['count']);
+    }
+
+    public function test_cancel_reminder_tool_cannot_cancel_another_users_reminder(): void
+    {
+        $other   = User::factory()->create();
+        $foreign = Reminder::factory()->create(['user_id' => $other->id, 'status' => 'pending']);
+
+        $result = (new CancelReminderTool())->execute(['id' => $foreign->id], $this->context);
+
+        $this->assertArrayHasKey('error', $result);
+        $this->assertSame('pending', $foreign->fresh()->status);
+    }
+
+    public function test_cancel_reminder_tool_cancels_own_reminder(): void
+    {
+        $mine = Reminder::factory()->create([
+            'user_id'   => $this->user->id,
+            'status'    => 'pending',
+            'remind_at' => now()->addDay(),
+        ]);
+
+        $result = (new CancelReminderTool())->execute(['id' => $mine->id], $this->context);
+
+        $this->assertArrayHasKey('ok', $result);
+        $this->assertSame('cancelled', $mine->fresh()->status);
     }
 }

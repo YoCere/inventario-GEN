@@ -21,6 +21,9 @@ use App\Services\Agent\Tools\StartProductCreationTool;
 use App\Services\Agent\Tools\GetFinancialStatusTool;
 use App\Services\Agent\Tools\GetIncomeAndExpensesTool;
 use App\Services\Agent\Tools\GetBalanceSheetTool;
+use App\Services\Agent\Tools\CreateReminderTool;
+use App\Services\Agent\Tools\ListRemindersTool;
+use App\Services\Agent\Tools\CancelReminderTool;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -45,6 +48,9 @@ class AppServiceProvider extends ServiceProvider
             $registry->register($app->make(GetFinancialStatusTool::class));
             $registry->register($app->make(GetIncomeAndExpensesTool::class));
             $registry->register($app->make(GetBalanceSheetTool::class));
+            $registry->register($app->make(CreateReminderTool::class));
+            $registry->register($app->make(ListRemindersTool::class));
+            $registry->register($app->make(CancelReminderTool::class));
             return $registry;
         });
     }
