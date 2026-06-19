@@ -100,4 +100,45 @@ class ReminderHandlerTest extends TestCase
         $this->assertSame('cancelled', $ownReminder->fresh()->status);
         $this->assertSame('pending', $foreignReminder->fresh()->status);
     }
+
+    public function test_creates_weekly_recurring_reminder(): void
+    {
+        $this->handler->start('555');
+        $this->handler->handle('555', ['text' => 'Pagar alquiler']);
+        $this->handler->handle('555', ['text' => '22/06/2026 09:00']); // 22/06/2026 is a Monday
+        $this->handler->handle('555', ['text' => '3']); // cada semana
+        $this->handler->handle('555', ['text' => '1']); // guardar
+
+        $r = \App\Models\Reminder::forUser($this->user->id)->first();
+        $this->assertNotNull($r);
+        $this->assertSame('weekly', $r->recurrence);
+        $this->assertSame(['days' => [1]], $r->recurrence_rule); // Monday = isoWeekday 1
+    }
+
+    public function test_invalid_recurrence_input_stays_on_step(): void
+    {
+        $this->handler->start('555');
+        $this->handler->handle('555', ['text' => 'Algo']);
+        $this->handler->handle('555', ['text' => '21/06/2026 12:00']);
+        $this->handler->handle('555', ['text' => '9']); // inválido
+
+        $this->assertSame(0, \App\Models\Reminder::count());
+        $this->assertSame(
+            'recordar:recurrencia',
+            \App\Models\TelegramConversation::where('chat_id', '555')->first()->step
+        );
+    }
+
+    public function test_rejects_overflow_date(): void
+    {
+        $this->handler->start('555');
+        $this->handler->handle('555', ['text' => 'Algo']);
+        $this->handler->handle('555', ['text' => '32/13/2026 25:99']); // overflow inválido
+
+        $this->assertSame(0, \App\Models\Reminder::count());
+        $this->assertSame(
+            'recordar:fecha',
+            \App\Models\TelegramConversation::where('chat_id', '555')->first()->step
+        );
+    }
 }

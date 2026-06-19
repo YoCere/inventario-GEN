@@ -116,9 +116,10 @@ class ReminderHandler
             'monthly' => 'cada mes',
         ][$recurrence];
 
+        $safeTitle = htmlspecialchars($conv->data['title'], ENT_QUOTES, 'UTF-8');
         $this->telegram->sendMessage(
             $chatId,
-            "✅ Confirma:\n\n📝 <b>{$conv->data['title']}</b>\n📅 {$when->format('d/m/Y H:i')}\n🔁 {$repeat}\n\n1️⃣ Guardar\n2️⃣ Cancelar"
+            "✅ Confirma:\n\n📝 <b>{$safeTitle}</b>\n📅 {$when->format('d/m/Y H:i')}\n🔁 {$repeat}\n\n1️⃣ Guardar\n2️⃣ Cancelar"
         );
     }
 
@@ -203,6 +204,12 @@ class ReminderHandler
         }
 
         $user = $this->auth->getAuthenticatedUser($chatId);
+        if (! $user) {
+            $conv->delete();
+            $this->telegram->sendMessage($chatId, "❌ Sesión no válida. Inicia sesión de nuevo.");
+            return;
+        }
+
         // Doble candado anti-IDOR: solo cancela si es del propio usuario.
         $reminder = Reminder::forUser($user->id)->find($id);
         if (! $reminder) {
@@ -216,16 +223,22 @@ class ReminderHandler
         $this->telegram->sendMessage($chatId, "🗑️ Recordatorio cancelado: <b>" . htmlspecialchars($reminder->title, ENT_QUOTES, 'UTF-8') . "</b>");
     }
 
-    /** Parsea "DD/MM/YYYY HH:MM" o "DD/MM HH:MM" en la tz de la app. */
+    /** Parsea "DD/MM/YYYY HH:MM" o "DD/MM HH:MM" en la tz de la app. Rechaza fechas inválidas. */
     private function parseFecha(string $text): ?Carbon
     {
         $text = trim($text);
         foreach (['d/m/Y H:i', 'd/m H:i'] as $format) {
             try {
                 $date = Carbon::createFromFormat($format, $text, config('app.timezone'));
-                if ($date !== false) {
-                    return $date;
+                if ($date === false) {
+                    continue;
                 }
+                $errors = Carbon::getLastErrors();
+                // createFromFormat no lanza ante overflow (32/13, 25:99): lo reporta como warning.
+                if ($errors && ($errors['warning_count'] ?? 0) > 0) {
+                    continue;
+                }
+                return $date;
             } catch (\Throwable) {
                 continue;
             }
