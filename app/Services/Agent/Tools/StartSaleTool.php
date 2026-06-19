@@ -12,6 +12,11 @@ class StartSaleTool extends BaseTool
 {
     public function __construct(private TelegramService $telegram) {}
 
+    public function webExposed(): bool
+    {
+        return false;
+    }
+
     public function name(): string
     {
         return 'start_sale';
