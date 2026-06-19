@@ -48,6 +48,8 @@ class AppServiceProvider extends ServiceProvider
             $registry->register($app->make(GetFinancialStatusTool::class));
             $registry->register($app->make(GetIncomeAndExpensesTool::class));
             $registry->register($app->make(GetBalanceSheetTool::class));
+            $registry->register($app->make(\App\Services\Agent\Tools\GetSlowSellersTool::class));
+            $registry->register($app->make(\App\Services\Agent\Tools\GetReorderSuggestionsTool::class));
             $registry->register($app->make(CreateReminderTool::class));
             $registry->register($app->make(ListRemindersTool::class));
             $registry->register($app->make(CancelReminderTool::class));

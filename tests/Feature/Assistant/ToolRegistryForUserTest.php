@@ -93,6 +93,15 @@ class ToolRegistryForUserTest extends TestCase
         $this->assertContains('start_sale', $names);
     }
 
+    public function test_new_business_tools_are_registered_in_container(): void
+    {
+        $registry = $this->app->make(\App\Services\Agent\ToolRegistry::class);
+        $names = array_keys($registry->all());
+
+        $this->assertContains('get_slow_sellers', $names);
+        $this->assertContains('get_reorder_suggestions', $names);
+    }
+
     public function test_developer_cannot_use_write_tools_via_for_web(): void
     {
         $dev = User::factory()->create();
