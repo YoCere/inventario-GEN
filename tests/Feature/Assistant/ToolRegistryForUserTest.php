@@ -77,4 +77,34 @@ class ToolRegistryForUserTest extends TestCase
         $this->assertContains('get_top_sellers', $names);
         $this->assertNotContains('start_sale', $names);
     }
+
+    public function test_developer_sees_all_tools_via_for_user(): void
+    {
+        $dev = User::factory()->create();
+        $dev->assignRole('developer');
+
+        $registry = (new ToolRegistry())
+            ->register($this->app->make(GetFinancialStatusTool::class))
+            ->register($this->app->make(\App\Services\Agent\Tools\StartSaleTool::class));
+
+        $names = array_keys($registry->forUser($dev)->all());
+
+        $this->assertContains('get_financial_status', $names);
+        $this->assertContains('start_sale', $names);
+    }
+
+    public function test_developer_cannot_use_write_tools_via_for_web(): void
+    {
+        $dev = User::factory()->create();
+        $dev->assignRole('developer');
+
+        $registry = (new ToolRegistry())
+            ->register($this->app->make(\App\Services\Agent\Tools\StartSaleTool::class))
+            ->register(new GetTopSellersTool());
+
+        $names = array_keys($registry->forWeb($dev)->all());
+
+        $this->assertContains('get_top_sellers', $names);
+        $this->assertNotContains('start_sale', $names);
+    }
 }
