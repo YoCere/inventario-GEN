@@ -33,6 +33,12 @@ class BusinessTimezoneTest extends TestCase
         $this->assertSame('America/La_Paz', BusinessTime::timezone());
     }
 
+    public function test_timezone_falls_back_when_value_is_invalid(): void
+    {
+        Setting::set('business_timezone', 'Zona/Inexistente');
+        $this->assertSame(config('app.timezone'), BusinessTime::timezone());
+    }
+
     public function test_prompt_context_contains_current_local_date(): void
     {
         Setting::set('business_timezone', 'America/La_Paz');

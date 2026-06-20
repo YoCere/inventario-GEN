@@ -3,7 +3,6 @@
 namespace App\Support;
 
 use App\Models\Setting;
-use Carbon\CarbonImmutable;
 use Illuminate\Support\Carbon;
 
 /**
@@ -15,11 +14,22 @@ use Illuminate\Support\Carbon;
  */
 class BusinessTime
 {
-    /** Zona horaria del negocio; cae a la de la app si no está configurada. */
+    /** Zona horaria del negocio; cae a la de la app si no está configurada o es inválida. */
     public static function timezone(): string
     {
         $tz = trim((string) Setting::get('business_timezone', ''));
-        return $tz !== '' ? $tz : config('app.timezone');
+        if ($tz === '') {
+            return config('app.timezone');
+        }
+
+        // Una tz inválida en el setting reventaría Carbon::now($tz) y tumbaría al
+        // agente. Validar y caer a la zona de la app si no es un identificador real.
+        try {
+            new \DateTimeZone($tz);
+            return $tz;
+        } catch (\Throwable) {
+            return config('app.timezone');
+        }
     }
 
     /** "Ahora" en la zona del negocio. */

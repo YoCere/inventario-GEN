@@ -27,6 +27,7 @@ class SettingGroups extends Component
             'store_nit',
             'store_address',
             'store_phone',
+            'business_timezone',
         ],
         'moneda' => [
             'currency_symbol',
@@ -168,6 +169,7 @@ class SettingGroups extends Component
         'store_nit' => '',
         'store_address' => '',
         'store_phone' => '',
+        'business_timezone' => 'America/La_Paz',
         'currency_symbol' => 'Bs',
         'currency_position' => 'left',
         'currency_fraction_digits' => '2',
@@ -601,6 +603,7 @@ class SettingGroups extends Component
             'store_nit' => 'NIT (Número de Identificación Tributaria)',
             'store_address' => 'Dirección',
             'store_phone' => 'Teléfono',
+            'business_timezone' => 'Zona horaria del negocio (ej: America/La_Paz)',
             'currency_symbol' => 'Símbolo de moneda',
             'currency_position' => 'Posición del símbolo',
             'currency_fraction_digits' => 'Decimales',
