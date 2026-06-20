@@ -2,29 +2,43 @@
 
 namespace Tests\Feature\Reminders;
 
-use App\Jobs\SendTelegramMessage;
 use App\Models\Reminder;
 use App\Models\TelegramUser;
 use App\Models\User;
+use App\Services\Messaging\TelegramService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Queue;
+use Mockery;
 use Tests\TestCase;
 
 class DispatchRemindersTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** @var array<int, string> chatIds a los que se envió un mensaje */
+    private array $sent = [];
+
     protected function setUp(): void
     {
         parent::setUp();
         Carbon::setTestNow('2026-06-19 15:00:00');
-        Queue::fake();
+
+        // El despacho ahora envía síncrono (dispatchSync) → el job corre inline y
+        // llama a TelegramService. Lo mockeamos para no pegar a la API real y para
+        // capturar a qué chat se envió.
+        $this->sent = [];
+        $telegram = Mockery::mock(TelegramService::class);
+        $telegram->shouldReceive('sendMessage')->andReturnUsing(function ($chatId) {
+            $this->sent[] = $chatId;
+            return [];
+        });
+        $this->app->instance(TelegramService::class, $telegram);
     }
 
     protected function tearDown(): void
     {
         Carbon::setTestNow(null);
+        Mockery::close();
         parent::tearDown();
     }
 
@@ -42,10 +56,7 @@ class DispatchRemindersTest extends TestCase
 
         $this->artisan('reminders:dispatch')->assertSuccessful();
 
-        Queue::assertPushed(
-            SendTelegramMessage::class,
-            fn ($job) => $job->chatId === '555',
-        );
+        $this->assertContains('555', $this->sent);
 
         $reminder->refresh();
         $this->assertSame('sent', $reminder->status);
@@ -64,6 +75,8 @@ class DispatchRemindersTest extends TestCase
         ]);
 
         $this->artisan('reminders:dispatch')->assertSuccessful();
+
+        $this->assertContains('555', $this->sent);
 
         $reminder->refresh();
         $this->assertSame('pending', $reminder->status);
@@ -84,7 +97,7 @@ class DispatchRemindersTest extends TestCase
 
         $this->artisan('reminders:dispatch')->assertSuccessful();
 
-        Queue::assertNothingPushed();
+        $this->assertEmpty($this->sent);
     }
 
     public function test_falls_back_to_telegram_user_chat_id_when_reminder_chat_id_is_null(): void
@@ -106,18 +119,15 @@ class DispatchRemindersTest extends TestCase
 
         $this->artisan('reminders:dispatch')->assertSuccessful();
 
-        Queue::assertPushed(
-            SendTelegramMessage::class,
-            fn ($job) => $job->chatId === '999',
-        );
+        $this->assertContains('999', $this->sent);
     }
 
     public function test_one_corrupt_reminder_does_not_block_others(): void
     {
-        $user = \App\Models\User::factory()->create();
+        $user = User::factory()->create();
 
         // Recordatorio corrupto: regla semanal con weekday inválido (9) → next() lanza LogicException.
-        \App\Models\Reminder::factory()->create([
+        Reminder::factory()->create([
             'user_id'          => $user->id,
             'chat_id'          => '111',
             'remind_at'        => now()->subMinutes(2),
@@ -127,7 +137,7 @@ class DispatchRemindersTest extends TestCase
         ]);
 
         // Recordatorio sano que debe enviarse igual.
-        \App\Models\Reminder::factory()->create([
+        Reminder::factory()->create([
             'user_id'    => $user->id,
             'chat_id'    => '222',
             'remind_at'  => now()->subMinute(),
@@ -138,9 +148,6 @@ class DispatchRemindersTest extends TestCase
         $this->artisan('reminders:dispatch')->assertSuccessful();
 
         // El sano se envió pese al fallo del corrupto.
-        Queue::assertPushed(
-            \App\Jobs\SendTelegramMessage::class,
-            fn ($job) => $job->chatId === '222'
-        );
+        $this->assertContains('222', $this->sent);
     }
 }

@@ -40,10 +40,13 @@ class DispatchRemindersCommand extends Command
                 return;
             }
 
-            // Entrega at-least-once: despachamos el job ANTES de persistir el nuevo estado.
-            // Si el proceso muere aquí, el recordatorio sigue 'pending' y se reenvía en el
+            // Envío SÍNCRONO (dispatchSync): este comando ya corre bajo cron cada minuto,
+            // así que no dependemos de un worker de cola aparte. Si solo encoláramos, el
+            // recordatorio nunca llegaría en servidores sin `queue:work` activo.
+            // Entrega at-least-once: enviamos ANTES de persistir el nuevo estado; si el
+            // proceso muere aquí, el recordatorio sigue 'pending' y se reenvía en el
             // próximo tick (preferimos repetir un aviso a perderlo).
-            SendTelegramMessage::dispatch((string) $chatId, $this->buildMessage($reminder));
+            SendTelegramMessage::dispatchSync((string) $chatId, $this->buildMessage($reminder));
 
             $next = $calc->next($reminder->remind_at, $reminder->recurrence, $reminder->recurrence_rule, $reminder->timezone);
 
