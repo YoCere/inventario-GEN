@@ -24,7 +24,22 @@ class WebConversation extends Model
     /** @param array<int, array<string, mixed>> $messages */
     public function saveHistory(array $messages, int $limit): void
     {
-        $this->update(['messages' => array_slice($messages, -$limit)]);
+        $trimmed = array_slice($messages, -$limit);
+
+        // Evita historial que empiece con un tool_result huérfano (sin su tool_use
+        // previo) — Anthropic rechaza ese mensaje con 400. Descarta líderes inválidos.
+        while (! empty($trimmed)) {
+            $first = $trimmed[0];
+            $isOrphanToolResult = ($first['role'] ?? '') === 'user'
+                && is_array($first['content'] ?? null)
+                && (($first['content'][0]['type'] ?? '') === 'tool_result');
+            if (! $isOrphanToolResult) {
+                break;
+            }
+            array_shift($trimmed);
+        }
+
+        $this->update(['messages' => array_values($trimmed)]);
     }
 
     public function clear(): void

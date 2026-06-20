@@ -2,7 +2,6 @@
 
 namespace App\Services\Agent\Tools;
 
-use App\Models\SaleItem;
 use App\Services\Agent\AgentContext;
 use App\Services\Agent\BaseTool;
 
@@ -40,15 +39,18 @@ class GetSlowSellersTool extends BaseTool
         $limit = max(1, min(50, (int) ($input['limit'] ?? 5)));
         $start = now()->subDays($days);
 
-        $rows = SaleItem::query()
-            ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
-            ->join('products', 'products.id', '=', 'sale_items.product_id')
-            ->where('sales.status', 'completed')
-            ->where('sales.sale_date', '>=', $start)
+        $rows = \App\Models\Product::query()
+            ->leftJoin('sale_items', 'sale_items.product_id', '=', 'products.id')
+            ->leftJoin('sales', function ($join) use ($start) {
+                $join->on('sales.id', '=', 'sale_items.sale_id')
+                    ->where('sales.status', '=', 'completed')
+                    ->where('sales.sale_date', '>=', $start);
+            })
             ->where('products.is_active', true)
-            ->selectRaw('products.id as product_id, products.name, SUM(sale_items.quantity) as qty')
+            ->selectRaw('products.id as product_id, products.name, COALESCE(SUM(CASE WHEN sales.id IS NOT NULL THEN sale_items.quantity ELSE 0 END), 0) as qty')
             ->groupBy('products.id', 'products.name')
             ->orderBy('qty', 'asc')
+            ->orderBy('products.id', 'asc')
             ->limit($limit)
             ->get();
 
