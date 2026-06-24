@@ -32,4 +32,20 @@ class ProductMatcherTest extends TestCase
         $this->assertCount(1, $result['unmatched']);
         $this->assertSame('Producto Inexistente XYZ', $result['unmatched'][0]['raw_name']);
     }
+
+    public function test_two_lines_matching_same_product_sum_quantity(): void
+    {
+        $coca = Product::factory()->create(['name' => 'Coca Cola 2L', 'sku' => 'CC2L', 'is_active' => true]);
+
+        $data = new ReceiptData(null, null, [
+            new ReceiptLine('Coca Cola 2L', 12, 150000),
+            new ReceiptLine('Coca Cola 2L', 6, 150000),
+        ]);
+
+        $result = app(ProductMatcher::class)->match($data);
+
+        $this->assertCount(1, $result['matched']);
+        $this->assertSame($coca->id, $result['matched'][0]['product_id']);
+        $this->assertSame(18, $result['matched'][0]['quantity']); // 12 + 6, no se pisan
+    }
 }

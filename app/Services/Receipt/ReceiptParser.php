@@ -138,7 +138,7 @@ TXT;
                 continue;
             }
             $qty   = max(1, (int) ($item['quantity'] ?? 1));
-            $price = (int) round(((float) ($item['unit_price'] ?? 0)) * 100);
+            $price = max(0, (int) round(((float) ($item['unit_price'] ?? 0)) * 100));
             $lines[] = new ReceiptLine($name, $qty, $price);
         }
 
