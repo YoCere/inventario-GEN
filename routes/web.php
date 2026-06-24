@@ -46,6 +46,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // =========================================================================
 
     // Purchases
+    Route::post('purchases/parse-receipt', [PurchaseController::class, 'parseReceipt'])->name('purchases.parse-receipt');
     Route::resource('purchases', PurchaseController::class);
     Route::prefix('purchases/{purchase}')->name('purchases.')->controller(PurchaseController::class)->group(function () {
         Route::patch('ordered', 'markOrdered')->name('mark-ordered');
