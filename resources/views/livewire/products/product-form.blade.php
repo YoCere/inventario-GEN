@@ -239,6 +239,23 @@
                            accept="image/jpeg,image/png,image/webp,image/gif,image/bmp,image/avif,image/heic,image/heif,.heic,.heif"
                            class="hidden">
 
+                    {{-- Captura directa desde cámara. capture="environment" abre cámara trasera
+                         en móvil (foto única, sin multiple por conflicto con capture). Comparte
+                         wire:model="newUpload": el archivo único cae en el branch elseif de
+                         updatedNewUpload y se appendea a $gallery igual que la galería. --}}
+                    <input id="camera-upload"
+                           type="file"
+                           wire:model="newUpload"
+                           accept="image/*"
+                           capture="environment"
+                           data-heic-aware
+                           class="hidden">
+                    <label for="camera-upload"
+                           class="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground hover:border-primary/50 hover:bg-accent transition-colors">
+                        <x-heroicon-o-camera class="h-5 w-5" />
+                        Tomar foto
+                    </label>
+
                     <div wire:loading wire:target="newUpload" class="text-xs text-blue-600 mt-2 flex items-center gap-1.5">
                         <svg class="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
                         Subiendo imágenes…
