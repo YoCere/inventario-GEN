@@ -11,6 +11,11 @@ use Illuminate\Support\Facades\Auth;
 use App\Exceptions\PurchaseException;
 use App\Http\Requests\StorePurchaseRequest;
 use App\Http\Requests\UpdatePurchaseRequest;
+use App\Http\Requests\ParseReceiptRequest;
+use App\Services\Receipt\ReceiptParser;
+use App\Services\Receipt\ProductMatcher;
+use App\Services\Receipt\ReceiptParseException;
+use App\Models\Supplier;
 
 class PurchaseController extends Controller
 {
@@ -57,6 +62,37 @@ class PurchaseController extends Controller
             return back()->withInput()->with('error', $e->getMessage());
         } catch (\Exception $e) {
             return back()->withInput()->with('error', 'Error al crear la compra: ' . $e->getMessage());
+        }
+    }
+
+    public function parseReceipt(
+        ParseReceiptRequest $request,
+        ReceiptParser $parser,
+        ProductMatcher $matcher,
+    ): \Illuminate\Http\JsonResponse {
+        try {
+            $data   = $parser->parse($request->file('receipt'));
+            $result = $matcher->match($data);
+
+            $supplier = null;
+            if ($data->supplierName) {
+                $found = Supplier::whereRaw('LOWER(name) LIKE ?', ['%' . mb_strtolower($data->supplierName) . '%'])->first();
+                if ($found) {
+                    $supplier = ['id' => $found->id, 'name' => $found->name];
+                }
+            }
+
+            return response()->json([
+                'purchase_date' => $data->purchaseDate,
+                'supplier'      => $supplier,
+                'matched'       => $result['matched'],
+                'unmatched'     => $result['unmatched'],
+            ]);
+        } catch (ReceiptParseException $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('parseReceipt error', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'No se pudo procesar el recibo.'], 500);
         }
     }
 
