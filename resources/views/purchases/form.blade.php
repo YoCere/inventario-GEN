@@ -56,6 +56,18 @@
             />
             <x-input-error :messages="$errors->get('proof_image')" />
 
+            <button
+                type="button"
+                @click="analyzeReceipt()"
+                :disabled="analyzing"
+                class="mt-2 inline-flex items-center gap-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50">
+                <svg x-show="analyzing" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <span x-text="analyzing ? 'Analizando recibo…' : '📷 Analizar recibo con IA'"></span>
+            </button>
+
             <div class="mt-2">
                 @if(isset($purchase) && $purchase->proof_image)
                     <img src="{{ Storage::url($purchase->proof_image) }}" class="h-20 w-auto rounded border border-gray-200 object-cover">
@@ -318,6 +330,24 @@
         </div>
     </div>
 
+    <!-- Productos del recibo no reconocidos -->
+    <template x-if="unmatchedItems.length > 0">
+        <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <p class="text-sm font-semibold text-amber-800 mb-2">No reconocidos del recibo (búscalos manualmente arriba o ignóralos):</p>
+            <ul class="space-y-1">
+                <template x-for="(u, i) in unmatchedItems" :key="i">
+                    <li class="flex items-center justify-between text-sm text-amber-900">
+                        <span>
+                            <span x-text="u.raw_name" class="font-medium"></span>
+                            <span class="text-amber-700" x-text="' · cant: ' + u.quantity + ' · precio: ' + window.formatMoney(u.unit_price)"></span>
+                        </span>
+                        <button type="button" @click="unmatchedItems.splice(i, 1)" class="text-amber-600 hover:text-amber-800 text-xs">Quitar</button>
+                    </li>
+                </template>
+            </ul>
+        </div>
+    </template>
+
     <!-- Acciones -->
     <div class="flex flex-wrap items-center justify-end gap-3 pt-6 border-t border-gray-200">
         <a href="{{ route('purchases.index') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
@@ -346,6 +376,8 @@
             supplier_id: initialData.supplier_id || '',
             status: initialData.status || 'draft',
             loading: false,
+            analyzing: false,
+            unmatchedItems: [],
             errors: initialData.errors || {},
 
             init() {
@@ -464,6 +496,71 @@
                             type: 'success'
                         }
                     }));
+                }
+            },
+
+            async analyzeReceipt() {
+                if (this.analyzing) return;
+                const input = document.getElementById('proof_image');
+                const file = input?.files?.[0];
+                if (!file) {
+                    window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Selecciona una imagen del recibo primero.', type: 'info' } }));
+                    return;
+                }
+
+                this.analyzing = true;
+                const fd = new FormData();
+                fd.append('receipt', file);
+
+                try {
+                    const res = await fetch('{{ route("purchases.parse-receipt") }}', {
+                        method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') },
+                        body: fd,
+                    });
+                    const data = await res.json();
+
+                    if (!res.ok) {
+                        window.dispatchEvent(new CustomEvent('toast', { detail: { message: data.error || 'No se pudo leer el recibo.', type: 'error' } }));
+                        return;
+                    }
+
+                    // Fecha
+                    if (data.purchase_date) {
+                        const dateEl = document.getElementById('purchase_date');
+                        if (dateEl) dateEl.value = data.purchase_date;
+                    }
+                    // Proveedor (solo si casó uno existente)
+                    if (data.supplier && data.supplier.id) {
+                        this.supplier_id = String(data.supplier.id);
+                    }
+                    // Productos casados → tabla
+                    (data.matched || []).forEach(m => {
+                        this.addProduct({
+                            value: m.product_id,
+                            text: m.product_name,
+                            sku: m.product_code,
+                            price: m.unit_price,       // céntimos
+                            selling_price: 0,
+                        });
+                        const idx = this.items.findIndex(i => i.product_id == m.product_id);
+                        if (idx !== -1) {
+                            this.items[idx].quantity = m.quantity;
+                            this.items[idx].unit_price = m.unit_price;
+                            this.calculateLine(idx);
+                        }
+                    });
+                    // No reconocidos
+                    this.unmatchedItems = data.unmatched || [];
+
+                    const n = (data.matched || []).length;
+                    window.dispatchEvent(new CustomEvent('toast', {
+                        detail: { message: `${n} producto(s) reconocido(s). Revisa antes de guardar.`, type: 'success' }
+                    }));
+                } catch (e) {
+                    window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Error de red al analizar el recibo.', type: 'error' } }));
+                } finally {
+                    this.analyzing = false;
                 }
             },
 
