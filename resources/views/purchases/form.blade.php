@@ -42,11 +42,14 @@
         <!-- Imagen de Comprobante -->
         <div class="space-y-2">
             <x-input-label for="proof_image" :value="__('Comprobante de Recibo')" />
+            {{-- Input principal: galería/archivos (PC) + recibe la foto de cámara vía DataTransfer.
+                 Es el que se envía con el form (name="proof_image") y el que lee analyzeReceipt(). --}}
             <input
                 id="proof_image"
                 type="file"
                 name="proof_image"
                 accept="image/*"
+                @change="onReceiptChange($event)"
                 class="block w-full text-sm text-gray-500
                     file:mr-4 file:py-2 file:px-4
                     file:rounded-md file:border-0
@@ -56,21 +59,44 @@
             />
             <x-input-error :messages="$errors->get('proof_image')" />
 
-            <button
-                type="button"
-                @click="analyzeReceipt()"
-                :disabled="analyzing"
-                class="mt-2 inline-flex items-center gap-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50">
-                <svg x-show="analyzing" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                </svg>
-                <span x-text="analyzing ? 'Analizando recibo…' : '📷 Analizar recibo con IA'"></span>
-            </button>
+            {{-- Input cámara: capture="environment" abre cámara trasera en móvil (foto única).
+                 Al capturar, copia el archivo al #proof_image real para que valga tanto para
+                 enviar el form como para el análisis IA. --}}
+            <input
+                id="proof_image_camera"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                class="hidden"
+                @change="captureReceiptPhoto($event)"
+            />
+
+            <div class="mt-2 flex flex-wrap items-center gap-2">
+                <label for="proof_image_camera"
+                       class="inline-flex cursor-pointer items-center gap-2 rounded-md border border-input bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    <x-heroicon-o-camera class="h-5 w-5" />
+                    Tomar foto
+                </label>
+
+                <button
+                    type="button"
+                    @click="analyzeReceipt()"
+                    :disabled="analyzing"
+                    class="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50">
+                    <svg x-show="analyzing" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                    <span x-text="analyzing ? 'Analizando recibo…' : '📷 Analizar recibo con IA'"></span>
+                </button>
+            </div>
 
             <div class="mt-2">
+                <template x-if="receiptPreviewUrl">
+                    <img :src="receiptPreviewUrl" class="h-20 w-auto rounded border border-gray-200 object-cover">
+                </template>
                 @if(isset($purchase) && $purchase->proof_image)
-                    <img src="{{ Storage::url($purchase->proof_image) }}" class="h-20 w-auto rounded border border-gray-200 object-cover">
+                    <img x-show="!receiptPreviewUrl" src="{{ Storage::url($purchase->proof_image) }}" class="h-20 w-auto rounded border border-gray-200 object-cover">
                 @endif
             </div>
         </div>
@@ -378,6 +404,7 @@
             loading: false,
             analyzing: false,
             unmatchedItems: [],
+            receiptPreviewUrl: '',
             errors: initialData.errors || {},
 
             init() {
@@ -497,6 +524,33 @@
                         }
                     }));
                 }
+            },
+
+            // Copia la foto capturada por la cámara al input #proof_image real,
+            // así sirve tanto para enviar el form como para analyzeReceipt().
+            captureReceiptPhoto(event) {
+                const file = event.target.files && event.target.files[0];
+                if (!file) return;
+                const target = document.getElementById('proof_image');
+                try {
+                    const dt = new DataTransfer();
+                    dt.items.add(file);
+                    target.files = dt.files;
+                } catch (e) {
+                    // Navegador sin DataTransfer asignable: aviso para usar galería.
+                    window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Tu navegador no permite cámara directa; usa el selector de archivo.', type: 'info' } }));
+                    return;
+                }
+                target.dispatchEvent(new Event('change', { bubbles: true }));
+            },
+
+            // Actualiza el preview cuando cambia el archivo (galería o cámara).
+            onReceiptChange(event) {
+                const file = event.target.files && event.target.files[0];
+                if (this.receiptPreviewUrl) {
+                    URL.revokeObjectURL(this.receiptPreviewUrl);
+                }
+                this.receiptPreviewUrl = file ? URL.createObjectURL(file) : '';
             },
 
             async analyzeReceipt() {
