@@ -36,8 +36,7 @@
             "Database\\Seeders\\": "database/seeders/"
         },
         "files": [
-            "app/Helpers/CurrencyHelper.php",
-            "app/Services/Receipt/ReceiptData.php"
+            "app/Helpers/CurrencyHelper.php"
         ]
     },
     "autoload-dev": {
