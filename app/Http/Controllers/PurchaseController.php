@@ -91,8 +91,13 @@ class PurchaseController extends Controller
         } catch (ReceiptParseException $e) {
             return response()->json(['error' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('parseReceipt error', ['error' => $e->getMessage()]);
-            return response()->json(['error' => 'No se pudo procesar el recibo.'], 500);
+            \Illuminate\Support\Facades\Log::error('parseReceipt error', [
+                'exception' => $e::class,
+                'message'   => $e->getMessage(),
+                'file'      => $e->getFile() . ':' . $e->getLine(),
+            ]);
+            $detail = config('app.debug') ? ' (' . $e::class . ': ' . $e->getMessage() . ')' : '';
+            return response()->json(['error' => 'No se pudo procesar el recibo.' . $detail], 500);
         }
     }
 

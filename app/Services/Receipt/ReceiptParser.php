@@ -4,6 +4,7 @@ namespace App\Services\Receipt;
 
 use App\Models\Setting;
 use App\Services\Agent\CostTracker;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -49,25 +50,30 @@ TXT;
         }
         $model = (string) Setting::get('ai_model', 'claude-haiku-4-5-20251001');
 
-        $response = Http::withHeaders([
-            'x-api-key'         => $apiKey,
-            'anthropic-version' => '2023-06-01',
-            'content-type'      => 'application/json',
-        ])->timeout(60)->post(self::ANTHROPIC_URL, [
-            'model'      => $model,
-            'max_tokens' => 2048,
-            'messages'   => [[
-                'role'    => 'user',
-                'content' => [
-                    ['type' => 'image', 'source' => ['type' => 'base64', 'media_type' => $mime, 'data' => $base64]],
-                    ['type' => 'text', 'text' => self::PROMPT],
-                ],
-            ]],
-        ]);
+        try {
+            $response = Http::withHeaders([
+                'x-api-key'         => $apiKey,
+                'anthropic-version' => '2023-06-01',
+                'content-type'      => 'application/json',
+            ])->timeout(60)->post(self::ANTHROPIC_URL, [
+                'model'      => $model,
+                'max_tokens' => 2048,
+                'messages'   => [[
+                    'role'    => 'user',
+                    'content' => [
+                        ['type' => 'image', 'source' => ['type' => 'base64', 'media_type' => $mime, 'data' => $base64]],
+                        ['type' => 'text', 'text' => self::PROMPT],
+                    ],
+                ]],
+            ]);
+        } catch (ConnectionException $e) {
+            Log::error('ReceiptParser Anthropic connection error', ['error' => $e->getMessage()]);
+            throw new ReceiptParseException('No se pudo conectar con el servicio de IA (timeout o el servidor no tiene salida a api.anthropic.com).');
+        }
 
         if ($response->failed()) {
             Log::error('ReceiptParser Anthropic error', ['status' => $response->status(), 'body' => $response->body()]);
-            throw new ReceiptParseException('Error al leer el recibo con IA. Verifica que el modelo configurado soporte imágenes (ej. Claude).');
+            throw new ReceiptParseException('La IA rechazó la solicitud (HTTP ' . $response->status() . '). Revisa la API key y que el modelo (' . $model . ') soporte imágenes.');
         }
 
         $usage = $response->json('usage', []);
@@ -92,22 +98,27 @@ TXT;
         $model   = (string) Setting::get('ai_model', 'gpt-4o-mini');
         $baseUrl = rtrim((string) Setting::get('ai_api_base_url', 'https://api.openai.com/v1'), '/');
 
-        $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
-            ->timeout(60)->post($baseUrl . '/chat/completions', [
-                'model'      => $model,
-                'max_tokens' => 2048,
-                'messages'   => [[
-                    'role'    => 'user',
-                    'content' => [
-                        ['type' => 'text', 'text' => self::PROMPT],
-                        ['type' => 'image_url', 'image_url' => ['url' => "data:{$mime};base64,{$base64}"]],
-                    ],
-                ]],
-            ]);
+        try {
+            $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
+                ->timeout(60)->post($baseUrl . '/chat/completions', [
+                    'model'      => $model,
+                    'max_tokens' => 2048,
+                    'messages'   => [[
+                        'role'    => 'user',
+                        'content' => [
+                            ['type' => 'text', 'text' => self::PROMPT],
+                            ['type' => 'image_url', 'image_url' => ['url' => "data:{$mime};base64,{$base64}"]],
+                        ],
+                    ]],
+                ]);
+        } catch (ConnectionException $e) {
+            Log::error('ReceiptParser OpenAI connection error', ['error' => $e->getMessage()]);
+            throw new ReceiptParseException('No se pudo conectar con el servicio de IA (timeout o el servidor no tiene salida a ' . $baseUrl . ').');
+        }
 
         if ($response->failed()) {
             Log::error('ReceiptParser OpenAI error', ['status' => $response->status(), 'body' => $response->body()]);
-            throw new ReceiptParseException('Error al leer el recibo con IA. Verifica que el modelo configurado soporte imágenes.');
+            throw new ReceiptParseException('La IA rechazó la solicitud (HTTP ' . $response->status() . '). Revisa la API key, base URL y que el modelo (' . $model . ') soporte imágenes.');
         }
 
         $usage = $response->json('usage', []);
