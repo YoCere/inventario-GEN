@@ -569,13 +569,32 @@
                 try {
                     const res = await fetch('{{ route("purchases.parse-receipt") }}', {
                         method: 'POST',
-                        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') },
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                            // Sin Accept JSON, una validación fallida (imagen muy grande/mime)
+                            // responde 302→HTML y res.json() revienta como "Error de red".
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
                         body: fd,
                     });
-                    const data = await res.json();
+
+                    // Parseo robusto: el cuerpo puede no ser JSON (419/413/500/HTML).
+                    const text = await res.text();
+                    let data = {};
+                    try { data = text ? JSON.parse(text) : {}; } catch (_) { data = {}; }
 
                     if (!res.ok) {
-                        window.dispatchEvent(new CustomEvent('toast', { detail: { message: data.error || 'No se pudo leer el recibo.', type: 'error' } }));
+                        let msg = data.error || data.message;
+                        if (data.errors) {
+                            msg = Object.values(data.errors).flat().join(' ');
+                        }
+                        if (!msg) {
+                            msg = (res.status === 413)
+                                ? 'La imagen es muy grande. Usa una foto de menor resolución.'
+                                : 'No se pudo leer el recibo (error ' + res.status + ').';
+                        }
+                        window.dispatchEvent(new CustomEvent('toast', { detail: { message: msg, type: 'error' } }));
                         return;
                     }
 

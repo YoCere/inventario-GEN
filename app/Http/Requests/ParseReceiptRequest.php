@@ -14,7 +14,7 @@ class ParseReceiptRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'receipt' => ['required', 'image', 'mimes:jpeg,jpg,png,webp', 'max:8192'],
+            'receipt' => ['required', 'image', 'mimes:jpeg,jpg,png,webp', 'max:15360'], // 15MB (fotos de celular full-res)
         ];
     }
 }
