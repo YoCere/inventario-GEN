@@ -49,6 +49,7 @@
                 type="file"
                 name="proof_image"
                 accept="image/*"
+                data-heic-aware
                 @change="onReceiptChange($event)"
                 class="block w-full text-sm text-gray-500
                     file:mr-4 file:py-2 file:px-4
@@ -67,6 +68,7 @@
                 type="file"
                 accept="image/*"
                 capture="environment"
+                data-heic-aware
                 class="hidden"
                 @change="captureReceiptPhoto($event)"
             />
