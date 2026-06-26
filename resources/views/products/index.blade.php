@@ -11,6 +11,10 @@
                         Generar informe
                     </x-secondary-button>
                 </a>
+                <x-secondary-button x-data x-on:click="$dispatch('import-receipt')">
+                    <x-heroicon-o-camera class="w-4 h-4 mr-2" />
+                    Importar de recibo
+                </x-secondary-button>
                 <x-primary-button x-data x-on:click="$dispatch('create-product')">
                     <x-heroicon-o-plus class="w-4 h-4 mr-2" />
                     Crear producto
@@ -27,4 +31,5 @@
 
     <livewire:products.product-form />
     <livewire:products.product-detail />
+    <livewire:products.receipt-import />
 </x-app-layout>
