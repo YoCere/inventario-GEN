@@ -96,7 +96,11 @@ TXT;
             throw new ReceiptParseException('Configura la API key de IA en Ajustes IA.');
         }
         $model   = (string) Setting::get('ai_model', 'gpt-4o-mini');
-        $baseUrl = rtrim((string) Setting::get('ai_api_base_url', 'https://api.openai.com/v1'), '/');
+        // Mismo manejo que AgentService: ai_api_base_url puede estar guardado como
+        // string vacío (no null), así que el default de Setting::get NO aplica.
+        // Tratamos vacío como "usa el default" para no armar una URL rota.
+        $rawBase = trim((string) Setting::get('ai_api_base_url', ''));
+        $baseUrl = rtrim($rawBase !== '' ? $rawBase : 'https://api.openai.com/v1', '/');
 
         try {
             $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
