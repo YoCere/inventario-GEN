@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 use PowerComponents\LivewirePowerGrid\Button;
 use PowerComponents\LivewirePowerGrid\Column;
 use PowerComponents\LivewirePowerGrid\Facades\Filter;
+use PowerComponents\LivewirePowerGrid\Facades\Rule;
 use PowerComponents\LivewirePowerGrid\PowerGridFields;
 use PowerComponents\LivewirePowerGrid\Facades\PowerGrid;
 use PowerComponents\LivewirePowerGrid\Traits\WithExport;
@@ -22,6 +23,11 @@ final class ProductTable extends PowerGridComponent
     public string $tableName = 'product-table';
     public string $sortField = 'created_at';
     public string $sortDirection = 'desc';
+
+    /** Toggle: solo productos sin precio de venta (selling_price <= 0). */
+    public bool $onlyMissingPrice = false;
+    /** Toggle: solo productos sin imágenes. */
+    public bool $onlyMissingPhoto = false;
 
     public function boot(): void
     {
@@ -37,7 +43,8 @@ final class ProductTable extends PowerGridComponent
                 ->type(Exportable::TYPE_XLS, Exportable::TYPE_CSV),
 
             PowerGrid::header()
-                ->showSearchInput(),
+                ->showSearchInput()
+                ->includeViewOnTop('livewire.products.product-table-toggles'),
 
             PowerGrid::footer()
                 ->showPerPage(perPage: 10, perPageValues: [10, 25, 50, 100])
@@ -47,8 +54,17 @@ final class ProductTable extends PowerGridComponent
 
     public function datasource(): Builder
     {
-        return Product::query()
+        $query = Product::query()
             ->with(['category', 'unit']);
+
+        if ($this->onlyMissingPrice) {
+            $query->where('selling_price', '<=', 0);
+        }
+        if ($this->onlyMissingPhoto) {
+            $query->whereDoesntHave('images');
+        }
+
+        return $query;
     }
 
     public function fields(): PowerGridFields
@@ -232,6 +248,19 @@ final class ProductTable extends PowerGridComponent
         }
 
         return $actions;
+    }
+
+    /**
+     * Resalta en amarillo las filas de productos sin precio de venta,
+     * para que el responsable vea cuáles faltan completar.
+     */
+    public function actionRules($row): array
+    {
+        return [
+            Rule::rows()
+                ->when(fn ($product) => (int) $product->selling_price <= 0)
+                ->setAttribute('class', '!bg-yellow-50'),
+        ];
     }
 
     #[\Livewire\Attributes\On('delete')]
