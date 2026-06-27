@@ -25,6 +25,23 @@
                 />
                 @error('receipt') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
 
+                {{-- Cámara directa (móvil): capture="environment" abre cámara trasera.
+                     Comparte wire:model="receipt", así Livewire sube la foto igual que el selector. --}}
+                <input
+                    id="receipt-camera"
+                    type="file"
+                    wire:model="receipt"
+                    accept="image/*"
+                    capture="environment"
+                    data-heic-aware
+                    class="hidden"
+                />
+                <label for="receipt-camera"
+                       class="mt-1 inline-flex cursor-pointer items-center gap-2 rounded-md border border-input bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    <x-heroicon-o-camera class="h-5 w-5" />
+                    Tomar foto
+                </label>
+
                 <button
                     type="button"
                     wire:click="analyze"
