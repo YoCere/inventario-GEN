@@ -160,6 +160,10 @@ TXT;
 
         $lines = [];
         foreach ($json['items'] as $item) {
+            // Defensivo: la IA a veces devuelve items como strings u otra forma.
+            if (! is_array($item)) {
+                continue;
+            }
             $name = trim((string) ($item['raw_name'] ?? ''));
             if ($name === '') {
                 continue;

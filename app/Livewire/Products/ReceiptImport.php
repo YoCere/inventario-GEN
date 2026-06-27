@@ -67,6 +67,14 @@ class ReceiptImport extends Component
             })->all();
         } catch (ReceiptParseException $e) {
             $this->dispatch('toast', message: $e->getMessage(), type: 'error');
+        } catch (\Throwable $e) {
+            Log::error('ReceiptImport analyze error', [
+                'exception' => $e::class,
+                'message'   => $e->getMessage(),
+                'file'      => $e->getFile() . ':' . $e->getLine(),
+            ]);
+            $detail = config('app.debug') ? ' (' . $e::class . ': ' . $e->getMessage() . ')' : '';
+            $this->dispatch('toast', message: 'No se pudo procesar el recibo.' . $detail, type: 'error');
         } finally {
             $this->analyzing = false;
         }
