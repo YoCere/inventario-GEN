@@ -15,11 +15,21 @@ class ReceiptParser
     private const PROMPT = <<<'TXT'
 Eres un extractor de datos de recibos/facturas de compra de un negocio.
 Analiza la imagen y devuelve ÚNICAMENTE un objeto JSON válido (sin texto extra, sin markdown) con esta forma exacta:
-{"purchase_date":"YYYY-MM-DD o null","supplier_name":"nombre o null","items":[{"raw_name":"texto del producto tal como aparece","quantity":entero,"unit_price":precio_unitario_decimal}]}
+{"purchase_date":"YYYY-MM-DD o null","supplier_name":"nombre o null","items":[{"raw_name":"texto del producto tal como aparece","quantity":entero,"unit_price":precio_unitario_decimal,"line_total":importe_total_de_la_linea_decimal}]}
+
+Cómo leer las columnas (clave para no equivocarte con los precios):
+- Un recibo suele tener: CANTIDAD, PRECIO UNITARIO (precio de UNA sola unidad), DESCUENTO, e IMPORTE/SUBTOTAL (total de la línea = cantidad × precio unitario).
+- "unit_price" = PRECIO POR UNA UNIDAD (la columna "Precio"/"P. Unit"), NUNCA el importe total de la línea.
+- "line_total" = el IMPORTE/SUBTOTAL total de esa línea (lo que se paga por toda la cantidad). Si no existe esa columna, pon line_total = unit_price × quantity.
+- Lee los números con MUCHO cuidado y respeta los decimales. Ej: si el precio unitario es 2,53 (o 2.53) son "dos con 53/100" → 2.53; NO es 253 ni 30.
+- El separador decimal puede ser coma o punto; interpreta el valor numérico real (2,53 equivale a 2.53).
+
+Ejemplo de una línea con cantidad 50, precio unitario 2.53, importe 126.50:
+{"raw_name":"VIDRIO NORMAL 0.33mm","quantity":50,"unit_price":2.53,"line_total":126.50}
+
 Reglas:
-- unit_price es el precio por unidad (no el subtotal de la línea) en la moneda del recibo, como número decimal (ej 1500.50).
 - quantity es entero (si no hay cantidad clara, usa 1).
-- Si un dato no aparece, usa null (para fecha/proveedor) o tu mejor estimación para items.
+- Si un dato no aparece, usa null (para fecha/proveedor).
 - No inventes productos que no estén en el recibo.
 TXT;
 
@@ -56,9 +66,10 @@ TXT;
                 'anthropic-version' => '2023-06-01',
                 'content-type'      => 'application/json',
             ])->timeout(60)->post(self::ANTHROPIC_URL, [
-                'model'      => $model,
-                'max_tokens' => 2048,
-                'messages'   => [[
+                'model'       => $model,
+                'max_tokens'  => 2048,
+                'temperature' => 0, // extracción determinista
+                'messages'    => [[
                     'role'    => 'user',
                     'content' => [
                         ['type' => 'image', 'source' => ['type' => 'base64', 'media_type' => $mime, 'data' => $base64]],
@@ -105,9 +116,10 @@ TXT;
         try {
             $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
                 ->timeout(60)->post($baseUrl . '/chat/completions', [
-                    'model'      => $model,
-                    'max_tokens' => 2048,
-                    'messages'   => [[
+                    'model'       => $model,
+                    'max_tokens'  => 2048,
+                    'temperature' => 0, // extracción determinista
+                    'messages'    => [[
                         'role'    => 'user',
                         'content' => [
                             ['type' => 'text', 'text' => self::PROMPT],
@@ -152,8 +164,28 @@ TXT;
             if ($name === '') {
                 continue;
             }
-            $qty   = max(1, (int) ($item['quantity'] ?? 1));
-            $price = max(0, (int) round(((float) ($item['unit_price'] ?? 0)) * 100));
+            $qty       = max(1, (int) ($item['quantity'] ?? 1));
+            $unit      = max(0.0, (float) ($item['unit_price'] ?? 0));
+            $lineTotal = max(0.0, (float) ($item['line_total'] ?? 0));
+
+            // Auto-corrección: si unit_price y line_total son inconsistentes
+            // (la IA leyó mal la columna de precio), confiar en line_total/cantidad,
+            // que es el triple auto-consistente más fiable. Tolerancia 2%.
+            $chosen = $unit;
+            $unitFromTotal = ($lineTotal > 0 && $qty > 0) ? $lineTotal / $qty : 0.0;
+            if ($unitFromTotal > 0) {
+                if ($unit <= 0) {
+                    $chosen = $unitFromTotal;
+                } else {
+                    $expectedTotal = $unit * $qty;
+                    $ref = max($expectedTotal, $lineTotal);
+                    if ($ref > 0 && abs($expectedTotal - $lineTotal) / $ref > 0.02) {
+                        $chosen = $unitFromTotal;
+                    }
+                }
+            }
+
+            $price = max(0, (int) round($chosen * 100));
             $lines[] = new ReceiptLine($name, $qty, $price);
         }
 

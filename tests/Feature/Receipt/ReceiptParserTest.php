@@ -45,6 +45,43 @@ class ReceiptParserTest extends TestCase
         $this->assertSame(150050, $data->lines[0]->unitPrice);
     }
 
+    public function test_reconciles_wrong_unit_price_using_line_total(): void
+    {
+        Setting::set('ai_provider', 'anthropic');
+        Setting::set('anthropic_api_key', 'sk-test');
+
+        // La IA leyó mal el precio unitario (30) pero el importe (126.50) y la
+        // cantidad (50) son correctos → debe corregir a 126.50/50 = 2.53.
+        Http::fake([
+            'api.anthropic.com/*' => Http::response([
+                'content' => [['type' => 'text', 'text' => '{"purchase_date":null,"supplier_name":null,"items":[{"raw_name":"Vidrio Normal","quantity":50,"unit_price":30,"line_total":126.50}]}']],
+                'usage' => ['input_tokens' => 10, 'output_tokens' => 5],
+            ], 200),
+        ]);
+
+        $data = app(ReceiptParser::class)->parse($this->fakeImage());
+
+        $this->assertSame(253, $data->lines[0]->unitPrice); // 2.53 en céntimos
+    }
+
+    public function test_keeps_unit_price_when_consistent_with_line_total(): void
+    {
+        Setting::set('ai_provider', 'anthropic');
+        Setting::set('anthropic_api_key', 'sk-test');
+
+        // unit_price 2.53 × 50 = 126.50 == line_total → respeta unit_price.
+        Http::fake([
+            'api.anthropic.com/*' => Http::response([
+                'content' => [['type' => 'text', 'text' => '{"purchase_date":null,"supplier_name":null,"items":[{"raw_name":"Vidrio Normal","quantity":50,"unit_price":2.53,"line_total":126.50}]}']],
+                'usage' => ['input_tokens' => 10, 'output_tokens' => 5],
+            ], 200),
+        ]);
+
+        $data = app(ReceiptParser::class)->parse($this->fakeImage());
+
+        $this->assertSame(253, $data->lines[0]->unitPrice);
+    }
+
     public function test_throws_when_no_valid_json_in_response(): void
     {
         Setting::set('ai_provider', 'anthropic');
