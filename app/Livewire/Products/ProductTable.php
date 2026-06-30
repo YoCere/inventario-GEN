@@ -127,7 +127,9 @@ final class ProductTable extends PowerGridComponent
                 ->visibleInExport(false),
 
             Column::make('SKU', 'sku')
-                ->searchable(),
+                ->searchable()
+                ->headerAttribute('hidden md:table-cell')
+                ->bodyAttribute('hidden md:table-cell'),
 
             Column::make('Nombre', 'name_formatted', 'name')
                 ->sortable()
@@ -160,7 +162,8 @@ final class ProductTable extends PowerGridComponent
                 ->bodyAttribute('text-right'),
 
             Column::make('Margen', 'margin_formatted')
-                ->bodyAttribute('text-right text-indigo-600')
+                ->headerAttribute('hidden md:table-cell')
+                ->bodyAttribute('text-right text-indigo-600 hidden md:table-cell')
                 ->visibleInExport(false),
 
             Column::make('Cantidad', 'quantity')
@@ -168,16 +171,19 @@ final class ProductTable extends PowerGridComponent
                 ->bodyAttribute('text-center'),
 
             Column::make('Ubicación', 'locations_label')
+                ->headerAttribute('hidden md:table-cell')
+                ->bodyAttribute('hidden md:table-cell')
                 ->visibleInExport(false),
 
             Column::make('Stock minimo', 'min_stock')
                 ->sortable()
-                ->bodyAttribute('text-center'),
+                ->headerAttribute('hidden md:table-cell')
+                ->bodyAttribute('text-center hidden md:table-cell'),
 
             Column::make('Estado', 'is_active_label', 'is_active')
                 ->sortable()
-                ->headerAttribute('text-center')
-                ->bodyAttribute('text-center')
+                ->headerAttribute('text-center hidden md:table-cell')
+                ->bodyAttribute('text-center hidden md:table-cell')
                 ->visibleInExport(false),
 
             Column::make('Estado', 'is_active_export', 'is_active')
