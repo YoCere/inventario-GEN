@@ -31,3 +31,6 @@ unlighthouse.config.ts
 # Android signing keystore (NO commitear - secreto de firma)
 *.keystore
 android.keystore
+
+# Proyecto TWA/Bubblewrap (Android) - vive aparte, no commitear
+/android-twa/
