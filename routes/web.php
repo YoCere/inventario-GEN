@@ -13,6 +13,28 @@ use App\Http\Controllers\TelegramWebhookController;
 // Telegram webhook (no auth required, token validated internally)
 Route::post('/telegram/webhook', [TelegramWebhookController::class, 'handle']);
 
+// PWA manifest (público, dinámico: usa store_name). Debe ser accesible sin auth
+// para que el navegador/TWA lo lea.
+Route::get('/manifest.webmanifest', function () {
+    $name = \App\Models\Setting::get('store_name', 'Inventario') ?: 'Inventario';
+
+    return response()->json([
+        'name'             => $name,
+        'short_name'       => \Illuminate\Support\Str::limit($name, 12, ''),
+        'start_url'        => '/dashboard',
+        'scope'            => '/',
+        'display'          => 'standalone',
+        'orientation'      => 'portrait',
+        'background_color' => '#ffffff',
+        'theme_color'      => '#4f46e5',
+        'icons'            => [
+            ['src' => '/icons/icon-192.png', 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any'],
+            ['src' => '/icons/icon-512.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any'],
+            ['src' => '/icons/icon-maskable-512.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'],
+        ],
+    ])->header('Content-Type', 'application/manifest+json');
+})->name('manifest');
+
 Route::middleware(['auth', 'verified'])->group(function () {
     // =========================================================================
     // Dashboard & Profile

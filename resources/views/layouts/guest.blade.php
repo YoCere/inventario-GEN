@@ -6,6 +6,11 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
+        {{-- PWA --}}
+        <link rel="manifest" href="{{ route('manifest') }}">
+        <meta name="theme-color" content="#4f46e5">
+        <link rel="apple-touch-icon" href="/icons/icon-192.png">
+
         <title>{{ config('app.name', 'Laravel') }}{{ !empty($title) ? ' | ' . $title : '' }}</title>
 
         <!-- Fonts -->
