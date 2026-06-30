@@ -1,1 +1,12 @@
-[]
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "org.duckdns.super_cell.twa",
+      "sha256_cert_fingerprints": [
+        "98:93:C3:18:5E:1F:AF:53:4D:34:3A:3B:26:42:7C:CA:4D:53:3D:BE:29:08:1F:38:67:77:44:39:3A:B6:72:BA"
+      ]
+    }
+  }
+]
