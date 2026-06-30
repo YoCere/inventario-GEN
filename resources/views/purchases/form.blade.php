@@ -39,66 +39,62 @@
             <x-input-error :messages="$errors->get('invoice_number')" />
         </div>
 
-        <!-- Imagen de Comprobante -->
+        <!-- Comprobante / Recibo (analizar con IA, varias páginas) -->
         <div class="space-y-2">
-            <x-input-label for="proof_image" :value="__('Comprobante de Recibo')" />
-            {{-- Input principal: galería/archivos (PC) + recibe la foto de cámara vía DataTransfer.
-                 Es el que se envía con el form (name="proof_image") y el que lee analyzeReceipt(). --}}
-            <input
-                id="proof_image"
-                type="file"
-                name="proof_image"
-                accept="image/*"
-                data-heic-aware
-                @change="onReceiptChange($event)"
-                class="block w-full text-sm text-gray-500
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded-md file:border-0
-                    file:text-sm file:font-semibold
-                    file:bg-indigo-50 file:text-indigo-700
-                    hover:file:bg-indigo-100"
-            />
+            <x-input-label :value="__('Recibo (puedes subir/fotografiar varias páginas)')" />
+
+            {{-- proof_image: el comprobante que se GUARDA con la compra. Se setea
+                 automáticamente con la 1ª página vía DataTransfer (syncProofImage). --}}
+            <input id="proof_image" type="file" name="proof_image" accept="image/*" data-heic-aware class="hidden" />
             <x-input-error :messages="$errors->get('proof_image')" />
 
-            {{-- Input cámara: capture="environment" abre cámara trasera en móvil (foto única).
-                 Al capturar, copia el archivo al #proof_image real para que valga tanto para
-                 enviar el form como para el análisis IA. --}}
-            <input
-                id="proof_image_camera"
-                type="file"
-                accept="image/*"
-                capture="environment"
-                data-heic-aware
-                class="hidden"
-                @change="captureReceiptPhoto($event)"
-            />
+            {{-- Inputs acumuladores: cámara (de a una) y galería (varias). Ambos
+                 appendean a receiptPages. data-heic-aware = iPhone HEIC→JPG. --}}
+            <input id="receipt_page_camera" type="file" accept="image/*" capture="environment" data-heic-aware class="hidden" @change="addReceiptPages($event)" />
+            <input id="receipt_page_gallery" type="file" accept="image/*" multiple data-heic-aware class="hidden" @change="addReceiptPages($event)" />
 
-            <div class="mt-2 flex flex-wrap items-center gap-2">
-                <label for="proof_image_camera"
+            <div class="flex flex-wrap items-center gap-2">
+                <label for="receipt_page_camera"
                        class="inline-flex cursor-pointer items-center gap-2 rounded-md border border-input bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
                     <x-heroicon-o-camera class="h-5 w-5" />
                     Tomar foto
+                </label>
+                <label for="receipt_page_gallery"
+                       class="inline-flex cursor-pointer items-center gap-2 rounded-md border border-input bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    <x-heroicon-o-photo class="h-5 w-5" />
+                    Subir páginas
                 </label>
 
                 <button
                     type="button"
                     @click="analyzeReceipt()"
-                    :disabled="analyzing"
+                    :disabled="analyzing || receiptPages.length === 0"
                     class="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50">
                     <svg x-show="analyzing" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                     </svg>
-                    <span x-text="analyzing ? 'Analizando recibo…' : '📷 Analizar recibo con IA'"></span>
+                    <span x-show="!analyzing" x-text="receiptPages.length ? ('📷 Analizar ' + receiptPages.length + ' página(s)') : '📷 Analizar recibo'"></span>
+                    <span x-show="analyzing">Analizando…</span>
                 </button>
             </div>
 
-            <div class="mt-2">
-                <template x-if="receiptPreviewUrl">
-                    <img :src="receiptPreviewUrl" class="h-20 w-auto rounded border border-gray-200 object-cover">
+            {{-- Miniaturas de páginas acumuladas --}}
+            <div class="flex flex-wrap gap-2" x-show="receiptPages.length">
+                <template x-for="(p, i) in receiptPages" :key="p.key">
+                    <div class="relative">
+                        <img :src="p.url" class="h-20 w-20 rounded border border-gray-200 object-cover">
+                        <button type="button" @click="removeReceiptPage(i)"
+                                class="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white text-xs hover:bg-red-600">×</button>
+                        <span class="absolute bottom-0 left-0 bg-black/60 text-white text-[10px] px-1 rounded-tr" x-text="i + 1"></span>
+                    </div>
                 </template>
+            </div>
+
+            {{-- Comprobante ya guardado (modo edición) --}}
+            <div class="mt-1" x-show="!receiptPages.length">
                 @if(isset($purchase) && $purchase->proof_image)
-                    <img x-show="!receiptPreviewUrl" src="{{ Storage::url($purchase->proof_image) }}" class="h-20 w-auto rounded border border-gray-200 object-cover">
+                    <img src="{{ Storage::url($purchase->proof_image) }}" class="h-20 w-auto rounded border border-gray-200 object-cover">
                 @endif
             </div>
         </div>
@@ -406,7 +402,7 @@
             loading: false,
             analyzing: false,
             unmatchedItems: [],
-            receiptPreviewUrl: '',
+            receiptPages: [],
             errors: initialData.errors || {},
 
             init() {
@@ -528,45 +524,45 @@
                 }
             },
 
-            // Copia la foto capturada por la cámara al input #proof_image real,
-            // así sirve tanto para enviar el form como para analyzeReceipt().
-            captureReceiptPhoto(event) {
-                const file = event.target.files && event.target.files[0];
-                if (!file) return;
-                const target = document.getElementById('proof_image');
-                try {
-                    const dt = new DataTransfer();
-                    dt.items.add(file);
-                    target.files = dt.files;
-                } catch (e) {
-                    // Navegador sin DataTransfer asignable: aviso para usar galería.
-                    window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Tu navegador no permite cámara directa; usa el selector de archivo.', type: 'info' } }));
-                    return;
-                }
-                target.dispatchEvent(new Event('change', { bubbles: true }));
+            // Acumula páginas del recibo (cámara de a una o galería múltiple).
+            addReceiptPages(event) {
+                const files = Array.from(event.target.files || []);
+                files.forEach(f => {
+                    this.receiptPages.push({ key: Math.random().toString(36).slice(2), file: f, url: URL.createObjectURL(f) });
+                });
+                if (this.receiptPages.length > 20) this.receiptPages = this.receiptPages.slice(0, 20);
+                event.target.value = ''; // permite re-agregar el mismo archivo
+                this.syncProofImage();
             },
 
-            // Actualiza el preview cuando cambia el archivo (galería o cámara).
-            onReceiptChange(event) {
-                const file = event.target.files && event.target.files[0];
-                if (this.receiptPreviewUrl) {
-                    URL.revokeObjectURL(this.receiptPreviewUrl);
-                }
-                this.receiptPreviewUrl = file ? URL.createObjectURL(file) : '';
+            removeReceiptPage(i) {
+                const p = this.receiptPages[i];
+                if (p && p.url) URL.revokeObjectURL(p.url);
+                this.receiptPages.splice(i, 1);
+                this.syncProofImage();
+            },
+
+            // La 1ª página se copia al input #proof_image para guardarla como comprobante.
+            syncProofImage() {
+                const target = document.getElementById('proof_image');
+                if (!target) return;
+                try {
+                    const dt = new DataTransfer();
+                    if (this.receiptPages[0]) dt.items.add(this.receiptPages[0].file);
+                    target.files = dt.files;
+                } catch (e) { /* navegador viejo: la compra podría guardarse sin comprobante, no crítico */ }
             },
 
             async analyzeReceipt() {
                 if (this.analyzing) return;
-                const input = document.getElementById('proof_image');
-                const file = input?.files?.[0];
-                if (!file) {
-                    window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Selecciona una imagen del recibo primero.', type: 'info' } }));
+                if (this.receiptPages.length === 0) {
+                    window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Agrega al menos una foto del recibo.', type: 'info' } }));
                     return;
                 }
 
                 this.analyzing = true;
                 const fd = new FormData();
-                fd.append('receipt', file);
+                this.receiptPages.forEach(p => fd.append('receipts[]', p.file));
 
                 try {
                     const res = await fetch('{{ route("purchases.parse-receipt") }}', {
@@ -632,6 +628,11 @@
                     window.dispatchEvent(new CustomEvent('toast', {
                         detail: { message: `${n} producto(s) reconocido(s). Revisa antes de guardar.`, type: 'success' }
                     }));
+                    if (data.failed_pages) {
+                        window.dispatchEvent(new CustomEvent('toast', {
+                            detail: { message: `${data.failed_pages} página(s) no se pudieron leer; el resto sí.`, type: 'warning' }
+                        }));
+                    }
                 } catch (e) {
                     window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Error de red al analizar el recibo.', type: 'error' } }));
                 } finally {

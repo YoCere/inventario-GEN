@@ -41,6 +41,32 @@ class ParseReceiptEndpointTest extends TestCase
         $response->assertJsonPath('matched.0.unit_price', 150000);
     }
 
+    public function test_merges_multiple_receipt_pages(): void
+    {
+        $user = User::factory()->staff()->create();
+        Product::factory()->create(['name' => 'Coca Cola 2L', 'sku' => 'CC2L', 'is_active' => true]);
+
+        Setting::set('ai_provider', 'anthropic');
+        Setting::set('anthropic_api_key', 'sk-test');
+
+        // Página 1: Coca Cola x12. Página 2: Coca Cola x6 (mismo producto → suma).
+        Http::fakeSequence()
+            ->push(['content' => [['type' => 'text', 'text' => '{"items":[{"raw_name":"Coca Cola 2L","quantity":12,"unit_price":1500.00,"line_total":18000.00}]}']], 'usage' => ['input_tokens' => 5, 'output_tokens' => 5]])
+            ->push(['content' => [['type' => 'text', 'text' => '{"items":[{"raw_name":"Coca Cola 2L","quantity":6,"unit_price":1500.00,"line_total":9000.00}]}']], 'usage' => ['input_tokens' => 5, 'output_tokens' => 5]]);
+
+        $response = $this->actingAs($user)
+            ->postJson(route('purchases.parse-receipt'), [
+                'receipts' => [
+                    File::image('p1.jpg', 600, 800),
+                    File::image('p2.jpg', 600, 800),
+                ],
+            ]);
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'matched');
+        $response->assertJsonPath('matched.0.quantity', 18); // 12 + 6
+    }
+
     public function test_rejects_non_image(): void
     {
         $user = User::factory()->staff()->create();

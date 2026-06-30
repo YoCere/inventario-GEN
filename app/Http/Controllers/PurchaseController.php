@@ -15,6 +15,8 @@ use App\Http\Requests\ParseReceiptRequest;
 use App\Services\Receipt\ReceiptParser;
 use App\Services\Receipt\ProductMatcher;
 use App\Services\Receipt\ReceiptParseException;
+use App\Services\Receipt\ReceiptData;
+use App\Services\Receipt\ReceiptLine;
 use App\Models\Supplier;
 
 class PurchaseController extends Controller
@@ -71,22 +73,67 @@ class PurchaseController extends Controller
         ProductMatcher $matcher,
     ): \Illuminate\Http\JsonResponse {
         try {
-            $data   = $parser->parse($request->file('receipt'));
-            $result = $matcher->match($data);
+            // Reunir archivos: una sola imagen (`receipt`) y/o varias páginas (`receipts[]`).
+            $files = [];
+            if ($request->hasFile('receipt')) {
+                $files[] = $request->file('receipt');
+            }
+            foreach ((array) $request->file('receipts', []) as $f) {
+                if ($f) {
+                    $files[] = $f;
+                }
+            }
+
+            // Procesar cada página (1 llamada IA c/u, resiliente) y juntar líneas
+            // deduplicando por nombre y sumando cantidades.
+            $merged = [];
+            $purchaseDate = null;
+            $supplierName = null;
+            $failedPages = 0;
+
+            foreach ($files as $file) {
+                try {
+                    $data = $parser->parse($file);
+                } catch (ReceiptParseException $e) {
+                    $failedPages++;
+                    continue;
+                }
+
+                $purchaseDate = $purchaseDate ?? $data->purchaseDate;
+                $supplierName = $supplierName ?? $data->supplierName;
+
+                foreach ($data->lines as $line) {
+                    $key = mb_strtolower(trim($line->rawName));
+                    if (isset($merged[$key])) {
+                        $prev = $merged[$key];
+                        $merged[$key] = new ReceiptLine($prev->rawName, $prev->quantity + $line->quantity, $prev->unitPrice);
+                    } else {
+                        $merged[$key] = $line;
+                    }
+                }
+            }
+
+            if (empty($merged)) {
+                throw new ReceiptParseException('No se pudieron leer productos del recibo.');
+            }
+
+            $mergedData = new ReceiptData($purchaseDate, $supplierName, array_values($merged));
+            $result = $matcher->match($mergedData);
 
             $supplier = null;
-            if ($data->supplierName) {
-                $found = Supplier::whereRaw('LOWER(name) LIKE ?', ['%' . mb_strtolower($data->supplierName) . '%'])->first();
+            if ($mergedData->supplierName) {
+                $found = Supplier::whereRaw('LOWER(name) LIKE ?', ['%' . mb_strtolower($mergedData->supplierName) . '%'])->first();
                 if ($found) {
                     $supplier = ['id' => $found->id, 'name' => $found->name];
                 }
             }
 
             return response()->json([
-                'purchase_date' => $data->purchaseDate,
+                'purchase_date' => $mergedData->purchaseDate,
                 'supplier'      => $supplier,
                 'matched'       => $result['matched'],
                 'unmatched'     => $result['unmatched'],
+                'failed_pages'  => $failedPages,
             ]);
         } catch (ReceiptParseException $e) {
             return response()->json(['error' => $e->getMessage()], 422);
