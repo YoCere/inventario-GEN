@@ -4,58 +4,67 @@
             <div>
                 <h2 class="text-lg font-semibold text-foreground">Importar productos desde recibo</h2>
                 <p class="text-sm text-muted-foreground mt-0.5">
-                    Sube una foto del recibo; la IA extrae los productos. Revisa, ajusta categoría/unidad y crea.
-                    El precio de venta queda vacío para completarlo luego.
+                    Toma o sube las fotos del recibo (varias páginas permitidas). La IA extrae los productos.
+                    Revisa, ajusta categoría/unidad y crea. El precio de venta queda vacío para completarlo luego.
                 </p>
             </div>
 
-            {{-- Subida + analizar --}}
-            <div class="space-y-2">
-                <x-input-label for="receipt-file" value="Foto del recibo" />
-                <input
-                    id="receipt-file"
-                    type="file"
-                    wire:model="receipt"
-                    accept="image/*"
-                    data-heic-aware
-                    class="block w-full text-sm text-gray-500
-                        file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0
-                        file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700
-                        hover:file:bg-indigo-100"
-                />
-                @error('receipt') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
+            {{-- Subida de páginas (acumula) + analizar --}}
+            <div class="space-y-3">
+                {{-- Inputs: cámara (de a una) y galería (varias). Ambos bindean a newPage,
+                     y updatedNewPage los appendea a $pages. data-heic-aware = iPhone HEIC→JPG. --}}
+                <input id="page-camera" type="file" wire:model="newPage" accept="image/*" capture="environment" data-heic-aware class="hidden" />
+                <input id="page-gallery" type="file" wire:model="newPage" accept="image/*" multiple data-heic-aware class="hidden" />
 
-                {{-- Cámara directa (móvil): capture="environment" abre cámara trasera.
-                     Comparte wire:model="receipt", así Livewire sube la foto igual que el selector. --}}
-                <input
-                    id="receipt-camera"
-                    type="file"
-                    wire:model="receipt"
-                    accept="image/*"
-                    capture="environment"
-                    data-heic-aware
-                    class="hidden"
-                />
-                <label for="receipt-camera"
-                       class="mt-1 inline-flex cursor-pointer items-center gap-2 rounded-md border border-input bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                    <x-heroicon-o-camera class="h-5 w-5" />
-                    Tomar foto
-                </label>
+                <div class="flex flex-wrap items-center gap-2">
+                    <label for="page-camera"
+                           class="inline-flex cursor-pointer items-center gap-2 rounded-md border border-input bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        <x-heroicon-o-camera class="h-5 w-5" />
+                        Tomar foto
+                    </label>
+                    <label for="page-gallery"
+                           class="inline-flex cursor-pointer items-center gap-2 rounded-md border border-input bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        <x-heroicon-o-photo class="h-5 w-5" />
+                        Subir de galería
+                    </label>
+                    <span wire:loading wire:target="newPage" class="text-xs text-blue-600">Subiendo…</span>
+                </div>
 
-                <button
-                    type="button"
-                    wire:click="analyze"
-                    wire:loading.attr="disabled"
-                    wire:target="analyze,receipt"
-                    class="mt-1 inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50">
-                    <svg wire:loading wire:target="analyze" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                    </svg>
-                    <span wire:loading.remove wire:target="analyze">📷 Analizar recibo</span>
-                    <span wire:loading wire:target="analyze">Analizando…</span>
-                </button>
-                <span wire:loading wire:target="receipt" class="ml-2 text-xs text-blue-600">Subiendo imagen…</span>
+                @error('newPage') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
+                @error('newPage.*') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
+
+                {{-- Miniaturas de páginas acumuladas --}}
+                @if(! empty($pages))
+                    <div class="flex flex-wrap gap-2">
+                        @foreach($pages as $i => $page)
+                            <div class="relative" wire:key="page-{{ $i }}">
+                                @php($url = method_exists($page, 'temporaryUrl') ? @$page->temporaryUrl() : null)
+                                @if($url)
+                                    <img src="{{ $url }}" class="h-20 w-20 rounded border border-border object-cover">
+                                @else
+                                    <div class="h-20 w-20 rounded border border-border bg-muted flex items-center justify-center text-xs text-muted-foreground">pág. {{ $i + 1 }}</div>
+                                @endif
+                                <button type="button" wire:click="removePage({{ $i }})"
+                                        class="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white text-xs hover:bg-red-600">×</button>
+                                <span class="absolute bottom-0 left-0 bg-black/60 text-white text-[10px] px-1 rounded-tr">{{ $i + 1 }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <button
+                        type="button"
+                        wire:click="analyze"
+                        wire:loading.attr="disabled"
+                        wire:target="analyze,newPage"
+                        class="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50">
+                        <svg wire:loading wire:target="analyze" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                        <span wire:loading.remove wire:target="analyze">📷 Analizar {{ count($pages) }} página(s)</span>
+                        <span wire:loading wire:target="analyze">Analizando {{ count($pages) }} página(s)…</span>
+                    </button>
+                @endif
             </div>
 
             {{-- Defaults globales --}}

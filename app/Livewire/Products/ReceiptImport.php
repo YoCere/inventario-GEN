@@ -7,6 +7,8 @@ use App\Models\Category;
 use App\Models\Unit;
 use App\Services\ProductService;
 use App\Services\Receipt\ProductMatcher;
+use App\Services\Receipt\ReceiptData;
+use App\Services\Receipt\ReceiptLine;
 use App\Services\Receipt\ReceiptParseException;
 use App\Services\Receipt\ReceiptParser;
 use Illuminate\Support\Facades\Log;
@@ -18,7 +20,11 @@ class ReceiptImport extends Component
 {
     use WithFileUploads;
 
-    public $receipt = null;
+    /** Buffer de subida: cada selección/foto se appendea a $pages y se limpia. */
+    public $newPage = null;
+    /** @var array Páginas acumuladas del recibo (TemporaryUploadedFile[]). */
+    public array $pages = [];
+
     public bool $analyzing = false;
     public ?int $defaultCategoryId = null;
     public ?int $defaultUnitId = null;
@@ -30,34 +36,94 @@ class ReceiptImport extends Component
     public function open(): void
     {
         abort_if(! auth()->user()->isAdmin(), 403);
-        $this->reset(['receipt', 'rows', 'analyzing']);
+        $this->reset(['newPage', 'pages', 'rows', 'analyzing']);
         $this->dispatch('open-modal', name: 'receipt-import-modal');
+    }
+
+    /**
+     * Hook Livewire: al subir (cámara de a una o varias de galería) appendea
+     * al acumulado $pages en vez de reemplazar. Mismo patrón que la galería
+     * de productos (newUpload → gallery).
+     */
+    public function updatedNewPage(): void
+    {
+        $incoming = is_array($this->newPage) ? $this->newPage : [$this->newPage];
+        foreach ($incoming as $file) {
+            if ($file) {
+                $this->pages[] = $file;
+            }
+        }
+        // Cap defensivo: máximo 15 páginas.
+        if (count($this->pages) > 15) {
+            $this->pages = array_slice($this->pages, 0, 15);
+        }
+        $this->newPage = null;
+    }
+
+    public function removePage(int $index): void
+    {
+        unset($this->pages[$index]);
+        $this->pages = array_values($this->pages);
     }
 
     public function analyze(ReceiptParser $parser, ProductMatcher $matcher): void
     {
         abort_if(! auth()->user()->isAdmin(), 403);
-        $this->validate([
-            'receipt' => ['required', 'image', 'mimes:jpeg,jpg,png,webp', 'max:15360'],
-        ]);
+
+        if (empty($this->pages)) {
+            $this->dispatch('toast', message: 'Agrega al menos una foto del recibo.', type: 'info');
+            return;
+        }
 
         $this->analyzing = true;
         try {
-            $data  = $parser->parse($this->receipt);
-            $match = $matcher->match($data);
+            // Una llamada IA por página → sin truncado y resiliente. Junta todas
+            // las líneas y deduplica por nombre sumando cantidades.
+            $merged = []; // lowerName => ReceiptLine
+            $failedPages = 0;
 
-            // Nombres (lowercase) que casaron contra el catálogo → ya existen.
+            foreach ($this->pages as $page) {
+                try {
+                    $data = $parser->parse($page);
+                } catch (ReceiptParseException $e) {
+                    $failedPages++;
+                    continue;
+                }
+
+                foreach ($data->lines as $line) {
+                    $key = mb_strtolower(trim($line->rawName));
+                    if (isset($merged[$key])) {
+                        $prev = $merged[$key];
+                        $merged[$key] = new ReceiptLine(
+                            $prev->rawName,
+                            $prev->quantity + $line->quantity,
+                            $prev->unitPrice, // conserva el primer precio visto
+                        );
+                    } else {
+                        $merged[$key] = $line;
+                    }
+                }
+            }
+
+            if (empty($merged)) {
+                $this->dispatch('toast', message: 'No se pudieron leer productos del recibo.', type: 'error');
+                return;
+            }
+
+            $mergedData = new ReceiptData(null, null, array_values($merged));
+            $match = $matcher->match($mergedData);
+
             $existingNames = collect($match['matched'])
                 ->pluck('raw_name')
                 ->map(fn ($n) => mb_strtolower($n))
                 ->all();
 
-            $this->rows = collect($data->lines)->map(function ($line) use ($existingNames) {
+            $this->rows = collect($mergedData->lines)->map(function ($line) use ($existingNames) {
                 $exists = in_array(mb_strtolower($line->rawName), $existingNames, true);
 
                 return [
                     'name'           => $line->rawName,
-                    'purchase_price' => round($line->unitPrice / 100, 2), // céntimos → decimal para el input
+                    'purchase_price' => round($line->unitPrice / 100, 2),
                     'quantity'       => $line->quantity,
                     'category_id'    => $this->defaultCategoryId,
                     'unit_id'        => $this->defaultUnitId,
@@ -65,8 +131,10 @@ class ReceiptImport extends Component
                     'exists'         => $exists,
                 ];
             })->all();
-        } catch (ReceiptParseException $e) {
-            $this->dispatch('toast', message: $e->getMessage(), type: 'error');
+
+            if ($failedPages > 0) {
+                $this->dispatch('toast', message: "{$failedPages} página(s) no se pudieron leer; el resto sí.", type: 'warning');
+            }
         } catch (\Throwable $e) {
             Log::error('ReceiptImport analyze error', [
                 'exception' => $e::class,
@@ -135,7 +203,7 @@ class ReceiptImport extends Component
         }
         $this->dispatch('toast', message: $msg, type: $failed ? 'warning' : 'success');
 
-        $this->reset(['receipt', 'rows']);
+        $this->reset(['newPage', 'pages', 'rows']);
     }
 
     public function render()

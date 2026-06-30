@@ -39,7 +39,7 @@ class ReceiptImportTest extends TestCase
         ], 200)]);
 
         $component = Livewire::test(ReceiptImport::class)
-            ->set('receipt', UploadedFile::fake()->image('recibo.jpg'))
+            ->set('newPage', UploadedFile::fake()->image('recibo.jpg'))
             ->call('analyze')
             ->assertCount('rows', 2);
 
@@ -52,6 +52,28 @@ class ReceiptImportTest extends TestCase
         $nueva = collect($rows)->firstWhere('name', 'Mica Nueva XYZ');
         $this->assertFalse($nueva['exists']);
         $this->assertTrue($nueva['include']);
+    }
+
+    public function test_analyze_merges_pages_and_sums_quantity_for_same_product(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+        Setting::set('ai_provider', 'anthropic');
+        Setting::set('anthropic_api_key', 'sk-test');
+
+        // Página 1: Mica Nueva XYZ x20. Página 2: Mica Nueva XYZ x5 + Otro x3.
+        Http::fakeSequence()
+            ->push(['content' => [['type' => 'text', 'text' => '{"items":[{"raw_name":"Mica Nueva XYZ","quantity":20,"unit_price":1.00}]}']], 'usage' => ['input_tokens' => 5, 'output_tokens' => 5]])
+            ->push(['content' => [['type' => 'text', 'text' => '{"items":[{"raw_name":"Mica Nueva XYZ","quantity":5,"unit_price":1.00},{"raw_name":"Otro Producto","quantity":3,"unit_price":2.00}]}']], 'usage' => ['input_tokens' => 5, 'output_tokens' => 5]]);
+
+        $component = Livewire::test(ReceiptImport::class)
+            ->set('newPage', UploadedFile::fake()->image('p1.jpg'))
+            ->set('newPage', UploadedFile::fake()->image('p2.jpg'))
+            ->call('analyze');
+
+        $rows = $component->get('rows');
+        $this->assertCount(2, $rows); // dedup: Mica + Otro
+        $mica = collect($rows)->firstWhere('name', 'Mica Nueva XYZ');
+        $this->assertSame(25, $mica['quantity']); // 20 + 5
     }
 
     public function test_import_creates_products_with_zero_selling_price_and_stock(): void
