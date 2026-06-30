@@ -29,6 +29,11 @@ final class ProductTable extends PowerGridComponent
     /** Toggle: solo productos sin imágenes. */
     public bool $onlyMissingPhoto = false;
 
+    /** Edición masiva de precios sobre las filas seleccionadas (checkbox). */
+    public string $bulkTarget = 'selling';   // selling | purchase
+    public string $bulkMode = 'set';          // set | inc_pct | dec_pct | inc_amt | dec_amt
+    public $bulkValue = null;
+
     public function boot(): void
     {
         config(['livewire-powergrid.filter' => 'outside']);
@@ -261,6 +266,53 @@ final class ProductTable extends PowerGridComponent
                 ->when(fn ($product) => (int) $product->selling_price <= 0)
                 ->setAttribute('class', '!bg-yellow-50'),
         ];
+    }
+
+    /**
+     * Edición masiva de precios sobre los productos seleccionados (checkbox).
+     * Modos: fijar exacto, subir/bajar por % o por monto. Precios en céntimos.
+     */
+    public function applyBulkPrice(): void
+    {
+        abort_if(! auth()->user()->isAdmin(), 403);
+
+        $ids = $this->checkboxValues;
+        if (empty($ids)) {
+            $this->dispatch('toast', message: 'Selecciona al menos un producto.', type: 'info');
+            return;
+        }
+
+        $value = (float) $this->bulkValue;
+        if ($value < 0) {
+            $value = 0;
+        }
+
+        $field = $this->bulkTarget === 'purchase' ? 'purchase_price' : 'selling_price';
+
+        $updated = 0;
+        foreach (Product::whereIn('id', $ids)->get() as $product) {
+            $current = (int) $product->{$field};
+
+            $new = match ($this->bulkMode) {
+                'inc_pct' => (int) round($current * (1 + $value / 100)),
+                'dec_pct' => (int) round($current * (1 - $value / 100)),
+                'inc_amt' => $current + (int) round($value * 100),
+                'dec_amt' => $current - (int) round($value * 100),
+                default   => (int) round($value * 100), // set
+            };
+
+            $product->{$field} = max(0, $new);
+            $product->save();
+            $updated++;
+        }
+
+        $this->checkboxValues = [];
+        $this->checkboxAll = false;
+        $this->bulkValue = null;
+
+        $label = $field === 'purchase_price' ? 'compra' : 'venta';
+        $this->dispatch('toast', message: "Precio de {$label} actualizado en {$updated} producto(s).", type: 'success');
+        $this->dispatch('pg:eventRefresh-' . $this->tableName);
     }
 
     #[\Livewire\Attributes\On('delete')]
