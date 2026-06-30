@@ -29,7 +29,12 @@ class ReceiptImport extends Component
     public ?int $defaultCategoryId = null;
     public ?int $defaultUnitId = null;
 
-    /** @var array<int,array{name:string,purchase_price:float,quantity:int,category_id:?int,unit_id:?int,include:bool,exists:bool}> */
+    /** Edición en lote de precios: valor + a qué precio aplicar (venta|compra). */
+    public $bulkPrice = null;
+    public string $bulkTarget = 'selling';
+    public bool $selectAll = false;
+
+    /** @var array<int,array{name:string,purchase_price:float,selling_price:float,quantity:int,category_id:?int,unit_id:?int,include:bool,exists:bool,selected:bool}> */
     public array $rows = [];
 
     #[On('import-receipt')]
@@ -124,11 +129,13 @@ class ReceiptImport extends Component
                 return [
                     'name'           => $line->rawName,
                     'purchase_price' => round($line->unitPrice / 100, 2),
+                    'selling_price'  => 0,
                     'quantity'       => $line->quantity,
                     'category_id'    => $this->defaultCategoryId,
                     'unit_id'        => $this->defaultUnitId,
                     'include'        => ! $exists,
                     'exists'         => $exists,
+                    'selected'       => false,
                 ];
             })->all();
 
@@ -157,6 +164,39 @@ class ReceiptImport extends Component
         }
     }
 
+    /** Marca/desmarca todas las filas (checkbox de cabecera). */
+    public function updatedSelectAll($value): void
+    {
+        foreach ($this->rows as $i => $row) {
+            $this->rows[$i]['selected'] = (bool) $value;
+        }
+    }
+
+    /** Aplica $bulkPrice al precio (venta o compra) de las filas seleccionadas. */
+    public function applyBulkPrice(): void
+    {
+        $price = (float) $this->bulkPrice;
+        if ($price < 0) {
+            $price = 0;
+        }
+        $field = $this->bulkTarget === 'purchase' ? 'purchase_price' : 'selling_price';
+
+        $applied = 0;
+        foreach ($this->rows as $i => $row) {
+            if (! empty($row['selected'])) {
+                $this->rows[$i][$field] = $price;
+                $applied++;
+            }
+        }
+
+        if ($applied === 0) {
+            $this->dispatch('toast', message: 'Selecciona al menos un producto.', type: 'info');
+            return;
+        }
+        $label = $field === 'purchase_price' ? 'compra' : 'venta';
+        $this->dispatch('toast', message: "Precio de {$label} aplicado a {$applied} producto(s).", type: 'success');
+    }
+
     public function import(ProductService $service): void
     {
         abort_if(! auth()->user()->isAdmin(), 403);
@@ -179,7 +219,7 @@ class ReceiptImport extends Component
                     'unit_id'        => (int) $row['unit_id'],
                     'name'           => $row['name'],
                     'purchase_price' => (int) round(((float) $row['purchase_price']) * 100),
-                    'selling_price'  => 0, // vacío a propósito → producto incompleto, resaltado en la lista
+                    'selling_price'  => (int) round(((float) ($row['selling_price'] ?? 0)) * 100),
                     'quantity'       => (int) $row['quantity'],
                     'min_stock'      => 0,
                     'is_active'      => true,

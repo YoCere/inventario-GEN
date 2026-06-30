@@ -76,6 +76,33 @@ class ReceiptImportTest extends TestCase
         $this->assertSame(25, $mica['quantity']); // 20 + 5
     }
 
+    public function test_bulk_price_applies_to_selected_rows_and_imports(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+        $this->defaultLocation();
+        $catId  = Category::factory()->create()->id;
+        $unitId = Unit::factory()->create()->id;
+
+        Livewire::test(ReceiptImport::class)
+            ->set('rows', [
+                ['name' => 'Vidrio A', 'purchase_price' => 2.53, 'selling_price' => 0, 'quantity' => 50, 'category_id' => $catId, 'unit_id' => $unitId, 'include' => true, 'exists' => false, 'selected' => true],
+                ['name' => 'Vidrio B', 'purchase_price' => 2.53, 'selling_price' => 0, 'quantity' => 20, 'category_id' => $catId, 'unit_id' => $unitId, 'include' => true, 'exists' => false, 'selected' => true],
+                ['name' => 'Vidrio C', 'purchase_price' => 2.53, 'selling_price' => 0, 'quantity' => 10, 'category_id' => $catId, 'unit_id' => $unitId, 'include' => true, 'exists' => false, 'selected' => false],
+            ])
+            ->set('bulkPrice', 10)
+            ->set('bulkTarget', 'selling')
+            ->call('applyBulkPrice')
+            ->assertSet('rows.0.selling_price', 10.0)
+            ->assertSet('rows.1.selling_price', 10.0)
+            ->assertSet('rows.2.selling_price', 0) // no seleccionada → intacta
+            ->call('import');
+
+        // A y B con precio venta 1000 céntimos; C queda en 0.
+        $this->assertDatabaseHas('products', ['name' => 'Vidrio A', 'selling_price' => 1000]);
+        $this->assertDatabaseHas('products', ['name' => 'Vidrio B', 'selling_price' => 1000]);
+        $this->assertDatabaseHas('products', ['name' => 'Vidrio C', 'selling_price' => 0]);
+    }
+
     public function test_import_creates_products_with_zero_selling_price_and_stock(): void
     {
         $this->actingAs(User::factory()->admin()->create());

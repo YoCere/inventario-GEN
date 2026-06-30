@@ -94,14 +94,39 @@
                     </button>
                 </div>
 
+                {{-- Edición de precios en lote: marca varias filas y pon el mismo precio --}}
+                <div class="flex flex-wrap items-end gap-3 rounded-lg bg-muted/40 border border-border p-3">
+                    <div class="space-y-1">
+                        <x-input-label value="Precio en lote" />
+                        <input type="number" step="0.01" min="0" wire:model="bulkPrice" placeholder="0.00"
+                               class="h-10 w-32 rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    </div>
+                    <div class="space-y-1">
+                        <x-input-label value="Aplicar a" />
+                        <select wire:model="bulkTarget" class="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm">
+                            <option value="selling">Precio de venta</option>
+                            <option value="purchase">Precio de compra</option>
+                        </select>
+                    </div>
+                    <button type="button" wire:click="applyBulkPrice"
+                        class="inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+                        Aplicar a seleccionados
+                    </button>
+                    <p class="text-xs text-muted-foreground self-center">Marca las filas con el ✓ de la izquierda, escribe el precio y aplica.</p>
+                </div>
+
                 {{-- Tabla editable --}}
                 <div class="overflow-x-auto border border-border rounded-lg">
                     <table class="min-w-full divide-y divide-border text-sm">
                         <thead class="bg-muted/50">
                             <tr>
+                                <th class="px-2 py-2 text-center w-10" title="Seleccionar para precio en lote">
+                                    <input type="checkbox" wire:model.live="selectAll" class="h-4 w-4 rounded text-primary">
+                                </th>
                                 <th class="px-3 py-2 text-center w-12">Incluir</th>
                                 <th class="px-3 py-2 text-left">Nombre</th>
                                 <th class="px-3 py-2 text-right w-28">Precio compra</th>
+                                <th class="px-3 py-2 text-right w-28">Precio venta</th>
                                 <th class="px-3 py-2 text-center w-24">Stock</th>
                                 <th class="px-3 py-2 text-left w-40">Categoría</th>
                                 <th class="px-3 py-2 text-left w-40">Unidad</th>
@@ -110,6 +135,9 @@
                         <tbody class="divide-y divide-border">
                             @foreach($rows as $i => $row)
                                 <tr wire:key="row-{{ $i }}" @class(['opacity-50' => $row['exists']])>
+                                    <td class="px-2 py-2 text-center">
+                                        <input type="checkbox" wire:model="rows.{{ $i }}.selected" class="h-4 w-4 rounded text-indigo-600">
+                                    </td>
                                     <td class="px-3 py-2 text-center">
                                         <input type="checkbox" wire:model="rows.{{ $i }}.include" class="h-4 w-4 rounded text-primary">
                                     </td>
@@ -121,6 +149,9 @@
                                     </td>
                                     <td class="px-3 py-2">
                                         <input type="number" step="0.01" min="0" wire:model="rows.{{ $i }}.purchase_price" class="w-24 text-right rounded-md border border-input bg-background px-2 py-1 text-sm">
+                                    </td>
+                                    <td class="px-3 py-2">
+                                        <input type="number" step="0.01" min="0" wire:model="rows.{{ $i }}.selling_price" class="w-24 text-right rounded-md border border-input bg-background px-2 py-1 text-sm" placeholder="0.00">
                                     </td>
                                     <td class="px-3 py-2">
                                         <input type="number" min="0" wire:model="rows.{{ $i }}.quantity" class="w-20 text-center rounded-md border border-input bg-background px-2 py-1 text-sm">
