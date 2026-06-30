@@ -28,3 +28,6 @@ unlighthouse.config.ts
 /.unlighthouse
 /storage/framework/telegram-poll.pid
 /storage/framework/telegram-poll.stop
+# Android signing keystore (NO commitear - secreto de firma)
+*.keystore
+android.keystore
