@@ -301,19 +301,31 @@ class ProductForm extends Component
             }
 
             // 2. Procesar uploads nuevos → generar variantes WebP → crear ProductImage rows.
-            $existingCount = $product->images()->count();
-            foreach ($this->gallery as $idx => $upload) {
-                $paths = $imageProcessor->processForProduct($upload, $product->id);
-                ProductImage::create([
-                    'product_id' => $product->id,
-                    'path' => $paths['path'],
-                    'path_thumb' => $paths['path_thumb'],
-                    'path_card' => $paths['path_card'],
-                    'path_full' => $paths['path_full'],
-                    'sort_order' => $existingCount + $idx,
-                    'is_primary' => false, // primary se asigna abajo
-                ]);
-            }
+           
+$existingCount = $product->images()->count();
+foreach ($this->gallery as $idx => $upload) {
+    try {
+        $paths = $imageProcessor->processForProduct($upload, $product->id);
+        ProductImage::create([
+            'product_id' => $product->id,
+            'path' => $paths['path'],
+            'path_thumb' => $paths['path_thumb'],
+            'path_card' => $paths['path_card'],
+            'path_full' => $paths['path_full'],
+            'sort_order' => $existingCount + $idx,
+            'is_primary' => false,
+        ]);
+    } catch (\RuntimeException $e) {
+        // Error específico de procesamiento de imagen
+        \Log::warning('Image processing failed', [
+            'product_id' => $product->id,
+            'error' => $e->getMessage(),
+            'file_name' => $upload->getClientOriginalName(),
+        ]);
+        $this->dispatch('toast', message: 'Error con la imagen "' . $upload->getClientOriginalName() . '": ' . $e->getMessage(), type: 'error');
+        return; // Detener el proceso, no guardar el producto con imágenes incompletas
+    }
+}
 
             // 3. Asegurar que exactamente UNA imagen sea primary.
             //    Reglas:

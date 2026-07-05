@@ -33,10 +33,9 @@ RUN apt-get update && apt-get install -y \
 RUN { \
     echo 'upload_max_filesize=50M'; \
     echo 'post_max_size=50M'; \
-    echo 'memory_limit=512M'; \
+    echo 'memory_limit=2G'; \
     echo 'max_execution_time=120'; \
     } > /usr/local/etc/php/conf.d/runtime-tuning.ini
-
 WORKDIR /var/www
 
 # Copiar código fuente

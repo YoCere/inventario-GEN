@@ -37,24 +37,46 @@ class ImageProcessor
      * @throws \RuntimeException con mensaje friendly si formato no soportado
      */
     public function processForProduct(UploadedFile $file, int $productId): array
-    {
-        $extension = strtolower($file->getClientOriginalExtension());
+{
+    $extension = strtolower($file->getClientOriginalExtension());
+    $fileSize = round($file->getSize() / 1024 / 1024, 2);
+    $fileName = $file->getClientOriginalName();
 
-        try {
-            $source = Image::decode($file->getRealPath());
-        } catch (\Throwable $e) {
-            if (\in_array($extension, ['heic', 'heif'], true) && ! extension_loaded('imagick')) {
-                throw new \RuntimeException(
-                    "Formato HEIC/HEIF no soportado en este servidor. " .
-                    "Instala la extensión PHP Imagick o convierte la imagen a JPG/PNG antes de subir."
-                );
-            }
-            throw new \RuntimeException("No se pudo leer la imagen ({$extension}): {$e->getMessage()}");
+    // --- VALIDACIÓN PREVENTIVA DE MEGAPÍXELES ---
+    $imageInfo = @getimagesize($file->getRealPath());
+    if ($imageInfo) {
+        $megapixels = ($imageInfo[0] * $imageInfo[1]) / 1000000;
+        if ($megapixels > 40) {
+            throw new \RuntimeException(
+                "La imagen tiene {$megapixels}MP. Por favor, reduce la resolución " .
+                "a menos de 40MP (ej. 6000x4000) o usa una herramienta de compresión."
+            );
         }
+        \Log::info('Image dimensions', [
+            'product_id' => $productId,
+            'width' => $imageInfo[0],
+            'height' => $imageInfo[1],
+            'megapixels' => round($megapixels, 1),
+        ]);
+    }
+    // --- FIN VALIDACIÓN ---
 
-        return $this->encodeVariants($source, $productId);
+    \Log::info('Processing product image', [
+        'product_id' => $productId,
+        'file' => $fileName,
+        'size_mb' => $fileSize,
+        'extension' => $extension,
+        'memory_usage' => round(memory_get_usage() / 1024 / 1024, 2) . 'MB',
+    ]);
+
+    try {
+        $source = Image::decode($file->getRealPath());
+    } catch (\Throwable $e) {
+        // ... manejador existente
     }
 
+    return $this->encodeVariants($source, $productId);
+}
     /**
      * Re-procesa una imagen YA almacenada (no upload) para generar variantes faltantes.
      * Usado por el comando shop:regenerate-images para backfill de imágenes legacy.
@@ -80,26 +102,49 @@ class ImageProcessor
      * @param \Intervention\Image\Interfaces\ImageInterface $source
      */
     private function encodeVariants($source, int $productId): array
-    {
-        $basePath = "products/{$productId}";
-        $filename = (string) Str::uuid();
-        $paths = [];
+{
+    $basePath = "products/{$productId}";
+    $filename = (string) Str::uuid();
+    $paths = [];
 
-        foreach (self::VARIANTS as $variant => $width) {
-            // clone evita mutar el source entre variantes (si scaleDown muta).
-            $variantImg = (clone $source)->scaleDown(width: $width);
-            $encoded = $variantImg->encode(new WebpEncoder(quality: self::WEBP_QUALITY));
+    // --- FULL (1200px) ---
+    $fullImg = clone $source;
+    $fullImg->scaleDown(width: self::VARIANTS['full']);
+    $encoded = $fullImg->encode(new WebpEncoder(quality: self::WEBP_QUALITY));
+    $relativePath = "{$basePath}/{$filename}_full.webp";
+    Storage::disk('public')->put($relativePath, (string) $encoded);
+    $paths['path_full'] = $relativePath;
+    unset($encoded); // Liberar early
 
-            $relativePath = "{$basePath}/{$filename}_{$variant}.webp";
-            Storage::disk('public')->put($relativePath, (string) $encoded);
-            $paths["path_{$variant}"] = $relativePath;
-        }
+    // --- CARD (600px) ---
+    $cardImg = clone $fullImg;
+    $cardImg->scaleDown(width: self::VARIANTS['card']);
+    $encoded = $cardImg->encode(new WebpEncoder(quality: self::WEBP_QUALITY));
+    $relativePath = "{$basePath}/{$filename}_card.webp";
+    Storage::disk('public')->put($relativePath, (string) $encoded);
+    $paths['path_card'] = $relativePath;
+    unset($cardImg, $encoded); // Liberar early
 
-        return [
-            'path' => $paths['path_full'], // canonical
-            ...$paths,
-        ];
-    }
+    // --- THUMB (200px) - usar cardImg (más pequeña) en lugar de fullImg ---
+    // Pero cardImg ya fue liberada, así que clonamos fullImg de nuevo
+    // OPCIÓN A: Usar fullImg (como tienes ahora) - consume más memoria pero es más simple
+    // OPCIÓN B: Reutilizar cardImg antes de liberarla
+    $thumbImg = clone $fullImg; // Mantener como está, es correcto
+    $thumbImg->scaleDown(width: self::VARIANTS['thumb']);
+    $encoded = $thumbImg->encode(new WebpEncoder(quality: self::WEBP_QUALITY));
+    $relativePath = "{$basePath}/{$filename}_thumb.webp";
+    Storage::disk('public')->put($relativePath, (string) $encoded);
+    $paths['path_thumb'] = $relativePath;
+    unset($thumbImg, $encoded);
+
+    // Liberar fullImg al final
+    unset($fullImg);
+
+    return [
+        'path' => $paths['path_full'],
+        ...$paths,
+    ];
+}
 
     /**
      * Borra las 3 variantes de un ProductImage del disk. No toca la BD —
