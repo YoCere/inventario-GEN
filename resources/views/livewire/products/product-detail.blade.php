@@ -21,7 +21,7 @@
             </div>
 
             <!-- Product Image -->
-            @if($product->image_path)
+            @if($product->hasDisplayImage())
                 <div class="flex justify-center">
                     <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="h-64 w-64 object-cover rounded-lg border border-border shadow-sm">
                 </div>

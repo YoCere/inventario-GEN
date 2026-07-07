@@ -85,9 +85,27 @@ class Product extends Model
 
     public function getImageUrlAttribute(): string
     {
+        // Prefiere la galería nueva (ProductImage, variantes WebP). El image_path
+        // legacy (.jpg) queda como fallback para productos aún no migrados. Sin
+        // esto, las vistas internas piden un .jpg viejo/inexistente y dan 404
+        // mientras la tienda (que usa ProductImage) sí muestra la imagen.
+        $img = $this->primaryImage;
+        if ($img) {
+            return \Illuminate\Support\Facades\Storage::url($img->path_full ?: $img->path_card ?: $img->path);
+        }
+
         return $this->image_path
             ? \Illuminate\Support\Facades\Storage::url($this->image_path)
             : asset('images/placeholder-product.svg');
+    }
+
+    /**
+     * True si el producto tiene alguna imagen mostrable (galería nueva o legacy).
+     * Las vistas usan esto para decidir si renderizar el bloque de imagen.
+     */
+    public function hasDisplayImage(): bool
+    {
+        return $this->primaryImage()->exists() || ! empty($this->image_path);
     }
 
     /**
