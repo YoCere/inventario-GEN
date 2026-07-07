@@ -49,10 +49,11 @@ negociado. El flujo antiguo de 4 pasos se conserva como opción avanzada.
 | R4 | Venta bajo costo → se cierra + ⚠️ en la respuesta + log del actor. |
 | R5 | Respuesta muestra desglose (cant × precio = total, método) + número de venta + pista `/deshacer`. |
 | R6 | Deshacer (`/deshacer` y NL "anula la última venta"): anula la última venta; vendedor su propia dentro de 15 min, admin cualquiera; restaura stock + revierte asientos; rechaza si ya devuelta. |
-| R7 | POS web: botón **"Cobrar rápido"** (efectivo, monto exacto, sin vuelto) que cierra sin abrir la hoja de pago; toast "Deshacer (10s)". |
+| R7 | POS web: botón **"Cobrar rápido"** (efectivo, monto exacto, sin vuelto) que cierra sin abrir la hoja de pago; toast "Deshacer (10s)". Incluye un **campo opcional de descuento** (ej. total 150 − descuento 10 = 140); vacío = sin descuento (un toque). |
 | R8 | Telegram: tocar "Vender" en la ficha vende 1 al contado al instante (con deshacer), sin los 4 pasos. |
 | R9 | Flujo de 4 pasos accesible como avanzado (palabra clave/comando). |
 | R10 | Se guarda el precio real vendido y el actor (para reportes de margen con precio negociado). |
+| R11 | Método **transferencia** permite adjuntar **opcionalmente** una foto del comprobante, guardada con la venta. No aplica al camino ultra-rápido de contado; vive en la hoja de pago web y en el flujo avanzado. |
 
 ## Arquitectura
 
@@ -93,9 +94,20 @@ Es la única pieza que toca dinero/stock/contabilidad → se prueba en aislamien
 
 - Botón en el footer del carrito. Setea `payment.method='cash'`, `cash_received=total`, llama a
   `submitSale()` (o un endpoint `sales.quick`) → cierra sin abrir la hoja.
+- Incluye un **input opcional de descuento** junto al botón: vacío → cobra el total (un toque);
+  con valor → cobra `total − descuento` (ej. 150 − 10 = 140). Sin cálculo de vuelto.
 - Éxito → toast "Venta #123 registrada — Deshacer (10s)" que llama al endpoint de anulación
   (`QuickSaleService::void`) dentro de la ventana.
-- La hoja de pago actual queda para vuelto/transferencia (sin cambios).
+- La hoja de pago actual queda para vuelto/transferencia (sin cambios salvo R11).
+
+### Comprobante de transferencia (opcional) — R11
+
+- Cuando el método es **transferencia**, la hoja de pago web ofrece **tomar/subir una foto** del
+  comprobante (mismo patrón que `purchases.proof_image`: input `capture` en móvil). Es **opcional**
+  — se puede cerrar la venta sin foto.
+- La imagen se guarda en el disco `public` y se referencia en una columna nueva
+  `sales.transfer_proof_path` (nullable). Migración aditiva (nunca `migrate:fresh`).
+- El camino ultra-rápido de contado no toca esto.
 
 ### Telegram botón "Vender"
 
