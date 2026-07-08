@@ -94,6 +94,24 @@ class QuickSaleServiceVoidTest extends TestCase
         $this->assertSame(SaleStatus::CANCELLED, $sale->fresh()->status);
     }
 
+    public function test_double_void_fails_second_and_does_not_double_restore_stock(): void
+    {
+        $sale = $this->sell(); // stock 10 → 8
+
+        $this->service->void($sale, $this->seller); // 8 → 10
+        $this->assertSame(10, $this->product->fresh()->quantity);
+
+        // Segundo intento (doble-tap): debe fallar y NO volver a sumar stock.
+        try {
+            $this->service->void($sale->fresh(), $this->seller);
+            $this->fail('Se esperaba RuntimeException en la segunda anulación.');
+        } catch (\RuntimeException $e) {
+            // esperado
+        }
+
+        $this->assertSame(10, $this->product->fresh()->quantity); // no 12
+    }
+
     public function test_void_last_cancels_the_most_recent_sale(): void
     {
         $first = $this->sell();

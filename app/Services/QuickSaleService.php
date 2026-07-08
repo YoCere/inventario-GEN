@@ -94,20 +94,29 @@ class QuickSaleService
      */
     public function void(Sale $sale, User $actor): Sale
     {
-        if ($sale->status !== SaleStatus::COMPLETED) {
-            throw new \RuntimeException('Esa venta no se puede deshacer (ya anulada o no completada).');
-        }
-
-        if (! $actor->isAdmin()) {
-            if ((int) $sale->created_by !== (int) $actor->id) {
-                throw new \RuntimeException('Solo puedes deshacer tus propias ventas.');
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($sale, $actor) {
+            // Bloqueo de fila: serializa /deshacer concurrentes (doble-tap) para no
+            // restaurar stock ni revertir asientos dos veces. Re-leemos el estado bajo lock.
+            $locked = Sale::lockForUpdate()->find($sale->id);
+            if (! $locked) {
+                throw new \RuntimeException('Venta no encontrada.');
             }
-            if ($sale->created_at->lt(now()->subMinutes(self::UNDO_WINDOW_MINUTES))) {
-                throw new \RuntimeException('Pasó la ventana de ' . self::UNDO_WINDOW_MINUTES . ' minutos para deshacer esta venta.');
-            }
-        }
 
-        return $this->sales->cancelSale($sale, 'Deshacer venta rápida');
+            if ($locked->status !== SaleStatus::COMPLETED) {
+                throw new \RuntimeException('Esa venta no se puede deshacer (ya anulada o no completada).');
+            }
+
+            if (! $actor->isAdmin()) {
+                if ((int) $locked->created_by !== (int) $actor->id) {
+                    throw new \RuntimeException('Solo puedes deshacer tus propias ventas.');
+                }
+                if ($locked->created_at->lt(now()->subMinutes(self::UNDO_WINDOW_MINUTES))) {
+                    throw new \RuntimeException('Pasó la ventana de ' . self::UNDO_WINDOW_MINUTES . ' minutos para deshacer esta venta.');
+                }
+            }
+
+            return $this->sales->cancelSale($locked, 'Deshacer venta rápida');
+        });
     }
 
     /** Anula la última venta completada del actor (o la última global si es admin). */
