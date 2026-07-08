@@ -24,7 +24,8 @@ class StartSaleTool extends BaseTool
 
     public function description(): string
     {
-        return 'Inicia el flujo de venta para un producto. Llama SOLO cuando el usuario ya confirmó que quiere vender. Muestra la ficha del producto con opciones de venta.';
+        return 'Muestra la ficha de un producto con sus opciones. Úsalo SOLO cuando el usuario quiere VER o ELEGIR un producto pero AÚN NO indicó cuánto vender. '
+            . 'Si el usuario ya dijo la cantidad a vender (y opcionalmente el precio), NO uses esta herramienta: usa sell_product para registrar la venta al instante.';
     }
 
     public function inputSchema(): array

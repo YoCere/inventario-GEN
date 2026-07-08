@@ -27,11 +27,14 @@ class SellProductTool extends BaseTool
 
     public function description(): string
     {
-        return 'Registra una venta al instante. Interpreta la orden del vendedor. '
+        return 'Registra una venta AL INSTANTE. Es la forma PREFERIDA de vender: úsala apenas el usuario '
+            . 'indique QUÉ producto y CUÁNTO vender (ej. "vende 3 figuras de mario a 10"), SIN pedir confirmación '
+            . 'ni mostrar la ficha primero — la venta es reversible con /deshacer. NO uses start_sale ni el flujo '
+            . 'de pasos si ya tienes producto + cantidad. '
             . 'Reglas de precio: "a X bs" = precio POR UNIDAD → usa unit_price; '
             . '"en total X" = precio total del renglón → usa total_price; sin precio → precio de lista. '
             . 'payment_method: cash (contado, por defecto) o transfer. '
-            . 'Si el producto es ambiguo, primero usa search_products y pregunta cuál.';
+            . 'Solo si el producto es ambiguo (varios coinciden), pregunta cuál antes de vender.';
     }
 
     public function inputSchema(): array
