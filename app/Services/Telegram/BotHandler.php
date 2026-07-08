@@ -439,6 +439,7 @@ class BotHandler
             '/nuevo' => $this->cmdNewProduct($chatId),
             '/listar' => $this->cmdList($chatId, $args),
             '/devolver' => $this->cmdRefund($chatId),
+            '/deshacer' => $this->cmdDeshacer($chatId),
             '/recordar' => $this->reminderHandler->start($chatId),
             '/recordatorios' => $this->reminderHandler->listAndManage($chatId),
             '/reportes' => $this->cmdReports($chatId),
@@ -462,6 +463,7 @@ class BotHandler
             "/nuevo — Registrar un nuevo producto\n" .
             "/listar — Listar productos (todas categorías o filtrar)\n" .
             "/devolver — Procesar devoluciones\n" .
+            "/deshacer — Anular tu última venta\n" .
             "/recordar — Crear un recordatorio personal\n" .
             "/recordatorios — Ver y cancelar tus recordatorios\n";
 
@@ -577,6 +579,26 @@ class BotHandler
     protected function cmdRefund(string $chatId): void
     {
         $this->refundHandler->start($chatId);
+    }
+
+    /**
+     * /deshacer — anula la última venta del usuario (admin: la última global).
+     * Restaura stock y reversa contabilidad vía QuickSaleService::voidLast().
+     */
+    protected function cmdDeshacer(string $chatId): void
+    {
+        $user = $this->authHandler->getAuthenticatedUser($chatId);
+        if (! $user) {
+            $this->telegram->sendMessage($chatId, "❌ Sesión no válida.");
+            return;
+        }
+
+        try {
+            $sale = app(\App\Services\QuickSaleService::class)->voidLast($user);
+            $this->telegram->sendMessage($chatId, "↩️ Venta <b>{$sale->invoice_number}</b> anulada. Stock restaurado.");
+        } catch (\RuntimeException $e) {
+            $this->telegram->sendMessage($chatId, "❌ " . $e->getMessage());
+        }
     }
 
     /**

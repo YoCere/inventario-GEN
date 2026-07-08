@@ -54,6 +54,7 @@ class AppServiceProvider extends ServiceProvider
             $registry->register($app->make(ListRemindersTool::class));
             $registry->register($app->make(CancelReminderTool::class));
             $registry->register($app->make(\App\Services\Agent\Tools\SellProductTool::class));
+            $registry->register($app->make(\App\Services\Agent\Tools\CancelLastSaleTool::class));
             return $registry;
         });
     }
