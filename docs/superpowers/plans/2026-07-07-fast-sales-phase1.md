@@ -30,6 +30,18 @@
 
 **Setup de stock en tests** (patrón existente en `tests/Feature/Sales/SaleServiceTest.php`): crear `Warehouse` + `Location`, `Product::factory` con `quantity 0`, `ProductStock::create` con la cantidad, y `product->update(['quantity' => N])`. `createSale` descuenta de esa location.
 
+**IMPORTANTE — seeders contables en cada test que crea ventas:** `createSale` exige un periodo
+contable abierto + plan de cuentas + settings. Todo `setUp()` que venda debe incluir, al inicio:
+```php
+$this->seed([
+    \Database\Seeders\AccountingPeriodSeeder::class,
+    \Database\Seeders\ChartOfAccountSeeder::class,
+    \Database\Seeders\SettingSeeder::class,
+]);
+```
+(Sin esto, la venta lanza `SaleException: "No existe un periodo contable abierto..."`. Confirmar los
+nombres exactos de los seeders en el `setUp()` de `tests/Feature/Sales/SaleServiceTest.php`.)
+
 ---
 
 ## Task 1: QuickSaleService::sell()
@@ -101,13 +113,14 @@ class QuickSaleServiceSellTest extends TestCase
 
     public function test_sell_records_price_override_and_flags_below_cost(): void
     {
-        // 3 unidades a Bs 15 (1500) c/u, aunque la lista es 20 y el costo 18 → bajo costo.
+        // Vender a Bs 15 (1500) c/u cuando la lista es 20 (2000) y el costo 18 (1800) → bajo costo.
+        // NOTA: SaleService::createSale NO honra items[].unit_price; usa selling_price - discount.
+        // Por eso el override se traduce a descuento por unidad. Verificamos el efecto real (total).
         $result = $this->service->sell($this->product, 3, 1500, PaymentMethod::CASH, 0, $this->seller->id);
 
         $sale = $result['sale'];
-        $this->assertSame(4500, $sale->total); // 3 × 1500
-        $this->assertSame(1500, $sale->items->first()->unit_price);
-        $this->assertTrue($result['below_cost']);
+        $this->assertSame(4500, $sale->total);    // 3 × 1500 efectivo
+        $this->assertTrue($result['below_cost']); // 1500 < 1800
     }
 
     public function test_sell_applies_discount(): void
@@ -179,10 +192,18 @@ class QuickSaleService
             throw new \RuntimeException("Stock insuficiente: hay {$product->quantity} disponibles.");
         }
 
-        $unitPrice = $unitPriceCents ?? $product->selling_price;
-        $belowCost = $unitPrice < $product->purchase_price;
-        $subtotal  = $unitPrice * $qty;
-        $total     = max(0, $subtotal - $discountCents);
+        // SaleService::createSale ignora items[].unit_price: cotiza con selling_price y
+        // resta el `discount` por unidad. Traducimos el precio negociado (más barato) a
+        // un descuento por unidad sobre la lista. No permite vender por encima de la lista
+        // (para eso se sube el precio del producto) — caso raro, fuera de alcance.
+        $listPrice       = $product->selling_price;
+        $requestedUnit   = $unitPriceCents ?? $listPrice;
+        $perUnitDiscount = max(0, $listPrice - $requestedUnit);
+        $effectiveUnit   = $listPrice - $perUnitDiscount; // = min(requested, list)
+
+        $belowCost = $effectiveUnit < $product->purchase_price;
+        $lineTotal = $effectiveUnit * $qty;
+        $total     = max(0, $lineTotal - $discountCents);
 
         $saleData = SaleData::fromArray([
             'created_by'      => $actorId,
@@ -198,8 +219,8 @@ class QuickSaleService
             'items'           => [[
                 'product_id' => $product->id,
                 'quantity'   => $qty,
-                'unit_price' => $unitPrice,
-                'discount'   => 0,
+                'unit_price' => $listPrice,
+                'discount'   => $perUnitDiscount,
             ]],
         ]);
 
