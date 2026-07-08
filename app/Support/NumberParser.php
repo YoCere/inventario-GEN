@@ -80,4 +80,10 @@ class NumberParser
         $int = self::extractInt($text);
         return $int === null ? null : (float) $int;
     }
+
+    /** @return array<int, string> Palabras-número reconocidas (para parsers externos). */
+    public static function spanishWords(): array
+    {
+        return array_keys(self::SPANISH_WORDS);
+    }
 }
