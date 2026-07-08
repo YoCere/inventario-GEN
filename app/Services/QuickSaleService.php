@@ -23,7 +23,7 @@ class QuickSaleService
     /**
      * Crea una venta completada de un solo producto al instante.
      *
-     * @return array{sale: Sale, below_cost: bool}
+     * @return array{sale: Sale, below_cost: bool, price_capped: bool}
      */
     public function sell(
         Product $product,
@@ -53,6 +53,10 @@ class QuickSaleService
         $requestedUnit   = $unitPriceCents ?? $listPrice;
         $perUnitDiscount = max(0, $listPrice - $requestedUnit);
         $effectiveUnit   = $listPrice - $perUnitDiscount; // = min(requested, list)
+
+        // No podemos cobrar por encima de la lista (createSale ignora unit_price; solo
+        // resta descuento). Si pidieron más, se cobra a lista y lo señalamos al caller.
+        $priceCapped = $unitPriceCents !== null && $unitPriceCents > $listPrice;
 
         $belowCost = $effectiveUnit < $product->purchase_price;
         $lineTotal = $effectiveUnit * $qty;
@@ -85,7 +89,7 @@ class QuickSaleService
             throw new \RuntimeException($e->getMessage(), 0, $e);
         }
 
-        return ['sale' => $sale, 'below_cost' => $belowCost];
+        return ['sale' => $sale, 'below_cost' => $belowCost, 'price_capped' => $priceCapped];
     }
 
     /**

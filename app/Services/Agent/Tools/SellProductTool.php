@@ -122,8 +122,10 @@ class SellProductTool extends BaseTool
             'total_bs'     => number_format($sale->total / 100, 2),
             'payment'      => $method->value,
             'below_cost'   => $result['below_cost'],
+            'price_capped' => $result['price_capped'],
             'instructions' => 'Confirma la venta al usuario con el desglose. '
                 . ($result['below_cost'] ? 'Advierte ⚠️ que se vendió por debajo del costo. ' : '')
+                . ($result['price_capped'] ? 'Avisa que el precio pedido superaba la lista, así que se cobró al precio de lista. ' : '')
                 . 'Recuérdale que puede escribir /deshacer para anular.',
         ];
     }

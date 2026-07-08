@@ -82,6 +82,22 @@ class QuickSaleServiceSellTest extends TestCase
         $this->assertSame(3500, $result['sale']->total);
     }
 
+    public function test_sell_caps_price_at_list_and_flags_when_above(): void
+    {
+        // Piden 2500/u pero la lista es 2000: se cobra a lista y se marca price_capped.
+        $result = $this->service->sell($this->product, 2, 2500, PaymentMethod::CASH, 0, $this->seller->id);
+
+        $this->assertTrue($result['price_capped']);
+        $this->assertSame(4000, $result['sale']->total); // 2 × 2000 (lista), no 2 × 2500
+    }
+
+    public function test_sell_does_not_flag_capped_at_or_below_list(): void
+    {
+        $result = $this->service->sell($this->product, 1, 1500, PaymentMethod::CASH, 0, $this->seller->id);
+
+        $this->assertFalse($result['price_capped']);
+    }
+
     public function test_sell_throws_on_insufficient_stock(): void
     {
         $this->expectException(\RuntimeException::class);
