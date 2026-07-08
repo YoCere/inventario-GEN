@@ -79,15 +79,31 @@ class SellProductTool extends BaseTool
         $product = $matches->first();
         $qty = max(1, (int) ($input['quantity'] ?? 1));
 
+        // El schema es solo orientativo (no se valida en runtime). Rechazar valores
+        // no numéricos evita ventas a Bs 0.00 por casteo silencioso de basura del LLM.
+        foreach (['unit_price', 'total_price', 'discount'] as $field) {
+            if (array_key_exists($field, $input) && $input[$field] !== null && $input[$field] !== ''
+                && ! is_numeric($input[$field])) {
+                return ['error' => "El valor de {$field} no es un número válido."];
+            }
+        }
+
+        $hasUnit  = isset($input['unit_price'])  && is_numeric($input['unit_price']);
+        $hasTotal = isset($input['total_price']) && is_numeric($input['total_price']);
+        if ($hasUnit && $hasTotal) {
+            return ['error' => 'Especifica solo el precio por unidad o el total del renglón, no ambos.'];
+        }
+
         $unitPriceCents = null;
-        if (isset($input['unit_price'])) {
+        if ($hasUnit) {
             $unitPriceCents = (int) round(((float) $input['unit_price']) * 100);
-        } elseif (isset($input['total_price'])) {
+        } elseif ($hasTotal) {
             $unitPriceCents = (int) round(((float) $input['total_price']) * 100 / $qty);
         }
 
         $discountCents = isset($input['discount']) ? (int) round(((float) $input['discount']) * 100) : 0;
-        $method = (($input['payment_method'] ?? 'cash') === 'transfer') ? PaymentMethod::TRANSFER : PaymentMethod::CASH;
+        $methodRaw = strtolower(trim((string) ($input['payment_method'] ?? 'cash')));
+        $method = $methodRaw === 'transfer' ? PaymentMethod::TRANSFER : PaymentMethod::CASH;
 
         try {
             $result = $this->quickSale->sell($product, $qty, $unitPriceCents, $method, $discountCents, $context->user->id);

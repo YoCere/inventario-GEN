@@ -96,4 +96,40 @@ class SellProductToolTest extends TestCase
 
         $this->assertArrayHasKey('error', $result);
     }
+
+    public function test_rejects_non_numeric_price(): void
+    {
+        $this->stockedProduct('Cable Huawei V8', 2000, 1800, 10);
+
+        $result = $this->tool->execute([
+            'product' => 'Cable Huawei V8', 'quantity' => 1, 'unit_price' => 'quince',
+        ], $this->context);
+
+        $this->assertArrayHasKey('error', $result);
+        $this->assertSame(0, \App\Models\Sale::count());
+    }
+
+    public function test_rejects_both_unit_and_total_price(): void
+    {
+        $this->stockedProduct('Funda A01', 3000, 1000, 10);
+
+        $result = $this->tool->execute([
+            'product' => 'Funda A01', 'quantity' => 1, 'unit_price' => 20, 'total_price' => 25,
+        ], $this->context);
+
+        $this->assertArrayHasKey('error', $result);
+        $this->assertSame(0, \App\Models\Sale::count());
+    }
+
+    public function test_surfaces_sell_error_as_error_key_on_insufficient_stock(): void
+    {
+        $this->stockedProduct('Mica X', 1000, 500, 2);
+
+        $result = $this->tool->execute([
+            'product' => 'Mica X', 'quantity' => 99,
+        ], $this->context);
+
+        $this->assertArrayHasKey('error', $result);
+        $this->assertArrayNotHasKey('ok', $result);
+    }
 }
