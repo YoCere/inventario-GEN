@@ -27,6 +27,7 @@ class BotHandler
         protected WhisperService $whisperService,
         protected VisionService $visionService,
         protected ReminderHandler $reminderHandler,
+        protected \App\Services\QuickSaleService $quickSale,
     ) {}
 
     public function dispatch(array $update): void
@@ -594,7 +595,7 @@ class BotHandler
         }
 
         try {
-            $sale = app(\App\Services\QuickSaleService::class)->voidLast($user);
+            $sale = $this->quickSale->voidLast($user);
             $this->telegram->sendMessage($chatId, "↩️ Venta <b>{$sale->invoice_number}</b> anulada. Stock restaurado.");
         } catch (\RuntimeException $e) {
             $this->telegram->sendMessage($chatId, "❌ " . $e->getMessage());
