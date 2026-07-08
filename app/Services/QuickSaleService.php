@@ -40,6 +40,10 @@ class QuickSaleService
         if ($qty > $product->quantity) {
             throw new \RuntimeException("Stock insuficiente: hay {$product->quantity} disponibles.");
         }
+        if ($unitPriceCents !== null && $unitPriceCents < 0) {
+            throw new \RuntimeException('El precio no puede ser negativo.');
+        }
+        $discountCents = max(0, $discountCents);
 
         // SaleService::createSale ignora items[].unit_price: cotiza con selling_price y
         // resta el `discount` por unidad. Traducimos el precio negociado (más barato) a
@@ -73,7 +77,13 @@ class QuickSaleService
             ]],
         ]);
 
-        $sale = $this->sales->createSale($saleData);
+        try {
+            $sale = $this->sales->createSale($saleData);
+        } catch (\App\Exceptions\SaleException $e) {
+            // Normaliza a RuntimeException para que los callers (tools IA) capturen un solo tipo.
+            // Cubre p.ej. stock insuficiente a nivel de UBICACIÓN (el pre-check usa el agregado).
+            throw new \RuntimeException($e->getMessage(), 0, $e);
+        }
 
         return ['sale' => $sale, 'below_cost' => $belowCost];
     }

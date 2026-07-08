@@ -87,4 +87,17 @@ class QuickSaleServiceSellTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $this->service->sell($this->product, 99, null, PaymentMethod::CASH, 0, $this->seller->id);
     }
+
+    public function test_sell_normalizes_saleservice_exception_to_runtime(): void
+    {
+        // La ubicación real solo tiene 5, pero product->quantity (agregado) sigue en 10,
+        // así el pre-check pasa para qty 7 y createSale (por ubicación) lanza SaleException.
+        ProductStock::where('product_id', $this->product->id)->update(['quantity' => 5]);
+        $this->product->update(['quantity' => 10]);
+
+        $this->assertSame(10, $this->product->fresh()->quantity);
+
+        $this->expectException(\RuntimeException::class);
+        $this->service->sell($this->product->fresh(), 7, null, PaymentMethod::CASH, 0, $this->seller->id);
+    }
 }
