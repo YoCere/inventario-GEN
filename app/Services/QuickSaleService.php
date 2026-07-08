@@ -87,4 +87,42 @@ class QuickSaleService
 
         return ['sale' => $sale, 'below_cost' => $belowCost];
     }
+
+    /**
+     * Anula una venta completada aplicando las reglas de permiso/ventana.
+     * Reutiliza SaleService::cancelSale (restaura stock + revierte asientos).
+     */
+    public function void(Sale $sale, User $actor): Sale
+    {
+        if ($sale->status !== SaleStatus::COMPLETED) {
+            throw new \RuntimeException('Esa venta no se puede deshacer (ya anulada o no completada).');
+        }
+
+        if (! $actor->isAdmin()) {
+            if ((int) $sale->created_by !== (int) $actor->id) {
+                throw new \RuntimeException('Solo puedes deshacer tus propias ventas.');
+            }
+            if ($sale->created_at->lt(now()->subMinutes(self::UNDO_WINDOW_MINUTES))) {
+                throw new \RuntimeException('Pasó la ventana de ' . self::UNDO_WINDOW_MINUTES . ' minutos para deshacer esta venta.');
+            }
+        }
+
+        return $this->sales->cancelSale($sale, 'Deshacer venta rápida');
+    }
+
+    /** Anula la última venta completada del actor (o la última global si es admin). */
+    public function voidLast(User $actor): Sale
+    {
+        $query = Sale::where('status', SaleStatus::COMPLETED->value);
+        if (! $actor->isAdmin()) {
+            $query->where('created_by', $actor->id);
+        }
+
+        $sale = $query->latest('id')->first();
+        if (! $sale) {
+            throw new \RuntimeException('No hay una venta reciente para deshacer.');
+        }
+
+        return $this->void($sale, $actor);
+    }
 }
