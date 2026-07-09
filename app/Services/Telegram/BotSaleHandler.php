@@ -305,4 +305,139 @@ class BotSaleHandler
             );
         }
     }
+
+    public function tryQuickSell(string $chatId, string $text): bool
+    {
+        $cmd = app(\App\Services\Sales\SaleCommandParser::class)->parse($text);
+        if ($cmd === null) {
+            return false;
+        }
+
+        $user = app(\App\Services\Telegram\BotAuthHandler::class)->getAuthenticatedUser($chatId);
+        if (! $user) {
+            $this->telegram->sendMessage($chatId, "❌ Sesión no válida.");
+            return true;
+        }
+
+        if ($cmd->position !== null) {
+            return $this->sellByPosition($chatId, $cmd, $user);
+        }
+
+        $results = app(\App\Services\Messaging\ProductSearchService::class)
+            ->searchProducts($cmd->productQuery, publicOnly: false);
+
+        if ($results->isEmpty()) {
+            $this->telegram->sendMessage($chatId, "❌ No encontré ningún producto para \"<i>{$cmd->productQuery}</i>\".");
+            return true;
+        }
+
+        if ($results->count() > 1) {
+            $this->promptDirectPick($chatId, $cmd, $results);
+            return true;
+        }
+
+        $this->completeDirectSale($chatId, $results->first(), $cmd, $user->id);
+        return true;
+    }
+
+    private function promptDirectPick(string $chatId, \App\DTOs\ParsedSaleCommand $cmd, $results): void
+    {
+        $ids = [];
+        $msg = "📦 <b>¿Cuál?</b>\n\n";
+        foreach ($results->take(6)->values() as $idx => $p) {
+            $n = $idx + 1;
+            $ids[(string) $n] = $p->id;
+            $price = number_format($p->selling_price / 100, 2);
+            $msg .= "{$n}. <b>{$p->name}</b> — Bs {$price}\n";
+        }
+        $msg .= "\n<i>Responde el número.</i>";
+
+        $conv = TelegramConversation::getOrCreate($chatId);
+        $conv->update([
+            'step' => 'venta_directa:elegir',
+            'data' => [
+                'ids'         => $ids,
+                'quantity'    => $cmd->quantity,
+                'unit_price'  => $cmd->unitPriceCents,
+                'total_price' => $cmd->totalPriceCents,
+                'method'      => $cmd->method->value,
+            ],
+            'expires_at' => now()->addMinutes(5),
+        ]);
+
+        $this->telegram->sendMessage($chatId, $msg);
+    }
+
+    public function handleDirectPick(string $chatId, TelegramConversation $conv, string $text): void
+    {
+        $data = $conv->data ?? [];
+        $id = ($data['ids'] ?? [])[trim($text)] ?? null;
+        if (! $id) {
+            $this->telegram->sendMessage($chatId, "❌ Número no válido. Responde uno de la lista o /cancelar.");
+            return;
+        }
+
+        $product = \App\Models\Product::find($id);
+        $user = app(\App\Services\Telegram\BotAuthHandler::class)->getAuthenticatedUser($chatId);
+        $conv->delete();
+
+        if (! $product || ! $user) {
+            $this->telegram->sendMessage($chatId, "❌ No pude completar la venta.");
+            return;
+        }
+
+        $cmd = new \App\DTOs\ParsedSaleCommand(
+            quantity: (int) ($data['quantity'] ?? 1),
+            unitPriceCents: $data['unit_price'] ?? null,
+            totalPriceCents: $data['total_price'] ?? null,
+            method: \App\Enums\PaymentMethod::from($data['method'] ?? 'cash'),
+            productQuery: null,
+            position: null,
+        );
+
+        $this->completeDirectSale($chatId, $product, $cmd, $user->id);
+    }
+
+    private function completeDirectSale(string $chatId, \App\Models\Product $product, \App\DTOs\ParsedSaleCommand $cmd, int $actorId): void
+    {
+        $unitPriceCents = $cmd->unitPriceCents;
+        if ($unitPriceCents === null && $cmd->totalPriceCents !== null) {
+            $unitPriceCents = (int) round($cmd->totalPriceCents / max(1, $cmd->quantity));
+        }
+
+        try {
+            $result = app(\App\Services\QuickSaleService::class)->sell(
+                $product, $cmd->quantity, $unitPriceCents, $cmd->method, 0, $actorId
+            );
+        } catch (\RuntimeException $e) {
+            $this->telegram->sendMessage($chatId, "❌ " . $e->getMessage());
+            return;
+        }
+
+        $sale = $result['sale'];
+        $total = number_format($sale->total / 100, 2);
+        $metodo = $cmd->method === \App\Enums\PaymentMethod::TRANSFER ? 'transferencia' : 'contado';
+
+        $msg = "✅ <b>Vendido</b>: {$cmd->quantity} × " . htmlspecialchars($product->name, ENT_QUOTES, 'UTF-8')
+            . " = <b>Bs {$total}</b> ({$metodo})\n";
+        if ($result['below_cost']) {
+            $msg .= "⚠️ Vendido por debajo del costo.\n";
+        }
+        if ($result['price_capped']) {
+            $msg .= "⚠️ El precio pedido superaba la lista; se cobró al precio de lista.\n";
+        }
+        $msg .= "Responde <b>/deshacer</b> para anular.";
+
+        $this->telegram->sendMessage($chatId, $msg);
+    }
+
+    /**
+     * TODO(Task 3): implementar venta por posición (ordinal / número de resultado
+     * previo). Stub temporal para que tryQuickSell compile; Task 3 lo reemplaza.
+     */
+    private function sellByPosition(string $chatId, \App\DTOs\ParsedSaleCommand $cmd, \App\Models\User $user): bool
+    {
+        $this->telegram->sendMessage($chatId, "Posicional pendiente.");
+        return true;
+    }
 }

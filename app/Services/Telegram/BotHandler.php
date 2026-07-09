@@ -136,7 +136,8 @@ class BotHandler
                     str_starts_with($conversation->step, 'venta_rapida:') ||
                     str_starts_with($conversation->step, 'devolver:') ||
                     str_starts_with($conversation->step, 'recordar:') ||
-                    $conversation->step === 'recordatorios:gestionar'
+                    $conversation->step === 'recordatorios:gestionar' ||
+                    $conversation->step === 'venta_directa:elegir'
                 );
                 if ($text === '/cancelar' && $isActiveFlow) {
                     $conversation->delete();
@@ -214,10 +215,18 @@ class BotHandler
                 } elseif (str_starts_with($conversation->step, 'recordar:') || $conversation->step === 'recordatorios:gestionar') {
                     $this->reminderHandler->handle($chatId, $message);
                     return;
+                } elseif ($conversation->step === 'venta_directa:elegir') {
+                    $this->saleHandler->handleDirectPick($chatId, $conversation, trim($text));
+                    return;
                 }
             }
 
             // Free text routing
+            // Interceptor de venta directa (determinista) antes del agente IA.
+            if ($this->saleHandler->tryQuickSell($chatId, $text)) {
+                return;
+            }
+
             if (strtolower($text) === 'vender') {
                 Log::info('User requested quick sale', ['chatId' => $chatId]);
                 $this->handleQuickSaleFromSearch($chatId);
@@ -907,6 +916,10 @@ class BotHandler
                     return;
                 }
                 // busqueda:* — fall through to normal search routing below
+            }
+
+            if ($this->saleHandler->tryQuickSell($chatId, $transcript)) {
+                return;
             }
 
             // Same routing as text — product search first, agent only for conversational queries
