@@ -203,6 +203,10 @@ class BotHandler
                 } elseif ($conversation->step === 'busqueda:multiple') {
                     // Handle number selection from multiple results
                     $text = trim($message['text'] ?? '');
+                    // Comando de venta completo intercepta antes de la selección numérica.
+                    if ($this->saleHandler->tryQuickSell($chatId, $text)) {
+                        return;
+                    }
                     $this->handleMultipleResultSelection($chatId, $conversation, $text);
                     return;
                 } elseif ($conversation->step === 'reportes:menu') {
@@ -216,6 +220,12 @@ class BotHandler
                     $this->reminderHandler->handle($chatId, $message);
                     return;
                 } elseif ($conversation->step === 'venta_directa:elegir') {
+                    // Un comando de venta completo ("vende 2 del tercero a 20") debe
+                    // interceptarse ANTES del handler de selección; una respuesta simple
+                    // ("2"/"dos") no dispara SELL_VERB y cae al handleDirectPick.
+                    if ($this->saleHandler->tryQuickSell($chatId, $text)) {
+                        return;
+                    }
                     $this->saleHandler->handleDirectPick($chatId, $conversation, trim($text));
                     return;
                 }
@@ -916,6 +926,9 @@ class BotHandler
                     return;
                 }
                 if ($step === 'venta_directa:elegir') {
+                    if ($this->saleHandler->tryQuickSell($chatId, $transcript)) {
+                        return;
+                    }
                     $this->saleHandler->handleDirectPick($chatId, $activeConv, $transcript);
                     return;
                 }
