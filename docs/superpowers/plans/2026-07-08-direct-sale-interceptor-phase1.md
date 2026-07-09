@@ -673,8 +673,13 @@ En `app/Services/Telegram/BotSaleHandler.php`:
     /** Vende el candidato en la posición N de la lista pendiente (foto/desambiguación). */
     private function sellByPosition(string $chatId, \App\DTOs\ParsedSaleCommand $cmd, \App\Models\User $user): bool
     {
+        // Excluye listas expiradas (mismo criterio que BotHandler::dispatch): en modo polling
+        // una lista vieja podría revivir y vender el producto equivocado.
         $conv = TelegramConversation::where('chat_id', $chatId)
             ->whereIn('step', ['busqueda:multiple', 'venta_directa:elegir'])
+            ->where(function ($q) {
+                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
             ->first();
 
         if (! $conv) {
@@ -688,9 +693,8 @@ En `app/Services/Telegram/BotSaleHandler.php`:
         if ($conv->step === 'busqueda:multiple') {
             $results = array_values($data['results'] ?? []);
             $productId = $results[$cmd->position - 1]['id'] ?? null;
-        } else { // venta_directa:elegir
-            $ids = array_values($data['ids'] ?? []);
-            $productId = $ids[$cmd->position - 1] ?? null;
+        } else { // venta_directa:elegir — ids con claves "1","2",... = la posición
+            $productId = ($data['ids'] ?? [])[(string) $cmd->position] ?? null;
         }
 
         if (! $productId) {
