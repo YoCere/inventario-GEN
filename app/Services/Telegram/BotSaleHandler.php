@@ -453,6 +453,9 @@ class BotSaleHandler
     {
         $conv = TelegramConversation::where('chat_id', $chatId)
             ->whereIn('step', ['busqueda:multiple', 'venta_directa:elegir'])
+            ->where(function ($q) {
+                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
             ->first();
 
         if (! $conv) {
@@ -466,8 +469,8 @@ class BotSaleHandler
             $results = array_values($data['results'] ?? []);
             $productId = $results[$cmd->position - 1]['id'] ?? null;
         } else { // venta_directa:elegir
-            $ids = array_values($data['ids'] ?? []);
-            $productId = $ids[$cmd->position - 1] ?? null;
+            // Los ids se guardan con claves "1","2",... = la posición mostrada al usuario.
+            $productId = ($data['ids'] ?? [])[(string) $cmd->position] ?? null;
         }
 
         if (! $productId) {

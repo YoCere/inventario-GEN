@@ -160,4 +160,31 @@ class DirectSaleTest extends TestCase
         $this->assertTrue($handled);
         $this->assertSame(0, Sale::count());
     }
+
+    public function test_positional_sale_from_pending_disambiguation_list(): void
+    {
+        $p1 = $this->stocked('Cargador A', 4000, 1000, 10);
+        $p2 = $this->stocked('Cargador B', 4000, 1000, 10);
+
+        \App\Models\TelegramConversation::getOrCreate('555')->update([
+            'step' => 'venta_directa:elegir',
+            'data' => [
+                'ids'         => ['1' => $p1->id, '2' => $p2->id],
+                'quantity'    => 1,
+                'unit_price'  => null,
+                'total_price' => null,
+                'method'      => 'cash',
+            ],
+            'expires_at' => now()->addMinutes(5),
+        ]);
+
+        $handled = $this->handler->tryQuickSell('555', 'vende 2 del segundo a 30');
+
+        $this->assertTrue($handled);
+        $sale = \App\Models\Sale::first();
+        $this->assertNotNull($sale);
+        $this->assertSame(6000, $sale->total);          // 2 × 3000
+        $this->assertSame(8, $p2->fresh()->quantity);   // vendió el segundo (Cargador B)
+        $this->assertSame(10, $p1->fresh()->quantity);  // el primero intacto
+    }
 }
