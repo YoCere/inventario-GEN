@@ -113,4 +113,51 @@ class DirectSaleTest extends TestCase
         $this->assertNotNull($sale);
         $this->assertSame(8000, $sale->total); // 2 × 4000 (segundo)
     }
+
+    public function test_positional_sale_from_pending_photo_list(): void
+    {
+        // Precio de lista alto (Bs 40) para que el precio pedido (Bs 30) quede por
+        // debajo y no dispare el cap de QuickSaleService::sell() (nunca cobra sobre lista).
+        $p1 = $this->stocked('Figura Mario', 4000, 1000, 10);
+        $p2 = $this->stocked('Figura Luigi', 4000, 1000, 10);
+
+        TelegramConversation::getOrCreate('555')->update([
+            'step' => 'busqueda:multiple',
+            'data' => ['results' => [
+                ['id' => $p1->id, 'name' => 'Figura Mario'],
+                ['id' => $p2->id, 'name' => 'Figura Luigi'],
+            ]],
+            'expires_at' => now()->addMinutes(5),
+        ]);
+
+        $handled = $this->handler->tryQuickSell('555', 'vende 3 del segundo a 30');
+
+        $this->assertTrue($handled);
+        $sale = Sale::first();
+        $this->assertNotNull($sale);
+        $this->assertSame(9000, $sale->total); // 3 × 3000
+        $this->assertSame(7, $p2->fresh()->quantity); // vendió el SEGUNDO (Luigi)
+        $this->assertSame(10, $p1->fresh()->quantity); // el primero intacto
+    }
+
+    public function test_positional_out_of_range_no_sale(): void
+    {
+        $p1 = $this->stocked('Figura Mario', 2000, 1000, 10);
+        TelegramConversation::getOrCreate('555')->update([
+            'step' => 'busqueda:multiple',
+            'data' => ['results' => [['id' => $p1->id, 'name' => 'Figura Mario']]],
+            'expires_at' => now()->addMinutes(5),
+        ]);
+
+        $handled = $this->handler->tryQuickSell('555', 'vende 1 del quinto');
+        $this->assertTrue($handled);
+        $this->assertSame(0, Sale::count());
+    }
+
+    public function test_positional_without_pending_list_no_sale(): void
+    {
+        $handled = $this->handler->tryQuickSell('555', 'vende 1 del segundo');
+        $this->assertTrue($handled);
+        $this->assertSame(0, Sale::count());
+    }
 }

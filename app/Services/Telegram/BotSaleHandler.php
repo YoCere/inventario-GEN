@@ -448,13 +448,41 @@ class BotSaleHandler
         $this->telegram->sendMessage($chatId, $msg);
     }
 
-    /**
-     * TODO(Task 3): implementar venta por posición (ordinal / número de resultado
-     * previo). Stub temporal para que tryQuickSell compile; Task 3 lo reemplaza.
-     */
+    /** Vende el candidato en la posición N de la lista pendiente (foto/desambiguación). */
     private function sellByPosition(string $chatId, \App\DTOs\ParsedSaleCommand $cmd, \App\Models\User $user): bool
     {
-        $this->telegram->sendMessage($chatId, "Posicional pendiente.");
+        $conv = TelegramConversation::where('chat_id', $chatId)
+            ->whereIn('step', ['busqueda:multiple', 'venta_directa:elegir'])
+            ->first();
+
+        if (! $conv) {
+            $this->telegram->sendMessage($chatId, "❌ No hay una lista para elegir. Busca el producto o saca una foto primero.");
+            return true;
+        }
+
+        $data = $conv->data ?? [];
+        $productId = null;
+        if ($conv->step === 'busqueda:multiple') {
+            $results = array_values($data['results'] ?? []);
+            $productId = $results[$cmd->position - 1]['id'] ?? null;
+        } else { // venta_directa:elegir
+            $ids = array_values($data['ids'] ?? []);
+            $productId = $ids[$cmd->position - 1] ?? null;
+        }
+
+        if (! $productId) {
+            $this->telegram->sendMessage($chatId, "❌ No hay un producto en la posición {$cmd->position} de la lista.");
+            return true;
+        }
+
+        $product = \App\Models\Product::find($productId);
+        if (! $product) {
+            $this->telegram->sendMessage($chatId, "❌ Ese producto ya no existe.");
+            return true;
+        }
+
+        $conv->delete();
+        $this->completeDirectSale($chatId, $product, $cmd, $user->id);
         return true;
     }
 }
