@@ -331,6 +331,13 @@ class BotSaleHandler
             return $this->sellByPosition($chatId, $cmd, $user);
         }
 
+        // Orden por NOMBRE: abandona cualquier lista de elección pendiente. Si no,
+        // un "3" posterior no relacionado vendería de una lista vieja (venta equivocada).
+        // (No aplica a la vía posicional: sellByPosition necesita esa lista.)
+        TelegramConversation::where('chat_id', $chatId)
+            ->whereIn('step', ['busqueda:multiple', 'venta_directa:elegir'])
+            ->delete();
+
         $results = $this->productSearch
             ->searchProducts($cmd->productQuery, publicOnly: false);
 
