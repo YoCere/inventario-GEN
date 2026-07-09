@@ -19,6 +19,9 @@ class BotSaleHandler
         protected TelegramService $telegram,
         protected SaleService $saleService,
         protected BotAuthHandler $authHandler,
+        protected \App\Services\Sales\SaleCommandParser $saleParser,
+        protected \App\Services\Messaging\ProductSearchService $productSearch,
+        protected \App\Services\QuickSaleService $quickSale,
     ) {}
 
     public function handle(string $chatId, array $message): void
@@ -306,14 +309,19 @@ class BotSaleHandler
         }
     }
 
+    /**
+     * Interceptor de venta directa. La DETECCIÓN de intención es determinista
+     * (SaleCommandParser usa regex, sin LLM), pero la RESOLUCIÓN del producto vía
+     * ProductSearchService puede recurrir a IA en su capa 3 de fallback fuzzy.
+     */
     public function tryQuickSell(string $chatId, string $text): bool
     {
-        $cmd = app(\App\Services\Sales\SaleCommandParser::class)->parse($text);
+        $cmd = $this->saleParser->parse($text);
         if ($cmd === null) {
             return false;
         }
 
-        $user = app(\App\Services\Telegram\BotAuthHandler::class)->getAuthenticatedUser($chatId);
+        $user = $this->authHandler->getAuthenticatedUser($chatId);
         if (! $user) {
             $this->telegram->sendMessage($chatId, "❌ Sesión no válida.");
             return true;
@@ -323,7 +331,7 @@ class BotSaleHandler
             return $this->sellByPosition($chatId, $cmd, $user);
         }
 
-        $results = app(\App\Services\Messaging\ProductSearchService::class)
+        $results = $this->productSearch
             ->searchProducts($cmd->productQuery, publicOnly: false);
 
         if ($results->isEmpty()) {
@@ -348,7 +356,8 @@ class BotSaleHandler
             $n = $idx + 1;
             $ids[(string) $n] = $p->id;
             $price = number_format($p->selling_price / 100, 2);
-            $msg .= "{$n}. <b>{$p->name}</b> — Bs {$price}\n";
+            $name = htmlspecialchars($p->name, ENT_QUOTES, 'UTF-8');
+            $msg .= "{$n}. <b>{$name}</b> — Bs {$price}\n";
         }
         $msg .= "\n<i>Responde el número.</i>";
 
@@ -371,14 +380,22 @@ class BotSaleHandler
     public function handleDirectPick(string $chatId, TelegramConversation $conv, string $text): void
     {
         $data = $conv->data ?? [];
-        $id = ($data['ids'] ?? [])[trim($text)] ?? null;
+        // Tolerante a número hablado desde voz ("dos" → 2) además del dígito escrito.
+        $key = trim($text);
+        if (! isset(($data['ids'] ?? [])[$key])) {
+            $n = \App\Support\NumberParser::extractInt($text);
+            if ($n !== null) {
+                $key = (string) $n;
+            }
+        }
+        $id = ($data['ids'] ?? [])[$key] ?? null;
         if (! $id) {
             $this->telegram->sendMessage($chatId, "❌ Número no válido. Responde uno de la lista o /cancelar.");
             return;
         }
 
         $product = \App\Models\Product::find($id);
-        $user = app(\App\Services\Telegram\BotAuthHandler::class)->getAuthenticatedUser($chatId);
+        $user = $this->authHandler->getAuthenticatedUser($chatId);
         $conv->delete();
 
         if (! $product || ! $user) {
@@ -406,7 +423,7 @@ class BotSaleHandler
         }
 
         try {
-            $result = app(\App\Services\QuickSaleService::class)->sell(
+            $result = $this->quickSale->sell(
                 $product, $cmd->quantity, $unitPriceCents, $cmd->method, 0, $actorId
             );
         } catch (\RuntimeException $e) {

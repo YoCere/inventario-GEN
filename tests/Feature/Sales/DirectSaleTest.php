@@ -98,4 +98,19 @@ class DirectSaleTest extends TestCase
         $this->assertTrue($handled);
         $this->assertSame(0, Sale::count());
     }
+
+    public function test_handle_direct_pick_accepts_spoken_number(): void
+    {
+        $this->stocked('Cargador Samsung 25w', 5000, 3000, 5);
+        $this->stocked('Cargador Samsung 45w', 8000, 5000, 5);
+
+        $this->handler->tryQuickSell('555', 'vende 2 cargador samsung a 40');
+        $conv = \App\Models\TelegramConversation::where('chat_id', '555')->first();
+
+        $this->handler->handleDirectPick('555', $conv, 'dos'); // voz transcribe "dos"
+
+        $sale = \App\Models\Sale::first();
+        $this->assertNotNull($sale);
+        $this->assertSame(8000, $sale->total); // 2 × 4000 (segundo)
+    }
 }

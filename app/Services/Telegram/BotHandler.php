@@ -915,6 +915,10 @@ class BotHandler
                     $this->agentHandler->handleVoice($chatId, $transcript);
                     return;
                 }
+                if ($step === 'venta_directa:elegir') {
+                    $this->saleHandler->handleDirectPick($chatId, $activeConv, $transcript);
+                    return;
+                }
                 // busqueda:* — fall through to normal search routing below
             }
 
