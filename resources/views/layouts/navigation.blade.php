@@ -93,6 +93,7 @@
                         </x-nav-dropdown>
 
                         <!-- Finance Dropdown -->
+                        @canany(['finance.view','finance.accounting','assets.manage','loans.manage','budgets.manage','production.manage'])
                         <x-nav-dropdown active="{{ request()->routeIs(['finance.*']) }}">
                             <x-slot name="icon">
                                 <x-heroicon-o-currency-dollar class="mr-2 h-4 w-4" />
@@ -101,9 +102,12 @@
                                 Finanzas
                             </x-slot>
                             <x-slot name="content">
+                                @can('finance.view')
                                 <x-dropdown-link :href="route('finance.index')" :active="request()->routeIs('finance.index')">
                                     Resumen financiero
                                 </x-dropdown-link>
+                                @endcan
+                                @can('finance.accounting')
                                 <div class="my-1 border-t border-border"></div>
                                 <div class="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Contabilidad</div>
                                 <x-dropdown-link :href="route('finance.chart-of-accounts.index')" :active="request()->routeIs('finance.chart-of-accounts.index')">
@@ -115,13 +119,14 @@
                                 <x-dropdown-link :href="route('finance.statements.index')" :active="request()->routeIs('finance.statements.index')">
                                     Estados financieros
                                 </x-dropdown-link>
-                                @if(auth()->user()->isAdmin())
                                 <x-dropdown-link :href="route('finance.trial-balance')" :active="request()->routeIs('finance.trial-balance')">
                                     Balance de Sumas y Saldos
                                 </x-dropdown-link>
                                 <x-dropdown-link :href="route('finance.worksheet')" :active="request()->routeIs('finance.worksheet')">
                                     Hoja Teórica
                                 </x-dropdown-link>
+                                @endcan
+                                @can('assets.manage')
                                 <div class="my-1 border-t border-border"></div>
                                 <div class="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Activos Fijos</div>
                                 <x-dropdown-link :href="route('finance.asset-categories.index')" :active="request()->routeIs('finance.asset-categories.index')">
@@ -130,16 +135,22 @@
                                 <x-dropdown-link :href="route('finance.fixed-assets.index')" :active="request()->routeIs('finance.fixed-assets.*')">
                                     Activos Fijos
                                 </x-dropdown-link>
+                                @endcan
+                                @can('loans.manage')
                                 <div class="my-1 border-t border-border"></div>
                                 <div class="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Préstamos</div>
                                 <x-dropdown-link :href="route('finance.loans.index')" :active="request()->routeIs('finance.loans.*')">
                                     Préstamos
                                 </x-dropdown-link>
+                                @endcan
+                                @can('budgets.manage')
                                 <div class="my-1 border-t border-border"></div>
                                 <div class="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Presupuestos</div>
                                 <x-dropdown-link :href="route('finance.budgets.index')" :active="request()->routeIs('finance.budgets.*')">
                                     Presupuestos
                                 </x-dropdown-link>
+                                @endcan
+                                @can('production.manage')
                                 <div class="my-1 border-t border-border"></div>
                                 <div class="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Producción</div>
                                 <x-dropdown-link :href="route('finance.boms.index')" :active="request()->routeIs('finance.boms.*')">
@@ -148,7 +159,8 @@
                                 <x-dropdown-link :href="route('finance.production.index')" :active="request()->routeIs('finance.production.*')">
                                     Producción
                                 </x-dropdown-link>
-                                @endif
+                                @endcan
+                                @can('finance.view')
                                 <div class="my-1 border-t border-border"></div>
                                 <div class="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Tesorería</div>
                                 <x-dropdown-link :href="route('finance.transactions.index')" :active="request()->routeIs('finance.transactions.index')">
@@ -157,8 +169,10 @@
                                 <x-dropdown-link :href="route('finance.categories.index')" :active="request()->routeIs('finance.categories.index')">
                                     Categorías
                                 </x-dropdown-link>
+                                @endcan
                             </x-slot>
                         </x-nav-dropdown>
+                        @endcanany
 
                         <!-- Users Dropdown (Admin Only) -->
                         @if(auth()->user()->isAdmin())
@@ -398,6 +412,7 @@
                         </div>
 
                         <!-- Mobile Finance Accordion -->
+                        @canany(['finance.view','finance.accounting','assets.manage','loans.manage','budgets.manage','production.manage'])
                         <div x-data="{ expanded: {{ request()->routeIs(['finance.*']) ? 'true' : 'false' }} }" class="border-b-0">
                             <button @click="expanded = !expanded" class="flex flex-1 items-center justify-between py-0 font-semibold transition-all hover:underline [&[data-state=open]>svg]:rotate-180 w-full text-left text-md {{ request()->routeIs(['finance.*']) ? 'text-primary' : '' }}">
                                 Finanzas
@@ -405,31 +420,44 @@
                             </button>
                             <div x-show="expanded" x-collapse>
                                 <div class="mt-2 flex flex-col gap-2 pl-4 border-l border-border ml-2">
+                                    @can('finance.view')
                                     <a class="text-sm font-semibold py-1 {{ request()->routeIs('finance.index') ? 'text-primary' : '' }}" href="{{ route('finance.index') }}">Resumen financiero</a>
+                                    @endcan
+                                    @can('finance.accounting')
                                     <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mt-2">Contabilidad</p>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.chart-of-accounts.index') ? 'text-primary' : '' }}" href="{{ route('finance.chart-of-accounts.index') }}">Plan de cuentas</a>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.journal-entries.index') ? 'text-primary' : '' }}" href="{{ route('finance.journal-entries.index') }}">Libro diario</a>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.statements.index') ? 'text-primary' : '' }}" href="{{ route('finance.statements.index') }}">Estados financieros</a>
-                                    @if(auth()->user()->isAdmin())
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.trial-balance') ? 'text-primary' : '' }}" href="{{ route('finance.trial-balance') }}">Balance de Sumas y Saldos</a>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.worksheet') ? 'text-primary' : '' }}" href="{{ route('finance.worksheet') }}">Hoja Teórica</a>
+                                    @endcan
+                                    @can('assets.manage')
                                     <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mt-2">Activos Fijos</p>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.asset-categories.index') ? 'text-primary' : '' }}" href="{{ route('finance.asset-categories.index') }}">Categorías de Activo</a>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.fixed-assets.*') ? 'text-primary' : '' }}" href="{{ route('finance.fixed-assets.index') }}">Activos Fijos</a>
+                                    @endcan
+                                    @can('loans.manage')
                                     <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mt-2">Préstamos</p>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.loans.*') ? 'text-primary' : '' }}" href="{{ route('finance.loans.index') }}">Préstamos</a>
+                                    @endcan
+                                    @can('budgets.manage')
                                     <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mt-2">Presupuestos</p>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.budgets.*') ? 'text-primary' : '' }}" href="{{ route('finance.budgets.index') }}">Presupuestos</a>
+                                    @endcan
+                                    @can('production.manage')
                                     <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mt-2">Producción</p>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.boms.*') ? 'text-primary' : '' }}" href="{{ route('finance.boms.index') }}">Recetas (BOM)</a>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.production.*') ? 'text-primary' : '' }}" href="{{ route('finance.production.index') }}">Producción</a>
-                                    @endif
+                                    @endcan
+                                    @can('finance.view')
                                     <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mt-2">Tesorería</p>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.transactions.index') ? 'text-primary' : '' }}" href="{{ route('finance.transactions.index') }}">Transacciones</a>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.categories.index') ? 'text-primary' : '' }}" href="{{ route('finance.categories.index') }}">Categorias</a>
+                                    @endcan
                                 </div>
                             </div>
                         </div>
+                        @endcanany
 
                         <!-- Mobile Users Accordion (Admin Only) -->
                         @if(auth()->user()->isAdmin())
