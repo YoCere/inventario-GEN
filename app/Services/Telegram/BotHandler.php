@@ -475,7 +475,7 @@ class BotHandler
     protected function cmdHelp(string $chatId): void
     {
         $user = $this->authHandler->getAuthenticatedUser($chatId);
-        $isAdmin = $user && $user->isAdmin();
+        $canFinance = $user?->can('finance.view') ?? false;
 
         $message = "<b>📚 Ayuda - Comandos disponibles</b>\n\n" .
             "/stock — Ver productos en stock crítico\n" .
@@ -487,9 +487,9 @@ class BotHandler
             "/recordar — Crear un recordatorio personal\n" .
             "/recordatorios — Ver y cancelar tus recordatorios\n";
 
-        // Reportes solo para admin (gerencia financiera, no operación diaria)
-        if ($isAdmin) {
-            $message .= "/reportes — Reportes del negocio (libro diario, top ventas, ganancia, etc.) <i>admin</i>\n";
+        // Reportes gateados por permiso finance.view (gerencia financiera, no operación diaria)
+        if ($canFinance) {
+            $message .= "/reportes — Reportes del negocio (libro diario, top ventas, ganancia, etc.) <i>finanzas</i>\n";
         }
 
         $message .= "\n<b>🔐 Sesión</b>\n" .
@@ -622,7 +622,7 @@ class BotHandler
     }
 
     /**
-     * /reportes — gate admin-only. Staff no ve cifras financieras del negocio.
+     * /reportes — gate por permiso finance.view. Staff sin ese permiso no ve cifras financieras del negocio.
      */
     protected function cmdReports(string $chatId): void
     {
