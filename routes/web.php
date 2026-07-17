@@ -59,8 +59,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::view('warehouses', 'warehouses.index')->name('warehouses.index');
         Route::view('locations', 'locations.index')->name('locations.index');
         Route::view('transfers', 'transfers.index')->name('transfers.index');
-        Route::get('kardex', [KardexController::class, 'index'])->name('products.kardex.index');
-        Route::get('kardex/print', [KardexController::class, 'print'])->name('products.kardex.print');
+        Route::get('kardex', [KardexController::class, 'index'])->middleware('can:products.kardex')->name('products.kardex.index');
+        Route::get('kardex/print', [KardexController::class, 'print'])->middleware('can:products.kardex')->name('products.kardex.print');
     });
 
     // =========================================================================
@@ -137,6 +137,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::view('production', 'production.index')->name('production.index');
         });
 
+        // Redirects legacy: los targets ya gatean por su cuenta (kardex -> can:products.kardex
+        // en el grupo 'master'; payroll -> middleware('admin') en users/payroll), por eso
+        // estos dos redirects en si mismos no llevan middleware de permiso.
         Route::permanentRedirect('kardex', 'master/kardex')->name('kardex.legacy-redirect');
         Route::permanentRedirect('payroll', 'users/payroll')->name('payroll.legacy-redirect');
     });

@@ -75,4 +75,36 @@ class FinancePermissionsTest extends TestCase
         $this->actingAs($dev)->get(route('finance.index'))->assertOk();
         $this->actingAs($dev)->get(route('finance.production.index'))->assertOk();
     }
+
+    public function test_kardex_gated_by_products_kardex_permission(): void
+    {
+        $this->seed(\Database\Seeders\RolesAndPermissionsSeeder::class);
+        $staff = User::factory()->staff()->create();
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($staff)->get(route('products.kardex.index'))->assertForbidden();
+        $this->actingAs($admin)->get(route('products.kardex.index'))->assertOk();
+    }
+
+    public function test_each_finance_permission_isolates_its_group(): void
+    {
+        $this->seed(\Database\Seeders\RolesAndPermissionsSeeder::class);
+        $map = [
+            'finance.view'       => 'finance.index',
+            'finance.accounting' => 'finance.chart-of-accounts.index',
+            'assets.manage'      => 'finance.fixed-assets.index',
+            'loans.manage'       => 'finance.loans.index',
+            'budgets.manage'     => 'finance.budgets.index',
+            'production.manage'  => 'finance.production.index',
+        ];
+        foreach ($map as $perm => $routeName) {
+            $u = User::factory()->create();
+            $u->givePermissionTo($perm);
+
+            $this->actingAs($u)->get(route($routeName))->assertOk();      // entra a SU grupo
+            if ($perm !== 'finance.view') {
+                $this->actingAs($u)->get(route('finance.index'))->assertForbidden(); // no a otro
+            }
+        }
+    }
 }
