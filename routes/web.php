@@ -97,36 +97,47 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     Route::prefix('finance')->name('finance.')->group(function () {
-        Route::view('/', 'finance.index')->name('index');
-        Route::view('categories', 'finance-categories.index')->name('categories.index');
-        Route::view('transactions', 'finance-transactions.index')->name('transactions.index');
-        Route::view('chart-of-accounts', 'finance-chart-of-accounts.index')->name('chart-of-accounts.index');
-        Route::view('journal-entries', 'finance-journal-entries.index')->name('journal-entries.index');
-        Route::get('journal-entries/book', [\App\Http\Controllers\JournalBookController::class, 'index'])->name('journal-entries.book');
-        Route::get('journal-entries/book/print', [\App\Http\Controllers\JournalBookController::class, 'print'])->name('journal-entries.book.print');
+        Route::middleware('can:finance.view')->group(function () {
+            Route::view('/', 'finance.index')->name('index');
+            Route::view('categories', 'finance-categories.index')->name('categories.index');
+            Route::view('transactions', 'finance-transactions.index')->name('transactions.index');
+            Route::get('transactions/print/{printId}', [FinanceReportController::class, 'print'])->name('transactions.print');
+        });
+
+        Route::middleware('can:finance.accounting')->group(function () {
+            Route::view('chart-of-accounts', 'finance-chart-of-accounts.index')->name('chart-of-accounts.index');
+            Route::view('journal-entries', 'finance-journal-entries.index')->name('journal-entries.index');
+            Route::get('journal-entries/book', [\App\Http\Controllers\JournalBookController::class, 'index'])->name('journal-entries.book');
+            Route::get('journal-entries/book/print', [\App\Http\Controllers\JournalBookController::class, 'print'])->name('journal-entries.book.print');
+            Route::view('journal-entries/create', 'finance-journal-entries.create')->name('journal-entries.create');
+            Route::get('statements', [FinancialStatementController::class, 'index'])->name('statements.index');
+            Route::view('accounting-periods', 'finance-accounting-periods.index')->name('accounting-periods.index');
+            Route::view('trial-balance', 'accounting.trial-balance')->name('trial-balance');
+            Route::view('worksheet', 'accounting.worksheet')->name('worksheet');
+        });
+
+        Route::middleware('can:assets.manage')->group(function () {
+            Route::view('asset-categories', 'asset-categories.index')->name('asset-categories.index');
+            Route::view('fixed-assets', 'fixed-assets.index')->name('fixed-assets.index');
+            Route::view('fixed-assets/{assetId}/schedule', 'fixed-assets.schedule')->name('fixed-assets.schedule');
+        });
+
+        Route::middleware('can:loans.manage')->group(function () {
+            Route::view('loans', 'loans.index')->name('loans.index');
+            Route::view('loans/{loan}/schedule', 'loans.schedule')->name('loans.schedule');
+        });
+
+        Route::middleware('can:budgets.manage')->group(function () {
+            Route::view('budgets', 'budgets.index')->name('budgets.index');
+            Route::view('budgets/{budget}/show', 'budgets.show')->name('budgets.show');
+        });
+
+        Route::middleware('can:production.manage')->group(function () {
+            Route::view('boms', 'boms.index')->name('boms.index');
+            Route::view('production', 'production.index')->name('production.index');
+        });
+
         Route::permanentRedirect('kardex', 'master/kardex')->name('kardex.legacy-redirect');
-        Route::get('statements', [FinancialStatementController::class, 'index'])->name('statements.index');
-        Route::get('transactions/print/{printId}', [FinanceReportController::class, 'print'])->name('transactions.print');
-    });
-
-    Route::prefix('finance')->name('finance.')->middleware('admin')->group(function () {
-        Route::view('accounting-periods', 'finance-accounting-periods.index')->name('accounting-periods.index');
-        Route::view('journal-entries/create', 'finance-journal-entries.create')->name('journal-entries.create');
-        Route::view('trial-balance', 'accounting.trial-balance')->name('trial-balance');
-        Route::view('worksheet', 'accounting.worksheet')->name('worksheet');
-        Route::view('asset-categories', 'asset-categories.index')->name('asset-categories.index');
-        Route::view('fixed-assets', 'fixed-assets.index')->name('fixed-assets.index');
-        Route::view('fixed-assets/{assetId}/schedule', 'fixed-assets.schedule')->name('fixed-assets.schedule');
-
-        Route::view('loans', 'loans.index')->name('loans.index');
-        Route::view('loans/{loan}/schedule', 'loans.schedule')->name('loans.schedule');
-
-        Route::view('budgets', 'budgets.index')->name('budgets.index');
-        Route::view('budgets/{budget}/show', 'budgets.show')->name('budgets.show');
-
-        Route::view('boms', 'boms.index')->name('boms.index');
-        Route::view('production', 'production.index')->name('production.index');
-
         Route::permanentRedirect('payroll', 'users/payroll')->name('payroll.legacy-redirect');
     });
 

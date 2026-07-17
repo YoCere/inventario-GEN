@@ -36,4 +36,43 @@ class FinancePermissionsTest extends TestCase
             $this->assertTrue($developer->hasPermissionTo($perm), "developer (via migración) debe tener {$perm}");
         }
     }
+
+    public function test_staff_cannot_access_finance_routes(): void
+    {
+        $this->seed(\Database\Seeders\RolesAndPermissionsSeeder::class);
+        $staff = User::factory()->staff()->create();
+
+        $this->actingAs($staff)->get(route('finance.index'))->assertForbidden();
+        $this->actingAs($staff)->get(route('finance.chart-of-accounts.index'))->assertForbidden();
+        $this->actingAs($staff)->get(route('finance.fixed-assets.index'))->assertForbidden();
+    }
+
+    public function test_admin_can_access_finance_routes(): void
+    {
+        $this->seed(\Database\Seeders\RolesAndPermissionsSeeder::class);
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->get(route('finance.index'))->assertOk();
+        $this->actingAs($admin)->get(route('finance.chart-of-accounts.index'))->assertOk();
+        $this->actingAs($admin)->get(route('finance.fixed-assets.index'))->assertOk();
+    }
+
+    public function test_gating_is_permission_driven_not_role(): void
+    {
+        $this->seed(\Database\Seeders\RolesAndPermissionsSeeder::class);
+        $user = User::factory()->create(); // sin rol
+        $user->givePermissionTo('finance.view');
+
+        $this->actingAs($user)->get(route('finance.index'))->assertOk();
+        $this->actingAs($user)->get(route('finance.chart-of-accounts.index'))->assertForbidden();
+    }
+
+    public function test_developer_accesses_everything(): void
+    {
+        $this->seed(\Database\Seeders\RolesAndPermissionsSeeder::class);
+        $dev = User::factory()->developer()->create();
+
+        $this->actingAs($dev)->get(route('finance.index'))->assertOk();
+        $this->actingAs($dev)->get(route('finance.production.index'))->assertOk();
+    }
 }
