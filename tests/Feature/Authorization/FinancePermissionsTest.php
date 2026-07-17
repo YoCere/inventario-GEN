@@ -107,4 +107,52 @@ class FinancePermissionsTest extends TestCase
             }
         }
     }
+
+    public function test_bot_reports_denied_to_staff_without_finance_view(): void
+    {
+        $this->seed(\Database\Seeders\RolesAndPermissionsSeeder::class);
+
+        $sent = [];
+        $telegram = \Mockery::mock(\App\Services\Messaging\TelegramService::class);
+        $telegram->shouldReceive('sendMessage')->andReturnUsing(function ($chatId, $msg) use (&$sent) {
+            $sent[] = $msg; return [];
+        });
+        $telegram->shouldReceive('sendChatAction')->andReturn([]);
+        $this->app->instance(\App\Services\Messaging\TelegramService::class, $telegram);
+
+        $staff = \App\Models\User::factory()->staff()->create();
+        \App\Models\TelegramUser::create(['chat_id' => '778', 'user_id' => $staff->id, 'identifier' => 's2', 'last_login' => now()]);
+
+        app(\App\Services\Telegram\BotHandler::class)->dispatch(['message' => ['from' => ['id' => 778], 'text' => '/reportes']]);
+
+        $this->assertTrue(
+            collect($sent)->contains(fn ($m) => str_contains($m, 'restringid') || str_contains($m, 'permiso')),
+            'staff sin finance.view debe ver acceso restringido'
+        );
+    }
+
+    public function test_bot_reports_allowed_with_finance_view(): void
+    {
+        $this->seed(\Database\Seeders\RolesAndPermissionsSeeder::class);
+
+        $sent = [];
+        $telegram = \Mockery::mock(\App\Services\Messaging\TelegramService::class);
+        $telegram->shouldReceive('sendMessage')->andReturnUsing(function ($chatId, $msg) use (&$sent) {
+            $sent[] = $msg; return [];
+        });
+        $telegram->shouldReceive('sendChatAction')->andReturn([]);
+        $this->app->instance(\App\Services\Messaging\TelegramService::class, $telegram);
+
+        $user = \App\Models\User::factory()->create();
+        $user->givePermissionTo('finance.view');
+        \App\Models\TelegramUser::create(['chat_id' => '779', 'user_id' => $user->id, 'identifier' => 'f1', 'last_login' => now()]);
+
+        app(\App\Services\Telegram\BotHandler::class)->dispatch(['message' => ['from' => ['id' => 779], 'text' => '/reportes']]);
+
+        // NO debe ver el mensaje de acceso restringido.
+        $this->assertFalse(
+            collect($sent)->contains(fn ($m) => str_contains($m, 'restringid')),
+            'usuario con finance.view NO debe ver acceso restringido'
+        );
+    }
 }

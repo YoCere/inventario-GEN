@@ -628,7 +628,7 @@ class BotHandler
     {
         $user = $this->authHandler->getAuthenticatedUser($chatId);
 
-        if (! $user || ! $user->isAdmin()) {
+        if (! $user || ! $user->can('finance.view')) {
             $this->telegram->sendMessage(
                 $chatId,
                 "⛔ <b>Acceso restringido</b>\n\n" .
