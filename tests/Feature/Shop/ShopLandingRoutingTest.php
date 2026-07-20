@@ -47,4 +47,48 @@ class ShopLandingRoutingTest extends TestCase
             ->assertOk()
             ->assertSee(route('shop.catalog'), false);
     }
+
+    public function test_about_body_html_is_sanitized_on_render(): void
+    {
+        Setting::set('shop_landing_enabled', '1');
+        LandingSection::create([
+            'type' => 'about',
+            'sort_order' => 0,
+            'is_enabled' => true,
+            'data' => ['heading' => 'Historia', 'body_html' => '<p>Ok</p><script>alert(1)</script>'],
+        ]);
+
+        $res = $this->get('/tienda')->assertOk();
+        $res->assertSee('Historia');
+        $res->assertDontSee('<script>alert(1)</script>', false);
+    }
+
+    public function test_cta_section_links_to_catalog(): void
+    {
+        Setting::set('shop_landing_enabled', '1');
+        LandingSection::create([
+            'type' => 'cta',
+            'sort_order' => 0,
+            'is_enabled' => true,
+            'data' => ['button_text' => 'Entrar a la tienda', 'target' => 'catalog'],
+        ]);
+
+        $this->get('/tienda')
+            ->assertOk()
+            ->assertSee(route('shop.catalog'), false)
+            ->assertSee('Entrar a la tienda');
+    }
+
+    public function test_disabled_section_is_not_rendered(): void
+    {
+        Setting::set('shop_landing_enabled', '1');
+        LandingSection::create([
+            'type' => 'hero',
+            'sort_order' => 0,
+            'is_enabled' => false,
+            'data' => ['heading' => 'OCULTO_HERO'],
+        ]);
+
+        $this->get('/tienda')->assertOk()->assertDontSee('OCULTO_HERO');
+    }
 }

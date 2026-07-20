@@ -2,8 +2,12 @@
 @section('title', 'Inicio')
 @section('content')
     @foreach($sections as $section)
-        @if(\App\Shop\Landing\SectionTypes::exists($section->type))
-            @include(\App\Shop\Landing\SectionTypes::partial($section->type), ['data' => $section->data ?? []])
+        @php($partial = \App\Shop\Landing\SectionTypes::partial($section->type))
+        @if($partial && \Illuminate\Support\Facades\View::exists($partial))
+            @include($partial, [
+                'data' => $section->data ?? [],
+                'shopCategories' => $shopCategories ?? collect(),
+            ])
         @endif
     @endforeach
 @endsection
