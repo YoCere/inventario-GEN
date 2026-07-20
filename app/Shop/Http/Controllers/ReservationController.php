@@ -4,6 +4,7 @@ namespace App\Shop\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Shop\Events\WebReservationCreated;
+use App\Shop\Seo\ShareMetaBuilder;
 use App\Shop\Services\ReservationService;
 use App\Shop\Services\WhatsAppLinkBuilder;
 use Illuminate\Http\JsonResponse;
@@ -25,7 +26,9 @@ class ReservationController extends Controller
      */
     public function checkout(): View
     {
-        return view('shop.checkout');
+        return view('shop.checkout', [
+            'shareMeta' => app(ShareMetaBuilder::class)->forCheckout(),
+        ]);
     }
 
     /**
