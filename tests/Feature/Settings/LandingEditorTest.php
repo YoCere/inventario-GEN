@@ -4,7 +4,9 @@ namespace Tests\Feature\Settings;
 
 use App\Livewire\Settings\LandingEditor;
 use App\Models\Setting;
+use App\Models\User;
 use App\Shop\Models\LandingSection;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -16,6 +18,9 @@ class LandingEditorTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->seed(RolesAndPermissionsSeeder::class);
+        $this->actingAs(User::factory()->admin()->create());
 
         // La migración sembradora de SP1 llena la tabla en cada build; estos tests
         // necesitan controlar el contenido exacto.
@@ -110,5 +115,22 @@ class LandingEditorTest extends TestCase
         Livewire::test(LandingEditor::class)
             ->call('select', $a->id)
             ->assertDispatched('landing-section-selected');
+    }
+
+    public function test_user_without_permission_cannot_mutate_over_the_wire(): void
+    {
+        $section = $this->makeSection('hero', 0);
+
+        // El componente monta con el admin autenticado en setUp() — igual que en
+        // producción, mount() no vuelve a correr en llamadas posteriores. Simulamos
+        // que el permiso se revoca mientras la página sigue abierta cambiando el
+        // usuario autenticado ANTES de la acción, no antes del mount.
+        $test = Livewire::test(LandingEditor::class);
+
+        $this->actingAs(User::factory()->staff()->create());
+
+        $test->call('deleteSection', $section->id)->assertForbidden();
+
+        $this->assertNotNull(LandingSection::find($section->id));
     }
 }
