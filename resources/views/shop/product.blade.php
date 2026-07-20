@@ -35,7 +35,7 @@
         <a href="{{ route('shop.index') }}" class="hover:text-zinc-900">Inicio</a>
         @if($product->category)
             <span class="mx-1.5">›</span>
-            <a href="{{ route('shop.index', ['category' => $product->category->id]) }}" class="hover:text-zinc-900">{{ $product->category->name }}</a>
+            <a href="{{ route('shop.catalog', ['category' => $product->category->id]) }}" class="hover:text-zinc-900">{{ $product->category->name }}</a>
         @endif
         <span class="mx-1.5">›</span>
         <span class="text-zinc-900">{{ $product->name }}</span>
