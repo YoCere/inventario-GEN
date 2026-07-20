@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\Setting;
 use App\Services\Messaging\ProductSearchService;
 use App\Shop\Models\LandingSection;
+use App\Shop\Seo\ShareMetaBuilder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -15,7 +16,10 @@ use Illuminate\View\View;
 
 class ShopController extends Controller
 {
-    public function __construct(private ProductSearchService $searchService) {}
+    public function __construct(
+        private ProductSearchService $searchService,
+        private ShareMetaBuilder $shareMeta,
+    ) {}
 
     /**
      * Punto de entrada de /tienda. Muestra la landing si está activada
@@ -32,6 +36,7 @@ class ShopController extends Controller
         return view('shop.landing', [
             'sections' => $sections,
             'shopCategories' => $this->publicCategories(),
+            'shareMeta' => $this->shareMeta->forLanding(),
         ]);
     }
 
@@ -97,6 +102,7 @@ class ShopController extends Controller
             'selectedMax' => $max,
             'selectedSort' => $request->input('sort', 'newest'),
             'searchQuery' => $request->input('q'),
+            'shareMeta' => $this->shareMeta->forCatalog(),
         ]);
     }
 
@@ -137,6 +143,7 @@ class ShopController extends Controller
         return view('shop.product', [
             'product' => $product,
             'related' => $related,
+            'shareMeta' => $this->shareMeta->forProduct($product),
         ]);
     }
 

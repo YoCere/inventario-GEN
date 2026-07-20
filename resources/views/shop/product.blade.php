@@ -21,12 +21,6 @@
 
 @section('title', $product->name)
 
-@push('head')
-    <meta property="og:title" content="{{ $product->name }}">
-    <meta property="og:image" content="{{ $primaryFull }}">
-    <meta property="og:description" content="{{ Str::limit(strip_tags($product->description ?? ''), 160) }}">
-@endpush
-
 @section('content')
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
