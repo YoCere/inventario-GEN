@@ -37,6 +37,25 @@ class LandingSectionFormTest extends TestCase
         ]);
     }
 
+    /**
+     * El comportamiento JS de Trix no se puede testear acá, pero sí su cableado:
+     * si alguien saca el wire:ignore o el wire:key, el editor se rompe en silencio
+     * (Livewire le pisa el DOM, o queda mostrando el texto de la sección anterior).
+     */
+    public function test_about_form_mounts_the_rich_text_editor_wiring(): void
+    {
+        $s = $this->section('about', ['heading' => 'H', 'body_html' => '<p>Hola</p>']);
+
+        $html = Livewire::test(LandingSectionForm::class)
+            ->call('load', $s->id)
+            ->html();
+
+        $this->assertStringContainsString('<trix-editor', $html);
+        $this->assertStringContainsString('wire:ignore', $html);
+        $this->assertStringContainsString('wire:key="trix-' . $s->id . '"', $html);
+        $this->assertStringContainsString('id="body-html-' . $s->id . '"', $html);
+    }
+
     public function test_loads_the_selected_section_merged_with_defaults(): void
     {
         $s = $this->section('hero', ['heading' => 'Hola']);
