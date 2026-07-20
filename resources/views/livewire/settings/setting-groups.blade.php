@@ -290,6 +290,19 @@
                             </div>
                         </div>
                     </div>
+
+                    @can('shop.landing.manage')
+                        <div class="border-t border-border pt-4">
+                            <h4 class="text-sm font-semibold text-foreground mb-1">Página de presentación</h4>
+                            <p class="text-xs text-muted-foreground mb-2">
+                                Lo que ven los visitantes al entrar a /tienda: presentación, horarios, quiénes somos y el botón al catálogo.
+                            </p>
+                            <a href="{{ route('settings.shop-landing') }}"
+                               class="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-input bg-background text-sm font-medium hover:bg-accent">
+                                Editar landing →
+                            </a>
+                        </div>
+                    @endcan
                 </div>
             @endif
 

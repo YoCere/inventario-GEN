@@ -42,4 +42,14 @@ class LandingEditorAccessTest extends TestCase
     {
         $this->get(route('settings.shop-landing'))->assertRedirect(route('login'));
     }
+
+    public function test_settings_page_links_to_the_landing_editor_for_admin(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)
+            ->get(route('settings.index'))
+            ->assertOk()
+            ->assertSee(route('settings.shop-landing'), false);
+    }
 }
