@@ -9,7 +9,7 @@ namespace App\Shop\Landing;
  */
 class SectionTypes
 {
-    /** type => [label, partial, default] */
+    /** type => [label, partial, default, form, rules] */
     private static function map(): array
     {
         return [
@@ -22,6 +22,14 @@ class SectionTypes
                     'cta_text' => 'Entrar a la tienda',
                     'cta_target' => 'catalog',
                 ],
+                'form' => 'settings.landing.forms.hero',
+                'rules' => [
+                    'heading' => ['required', 'string', 'max:120'],
+                    'subheading' => ['nullable', 'string', 'max:200'],
+                    'cta_text' => ['nullable', 'string', 'max:40'],
+                    'cta_target' => ['nullable', 'string', 'max:255'],
+                    'background_image_path' => ['nullable', 'string', 'max:255'],
+                ],
             ],
             'about' => [
                 'label' => 'Acerca / Historia',
@@ -29,6 +37,12 @@ class SectionTypes
                 'default' => [
                     'heading' => 'Quiénes somos',
                     'body_html' => '<p>Cuéntale a tus clientes tu historia.</p>',
+                ],
+                'form' => 'settings.landing.forms.about',
+                'rules' => [
+                    'heading' => ['nullable', 'string', 'max:120'],
+                    'body_html' => ['nullable', 'string', 'max:20000'],
+                    'image_path' => ['nullable', 'string', 'max:255'],
                 ],
             ],
             'hours' => [
@@ -41,6 +55,13 @@ class SectionTypes
                         ['label' => 'Sábados', 'value' => '9:00 – 13:00'],
                     ],
                 ],
+                'form' => 'settings.landing.forms.hours',
+                'rules' => [
+                    'heading' => ['nullable', 'string', 'max:120'],
+                    'rows' => ['array', 'max:20'],
+                    'rows.*.label' => ['required', 'string', 'max:60'],
+                    'rows.*.value' => ['required', 'string', 'max:60'],
+                ],
             ],
             'categories' => [
                 'label' => 'Qué vendemos',
@@ -50,6 +71,14 @@ class SectionTypes
                     'source' => 'auto',
                     'items' => [],
                 ],
+                'form' => 'settings.landing.forms.categories',
+                'rules' => [
+                    'heading' => ['nullable', 'string', 'max:120'],
+                    'source' => ['required', 'in:auto,manual'],
+                    'items' => ['array', 'max:20'],
+                    'items.*.label' => ['required', 'string', 'max:60'],
+                    'items.*.link' => ['nullable', 'string', 'max:255'],
+                ],
             ],
             'gallery' => [
                 'label' => 'Galería',
@@ -57,6 +86,12 @@ class SectionTypes
                 'default' => [
                     'heading' => 'Galería',
                     'images' => [],
+                ],
+                'form' => 'settings.landing.forms.gallery',
+                'rules' => [
+                    'heading' => ['nullable', 'string', 'max:120'],
+                    'images' => ['array', 'max:24'],
+                    'images.*' => ['string', 'max:255'],
                 ],
             ],
             'contact' => [
@@ -68,6 +103,13 @@ class SectionTypes
                     'address' => '',
                     'email' => '',
                 ],
+                'form' => 'settings.landing.forms.contact',
+                'rules' => [
+                    'heading' => ['nullable', 'string', 'max:120'],
+                    'whatsapp' => ['nullable', 'string', 'max:30'],
+                    'address' => ['nullable', 'string', 'max:200'],
+                    'email' => ['nullable', 'email', 'max:120'],
+                ],
             ],
             'cta' => [
                 'label' => 'Botón a la tienda',
@@ -77,6 +119,13 @@ class SectionTypes
                     'text' => 'Explora todo nuestro catálogo.',
                     'button_text' => 'Entrar a la tienda',
                     'target' => 'catalog',
+                ],
+                'form' => 'settings.landing.forms.cta',
+                'rules' => [
+                    'heading' => ['nullable', 'string', 'max:120'],
+                    'text' => ['nullable', 'string', 'max:200'],
+                    'button_text' => ['required', 'string', 'max:40'],
+                    'target' => ['nullable', 'string', 'max:255'],
                 ],
             ],
         ];
@@ -107,5 +156,16 @@ class SectionTypes
     public static function defaultData(string $type): array
     {
         return self::map()[$type]['default'] ?? [];
+    }
+
+    public static function form(string $type): ?string
+    {
+        return self::map()[$type]['form'] ?? null;
+    }
+
+    /** @return array<string, array<int,string>> reglas keyed por campo del `data` */
+    public static function rules(string $type): array
+    {
+        return self::map()[$type]['rules'] ?? [];
     }
 }

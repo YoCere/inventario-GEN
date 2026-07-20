@@ -47,4 +47,17 @@ class LandingUrlTest extends TestCase
         $this->assertNull(LandingUrl::safeStoragePath(null));
         $this->assertSame('shop/hero.jpg', LandingUrl::safeStoragePath('shop/hero.jpg'));
     }
+
+    public function test_is_safe_url_accepts_http_and_relative_only(): void
+    {
+        $this->assertTrue(LandingUrl::isSafeUrl('https://example.com'));
+        $this->assertTrue(LandingUrl::isSafeUrl('http://example.com/x'));
+        $this->assertTrue(LandingUrl::isSafeUrl('/pagina'));
+
+        $this->assertFalse(LandingUrl::isSafeUrl('javascript:alert(1)'));
+        $this->assertFalse(LandingUrl::isSafeUrl('data:text/html,x'));
+        $this->assertFalse(LandingUrl::isSafeUrl('example.com'));
+        $this->assertFalse(LandingUrl::isSafeUrl(''));
+        $this->assertFalse(LandingUrl::isSafeUrl(null));
+    }
 }

@@ -24,11 +24,19 @@ class LandingUrl
     /** Solo permite http(s) absolutas o rutas relativas ('/...'); cualquier otra cosa → catálogo. */
     public static function safeUrl(?string $url): string
     {
+        return self::isSafeUrl($url) ? trim((string) $url) : route('shop.catalog');
+    }
+
+    /**
+     * Valida sin resolver rutas: true solo para http(s) absolutas o rutas relativas ('/...').
+     * Puro a propósito — el editor corre en admin, donde route('shop.catalog') puede no existir
+     * (las rutas de la tienda solo se registran con shop_enabled='1').
+     */
+    public static function isSafeUrl(?string $url): bool
+    {
         $url = trim((string) $url);
-        if ($url !== '' && (str_starts_with($url, '/') || preg_match('#^https?://#i', $url))) {
-            return $url;
-        }
-        return route('shop.catalog');
+
+        return $url !== '' && (str_starts_with($url, '/') || (bool) preg_match('#^https?://#i', $url));
     }
 
     /**
