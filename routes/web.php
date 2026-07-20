@@ -158,6 +158,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::view('settings', 'settings.index')->name('settings.index');
     });
 
+    // Editor de la landing de la tienda — por permiso (delegable sin dar todo Ajustes).
+    // Va acá y no en routes/shop-admin.php a propósito: esas rutas solo se cargan con
+    // shop_enabled='1', y hay que poder preparar la landing antes de publicar la tienda.
+    Route::view('settings/tienda/landing', 'settings.landing')
+        ->middleware('can:shop.landing.manage')
+        ->name('settings.shop-landing');
+
     // Roles y permisos — solo Developer (gate adicional dentro del componente).
     Route::middleware('developer')->group(function () {
         Route::view('roles', 'roles.index')->name('roles.index');

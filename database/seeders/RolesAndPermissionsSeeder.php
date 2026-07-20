@@ -72,6 +72,7 @@ class RolesAndPermissionsSeeder extends Seeder
 
         // Tienda en línea (Shop module)
         'shop.admin' => 'Gestionar reservas web del catálogo público',
+        'shop.landing.manage' => 'Editar la página de presentación de la tienda',
 
         // Administración del sistema
         'users.manage' => 'Gestionar usuarios',
@@ -95,7 +96,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'assets.manage', 'loans.manage', 'budgets.manage', 'production.manage',
             'audit.view',
             'settings.view', 'settings.edit-business',
-            'shop.admin',
+            'shop.admin', 'shop.landing.manage',
             'users.manage',
             // NO incluye: settings.edit-technical, roles.manage
         ],
