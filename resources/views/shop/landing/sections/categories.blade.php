@@ -17,7 +17,7 @@
             @endforeach
         @else
             @foreach($cats as $item)
-                <a href="{{ $item['link'] ?? route('shop.catalog') }}"
+                <a href="{{ \App\Shop\Landing\LandingUrl::safeUrl($item['link'] ?? null) }}"
                    class="rounded-2xl border border-zinc-200 bg-white p-6 text-center hover:shadow-md transition-shadow">
                     <p class="font-semibold text-zinc-800">{{ $item['label'] ?? '' }}</p>
                 </a>

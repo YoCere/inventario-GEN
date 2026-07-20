@@ -1,10 +1,7 @@
 @php
-    $ctaUrl = match($data['cta_target'] ?? 'catalog') {
-        'catalog' => route('shop.catalog'),
-        'whatsapp' => 'https://wa.me/' . preg_replace('/\D/', '', (string) \App\Models\Setting::get('shop_whatsapp_number', '')),
-        default => $data['cta_target'],
-    };
-    $bg = $data['background_image_path'] ?? null;
+    $ctaUrl = \App\Shop\Landing\LandingUrl::target($data['cta_target'] ?? 'catalog');
+    $bgPath = \App\Shop\Landing\LandingUrl::safeStoragePath($data['background_image_path'] ?? null);
+    $bg = $bgPath ? \Illuminate\Support\Facades\Storage::url($bgPath) : null;
 @endphp
 <section class="relative overflow-hidden"
          style="background: {{ $bg ? 'url('.\Illuminate\Support\Facades\Storage::url($bg).') center/cover' : 'linear-gradient(135deg, var(--shop-primary), var(--shop-secondary))' }}; color: var(--shop-text-on-primary)">
