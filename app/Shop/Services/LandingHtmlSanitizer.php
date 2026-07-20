@@ -12,7 +12,8 @@ use Mews\Purifier\Facades\Purifier;
 class LandingHtmlSanitizer
 {
     /** Tags/atributos permitidos (formato de texto básico, sin scripts/estilos). */
-    private const ALLOWED = 'p,br,strong,b,em,i,u,ul,ol,li,a[href|title|target],h2,h3,h4,blockquote';
+    // 'target' no se lista: HTML.TargetBlank ya fuerza target="_blank" + rel="noreferrer noopener".
+    private const ALLOWED = 'p,br,strong,b,em,i,u,ul,ol,li,a[href|title],h2,h3,h4,blockquote';
 
     public function sanitize(?string $html): string
     {
