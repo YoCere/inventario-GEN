@@ -12,6 +12,7 @@
         "intervention/image-laravel": "^4.0",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
+        "mews/purifier": "^3.4",
         "openspout/openspout": "^4.0",
         "power-components/livewire-powergrid": "^6.0",
         "simplesoftwareio/simple-qrcode": "^4.2",

@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\Setting;
 use App\Services\Messaging\ProductSearchService;
+use App\Shop\Models\LandingSection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -17,7 +18,26 @@ class ShopController extends Controller
     public function __construct(private ProductSearchService $searchService) {}
 
     /**
-     * Home / catálogo con sidebar de filtros (categoría, precio) + ordenamiento.
+     * Punto de entrada de /tienda. Muestra la landing si está activada
+     * (shop_landing_enabled='1', default), o el catálogo si no.
+     */
+    public function index(Request $request): View
+    {
+        if (Setting::get('shop_landing_enabled', '1') !== '1') {
+            return $this->catalog($request);
+        }
+
+        $sections = LandingSection::enabled()->ordered()->get();
+
+        return view('shop.landing', [
+            'sections' => $sections,
+            'shopCategories' => $this->publicCategories(),
+        ]);
+    }
+
+    /**
+     * Catálogo con sidebar de filtros (categoría, precio) + ordenamiento.
+     * (Antes era el cuerpo de index(); ahora vive en /tienda/catalogo.)
      *
      * Query params soportados (todos opcionales):
      *   category=<id>          Filtra por ID de categoría
@@ -26,7 +46,7 @@ class ShopController extends Controller
      *   sort=<key>             price_asc | price_desc | name | newest (default: newest)
      *   page=<int>             Paginación Laravel
      */
-    public function index(Request $request): View
+    public function catalog(Request $request): View
     {
         $query = Product::query()
             ->public()
@@ -58,16 +78,6 @@ class ShopController extends Controller
 
         $products = $query->paginate(24)->withQueryString();
 
-        // Sidebar de categorías: solo las que tienen al menos 1 producto público.
-        // Cacheado 5 min para acelerar página repetida.
-        $categories = Cache::remember('shop.categories_with_public_products', 300, function () {
-            return Category::query()
-                ->whereHas('products', fn ($q) => $q->public())
-                ->withCount(['products as public_products_count' => fn ($q) => $q->public()])
-                ->orderBy('name')
-                ->get();
-        });
-
         // Rango precios para slider del filtro.
         $priceRange = Cache::remember('shop.price_range', 300, function () {
             $min = Product::query()->public()->min('selling_price') ?? 0;
@@ -80,7 +90,7 @@ class ShopController extends Controller
 
         return view('shop.index', [
             'products' => $products,
-            'categories' => $categories,
+            'categories' => $this->publicCategories(),
             'priceRange' => $priceRange,
             'selectedCategory' => $categoryId,
             'selectedMin' => $min,
@@ -88,6 +98,21 @@ class ShopController extends Controller
             'selectedSort' => $request->input('sort', 'newest'),
             'searchQuery' => $request->input('q'),
         ]);
+    }
+
+    /**
+     * Categorías con al menos 1 producto público (cacheado 5 min).
+     * Compartido entre el catálogo (sidebar) y la landing (sección "qué vendemos").
+     */
+    private function publicCategories()
+    {
+        return Cache::remember('shop.categories_with_public_products', 300, function () {
+            return Category::query()
+                ->whereHas('products', fn ($q) => $q->public())
+                ->withCount(['products as public_products_count' => fn ($q) => $q->public()])
+                ->orderBy('name')
+                ->get();
+        });
     }
 
     /**

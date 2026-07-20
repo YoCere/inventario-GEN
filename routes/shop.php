@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('tienda')->name('shop.')->group(function () {
     Route::get('/', [ShopController::class, 'index'])->name('index');
+    Route::get('/catalogo', [ShopController::class, 'catalog'])->name('catalog');
     Route::get('/api/search', [ShopController::class, 'search'])->name('search');
     Route::get('/producto/{slug}', [ShopController::class, 'show'])->name('product');
 

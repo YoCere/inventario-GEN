@@ -22,7 +22,7 @@
 
         {{-- Sidebar filtros (desktop) --}}
         <aside class="hidden lg:block space-y-6">
-            <form method="GET" action="{{ route('shop.index') }}" id="filter-form" class="space-y-6 sticky top-20">
+            <form method="GET" action="{{ route('shop.catalog') }}" id="filter-form" class="space-y-6 sticky top-20">
 
                 {{-- Filtro categorías --}}
                 <div class="bg-white rounded-2xl border border-zinc-200 p-5">
@@ -87,7 +87,7 @@
 
                 {{-- Reset filtros --}}
                 @if($selectedCategory || $selectedMin || $selectedMax || $selectedSort !== 'newest')
-                    <a href="{{ route('shop.index') }}" class="block text-center text-sm text-zinc-500 hover:text-zinc-900 underline">
+                    <a href="{{ route('shop.catalog') }}" class="block text-center text-sm text-zinc-500 hover:text-zinc-900 underline">
                         Limpiar filtros
                     </a>
                 @endif
@@ -173,7 +173,7 @@
         </div>
 
         {{-- Reusa formulario de sidebar via clone trick: duplico filtros aquí --}}
-        <form method="GET" action="{{ route('shop.index') }}" class="space-y-6">
+        <form method="GET" action="{{ route('shop.catalog') }}" class="space-y-6">
             <div class="bg-white rounded-2xl border border-zinc-200 p-4">
                 <h3 class="font-semibold mb-3">Categorías</h3>
                 <div class="space-y-2 max-h-72 overflow-y-auto">
@@ -203,7 +203,7 @@
 
             <input type="hidden" name="sort" value="{{ $selectedSort }}">
             <button type="submit" class="shop-btn-primary w-full">Ver resultados</button>
-            <a href="{{ route('shop.index') }}" class="block text-center text-sm text-zinc-500 hover:text-zinc-900">Limpiar filtros</a>
+            <a href="{{ route('shop.catalog') }}" class="block text-center text-sm text-zinc-500 hover:text-zinc-900">Limpiar filtros</a>
         </form>
     </aside>
 </div>

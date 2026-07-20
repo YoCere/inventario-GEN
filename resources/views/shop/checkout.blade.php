@@ -23,7 +23,7 @@
         <div class="text-5xl mb-3">🛒</div>
         <h2 class="text-xl font-semibold text-zinc-900">Tu carrito está vacío</h2>
         <p class="text-zinc-500 mt-1 mb-6">Agrega productos del catálogo para reservar.</p>
-        <a href="{{ route('shop.index') }}" class="shop-btn-primary">Ver catálogo</a>
+        <a href="{{ route('shop.catalog') }}" class="shop-btn-primary">Ver catálogo</a>
     </div>
 
     {{-- Estado: carrito con items --}}
@@ -138,7 +138,7 @@
                 </div>
             </div>
 
-            <a href="{{ route('shop.index') }}" class="block text-center mt-4 text-sm text-zinc-500 hover:text-zinc-900">
+            <a href="{{ route('shop.catalog') }}" class="block text-center mt-4 text-sm text-zinc-500 hover:text-zinc-900">
                 ← Seguir comprando
             </a>
         </aside>
