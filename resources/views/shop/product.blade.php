@@ -14,9 +14,6 @@
             'path_thumb' => null,
             'alt_text' => $product->name,
         ]]);
-
-    $primary = $product->primaryImage ?? $gallery->first();
-    $primaryFull = $primary && ($primary->path_full ?? null) ? Storage::url($primary->path_full) : $product->card_image_url;
 @endphp
 
 @section('title', $product->name)

@@ -21,6 +21,13 @@ class ShareMetaBuilder
 {
     private const DESCRIPTION_LIMIT = 200;
 
+    /**
+     * Cache por instancia del `data` del héroe. Sin esto, cada render público hace
+     * la MISMA consulta dos veces (una desde la descripción y otra desde la imagen)
+     * en el caso habitual de no tener overrides cargados.
+     */
+    private ?array $heroData = null;
+
     public function forLanding(): ShareMeta
     {
         return new ShareMeta(
@@ -106,16 +113,20 @@ class ShareMetaBuilder
         return $this->absoluteFromPath($this->nonEmpty($path));
     }
 
-    /** `data` de la primera sección hero habilitada, o [] si no hay. */
+    /** `data` de la primera sección hero habilitada, o [] si no hay. Cacheado por instancia. */
     private function heroData(): array
     {
+        if ($this->heroData !== null) {
+            return $this->heroData;
+        }
+
         $hero = LandingSection::query()
             ->enabled()
             ->ordered()
             ->where('type', 'hero')
             ->first();
 
-        return $hero?->data ?? [];
+        return $this->heroData = $hero?->data ?? [];
     }
 
     /** Ruta de disco → URL absoluta. Storage::url() puede devolver una ruta relativa. */
@@ -126,7 +137,8 @@ class ShareMetaBuilder
 
     private function clean(?string $text): string
     {
-        return Str::limit(trim(strip_tags((string) $text)), self::DESCRIPTION_LIMIT, '');
+        // preserveWords: cortar a mitad de palabra se ve mal en la vista previa del enlace.
+        return Str::limit(trim(strip_tags((string) $text)), self::DESCRIPTION_LIMIT, '', preserveWords: true);
     }
 
     private function nonEmpty(?string $value): ?string
