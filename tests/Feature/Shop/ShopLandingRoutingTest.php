@@ -91,4 +91,18 @@ class ShopLandingRoutingTest extends TestCase
 
         $this->get('/tienda')->assertOk()->assertDontSee('OCULTO_HERO');
     }
+
+    public function test_default_template_seeded_and_idempotent(): void
+    {
+        // La migración ya corrió (RefreshDatabase). Debe haber secciones por defecto.
+        $count = \App\Shop\Models\LandingSection::count();
+        $this->assertGreaterThan(0, $count);
+
+        // Re-ejecutar la lógica de siembra no debe duplicar.
+        (new \Database\Seeders\DefaultLandingTemplateSeeder())->run();
+        $this->assertSame($count, \App\Shop\Models\LandingSection::count());
+
+        // Flag activado por defecto.
+        $this->assertSame('1', \App\Models\Setting::get('shop_landing_enabled'));
+    }
 }
