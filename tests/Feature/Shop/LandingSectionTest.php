@@ -10,6 +10,15 @@ class LandingSectionTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // La migración sembradora (2026_07_08_150100) inserta la plantilla por defecto
+        // en cada build de RefreshDatabase. Estos tests de scope necesitan tabla limpia.
+        LandingSection::query()->delete();
+    }
+
     public function test_data_is_cast_to_array(): void
     {
         $s = LandingSection::create([
