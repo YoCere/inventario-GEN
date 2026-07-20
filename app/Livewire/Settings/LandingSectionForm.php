@@ -31,6 +31,23 @@ class LandingSectionForm extends Component
 
     public $galleryUpload;
 
+    /**
+     * Rutas de imagen reemplazadas/quitadas en esta edición, pendientes de borrar
+     * del disco. Público a propósito: debe sobrevivir a la hidratación de Livewire
+     * entre requests (cada request es una instancia nueva del componente).
+     *
+     * Por qué diferir el borrado hasta save(): si se borra el archivo viejo en el
+     * momento de reemplazarlo/quitarlo, y el admin luego cambia de sección, cierra
+     * la pestaña o falla la validación al guardar, la fila en DB sigue apuntando a
+     * ese path pero el archivo ya no existe → imagen rota en la landing PÚBLICA sin
+     * que se haya publicado nada. Se prefiere el trade-off contrario: un archivo
+     * subido y nunca guardado queda huérfano en disco (desperdicia espacio, pero
+     * nunca rompe una página pública).
+     *
+     * @var string[]
+     */
+    public array $pendingDeletions = [];
+
     /** Campos cuyo valor es un destino de enlace ('catalog' | 'whatsapp' | URL). */
     private const TARGET_FIELDS = ['cta_target', 'target'];
 
@@ -55,6 +72,11 @@ class LandingSectionForm extends Component
         $this->form = array_merge(SectionTypes::defaultData($section->type), $section->data ?? []);
         $this->imageUpload = [];
         $this->galleryUpload = null;
+
+        // Cambiar de sección abandona cualquier edición sin guardar: los archivos
+        // "reemplazados" en la sección anterior nunca se borran, porque la DB
+        // todavía los referencia (no se llamó a save()).
+        $this->pendingDeletions = [];
     }
 
     #[On('landing-section-cleared')]
@@ -62,7 +84,7 @@ class LandingSectionForm extends Component
     {
         $this->authorizeEditor();
 
-        $this->reset(['sectionId', 'type', 'form', 'imageUpload', 'galleryUpload']);
+        $this->reset(['sectionId', 'type', 'form', 'imageUpload', 'galleryUpload', 'pendingDeletions']);
         $this->resetValidation();
     }
 
@@ -96,7 +118,7 @@ class LandingSectionForm extends Component
 
             $this->validate(["imageUpload.{$field}" => ['image', 'max:2048', 'mimes:png,jpg,jpeg,webp']]);
 
-            app(LandingImages::class)->delete($this->form[$field] ?? null);
+            $this->deferDeletion($this->form[$field] ?? null);
             $this->form[$field] = app(LandingImages::class)->store($file);
             $this->imageUpload[$field] = null;
         }
@@ -119,16 +141,24 @@ class LandingSectionForm extends Component
     public function removeImage(string $field): void
     {
         $this->authorizeEditor();
-        app(LandingImages::class)->delete($this->form[$field] ?? null);
+        $this->deferDeletion($this->form[$field] ?? null);
         $this->form[$field] = null;
     }
 
     public function removeGalleryImage(int $index): void
     {
         $this->authorizeEditor();
-        app(LandingImages::class)->delete($this->form['images'][$index] ?? null);
+        $this->deferDeletion($this->form['images'][$index] ?? null);
         unset($this->form['images'][$index]);
         $this->form['images'] = array_values($this->form['images'] ?? []);
+    }
+
+    /** Encola un path para borrarse recién cuando save() confirme el nuevo estado en DB. */
+    private function deferDeletion(?string $path): void
+    {
+        if ($path) {
+            $this->pendingDeletions[] = $path;
+        }
     }
 
     public function save(): void
@@ -139,8 +169,17 @@ class LandingSectionForm extends Component
             return;
         }
 
+        // No confiar en $this->type: es una propiedad pública común, un payload
+        // wire manipulado podría cambiarla para que se validen las reglas de OTRO
+        // tipo. La fuente de verdad es la fila en DB.
+        $section = LandingSection::find($this->sectionId);
+        if (! $section) {
+            return;
+        }
+        $type = $section->type;
+
         $rules = [];
-        foreach (SectionTypes::rules($this->type) as $field => $rule) {
+        foreach (SectionTypes::rules($type) as $field => $rule) {
             $rules["form.{$field}"] = $rule;
         }
 
@@ -177,7 +216,16 @@ class LandingSectionForm extends Component
 
         $this->validate($rules);
 
-        $data = $this->form;
+        // Solo se persisten las claves de NIVEL SUPERIOR declaradas en las rules del
+        // tipo (form.rows.*.label → 'rows', form.items.*.link → 'items', etc.). Solo
+        // esas claves se validan arriba; sin este allowlist un payload wire
+        // manipulado podría colar claves extra sin validar en la columna JSON.
+        $allowed = collect(array_keys(SectionTypes::rules($type)))
+            ->map(fn (string $key) => explode('.', $key)[0])
+            ->unique()
+            ->all();
+
+        $data = array_intersect_key($this->form, array_flip($allowed));
 
         // Invariante de SP1: el HTML rico se guarda ya saneado (y el render lo sanea igual).
         if (array_key_exists('body_html', $data)) {
@@ -191,7 +239,21 @@ class LandingSectionForm extends Component
             }
         }
 
+        if (array_key_exists('images', $data)) {
+            $data['images'] = array_values(array_filter(array_map(
+                fn ($path) => is_string($path) ? LandingUrl::safeStoragePath($path) : null,
+                $data['images']
+            )));
+        }
+
         LandingSection::whereKey($this->sectionId)->update(['data' => $data]);
+
+        // Recién ahora, con el nuevo estado ya confirmado en DB, es seguro borrar
+        // los archivos reemplazados/quitados durante esta edición.
+        foreach ($this->pendingDeletions as $path) {
+            app(LandingImages::class)->delete($path);
+        }
+        $this->pendingDeletions = [];
 
         $this->dispatch('landing-sections-changed');
         $this->dispatch('landing-saved');

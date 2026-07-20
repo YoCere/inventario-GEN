@@ -124,7 +124,7 @@ class LandingSectionFormTest extends TestCase
         Storage::disk('public')->assertExists($path);
     }
 
-    public function test_removing_an_image_deletes_the_file(): void
+    public function test_removing_an_image_defers_deletion_until_save(): void
     {
         $s = $this->section('about', []);
 
@@ -135,8 +135,51 @@ class LandingSectionFormTest extends TestCase
         $path = $component->get('form.image_path');
         $component->call('removeImage', 'image_path');
 
-        Storage::disk('public')->assertMissing($path);
+        // Todavía no se guardó: el archivo debe seguir en disco.
+        Storage::disk('public')->assertExists($path);
         $this->assertEmpty($component->get('form.image_path'));
+
+        $component->call('save');
+
+        Storage::disk('public')->assertMissing($path);
+    }
+
+    public function test_replacing_an_existing_image_does_not_delete_the_old_file_before_save(): void
+    {
+        $old = Storage::disk('public')->putFile('shop/landing', UploadedFile::fake()->image('old.jpg'));
+        $s = $this->section('about', ['image_path' => $old]);
+
+        $component = Livewire::test(LandingSectionForm::class)
+            ->call('load', $s->id)
+            ->set('imageUpload.image_path', UploadedFile::fake()->image('new.jpg'));
+
+        // El reemplazo ya subió el archivo nuevo, pero el viejo NO se borra todavía:
+        // save() no corrió, así que la fila en DB sigue apuntando al viejo.
+        Storage::disk('public')->assertExists($old);
+        $newPath = $component->get('form.image_path');
+        $this->assertNotSame($old, $newPath);
+
+        $component->call('save');
+
+        Storage::disk('public')->assertMissing($old);
+        Storage::disk('public')->assertExists($newPath);
+    }
+
+    public function test_switching_sections_after_replacing_an_image_leaves_the_original_file_intact(): void
+    {
+        $old = Storage::disk('public')->putFile('shop/landing', UploadedFile::fake()->image('old.jpg'));
+        $a = $this->section('about', ['image_path' => $old]);
+        $b = $this->section('hero', []);
+
+        Livewire::test(LandingSectionForm::class)
+            ->call('load', $a->id)
+            ->set('imageUpload.image_path', UploadedFile::fake()->image('new.jpg'))
+            ->call('load', $b->id);
+
+        // Cambiar de sección abandona la edición sin guardar: el archivo original
+        // de la sección A sigue existiendo porque la DB todavía lo referencia.
+        Storage::disk('public')->assertExists($old);
+        $this->assertSame($old, $a->fresh()->data['image_path']);
     }
 
     public function test_gallery_upload_appends_to_images(): void
