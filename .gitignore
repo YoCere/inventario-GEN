@@ -34,3 +34,6 @@ android.keystore
 
 # Proyecto TWA/Bubblewrap (Android) - vive aparte, no commitear
 /android-twa/
+
+# Mockups del brainstorming visual (superpowers)
+.superpowers/
