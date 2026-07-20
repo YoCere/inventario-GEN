@@ -26,4 +26,22 @@ class SectionTypesTest extends TestCase
         $this->assertSame('Héroe', SectionTypes::label('hero'));
         $this->assertArrayHasKey('heading', SectionTypes::defaultData('hero'));
     }
+
+    public function test_every_type_declares_form_partial_and_rules(): void
+    {
+        foreach (SectionTypes::keys() as $type) {
+            $this->assertNotEmpty(SectionTypes::form($type), "Tipo {$type} sin partial de formulario");
+            $this->assertNotEmpty(SectionTypes::rules($type), "Tipo {$type} sin reglas de validación");
+        }
+    }
+
+    public function test_form_partial_path_follows_convention(): void
+    {
+        $this->assertSame('settings.landing.forms.hero', SectionTypes::form('hero'));
+    }
+
+    public function test_rules_are_keyed_by_field(): void
+    {
+        $this->assertArrayHasKey('heading', SectionTypes::rules('hero'));
+    }
 }

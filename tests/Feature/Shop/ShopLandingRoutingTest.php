@@ -4,6 +4,7 @@ namespace Tests\Feature\Shop;
 
 use App\Models\Setting;
 use App\Shop\Models\LandingSection;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -15,6 +16,7 @@ class ShopLandingRoutingTest extends TestCase
     {
         parent::setUp();
         $this->enableShop();
+        $this->seed(RolesAndPermissionsSeeder::class);
     }
 
     public function test_landing_enabled_renders_landing_sections(): void
@@ -119,5 +121,39 @@ class ShopLandingRoutingTest extends TestCase
         $res = $this->get('/tienda')->assertOk();
         $res->assertSee('url(/storage/landing/hero.jpg)', false);
         $res->assertDontSee('/storage//storage', false);
+    }
+
+    public function test_content_saved_by_the_editor_shows_on_the_public_landing(): void
+    {
+        \App\Models\Setting::set('shop_landing_enabled', '1');
+
+        $section = LandingSection::create([
+            'type' => 'about',
+            'sort_order' => 0,
+            'is_enabled' => true,
+            'data' => ['heading' => 'MARCA_IDA_VUELTA', 'body_html' => '<p>Texto guardado</p>'],
+        ]);
+
+        $this->actingAs(\App\Models\User::factory()->admin()->create());
+
+        \Livewire\Livewire::test(\App\Livewire\Settings\LandingSectionForm::class)
+            ->call('load', $section->id)
+            ->set('form.heading', 'MARCA_EDITADA')
+            ->call('save');
+
+        $this->get('/tienda')->assertOk()->assertSee('MARCA_EDITADA');
+    }
+
+    public function test_default_template_uses_registry_defaults(): void
+    {
+        \App\Shop\Models\LandingSection::query()->delete();
+        (new \Database\Seeders\DefaultLandingTemplateSeeder())->run();
+
+        $hero = \App\Shop\Models\LandingSection::where('type', 'hero')->firstOrFail();
+
+        $this->assertSame(
+            \App\Shop\Landing\SectionTypes::defaultData('hero')['subheading'],
+            $hero->data['subheading']
+        );
     }
 }

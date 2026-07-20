@@ -1,5 +1,7 @@
 import flatpickr from "flatpickr";
 import TomSelect from "tom-select";
+import "trix";
+import "trix/dist/trix.css";
 import "./bootstrap";
 import "./../../vendor/power-components/livewire-powergrid/dist/powergrid";
 import "./heic-converter";
