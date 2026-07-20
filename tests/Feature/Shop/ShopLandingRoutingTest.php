@@ -105,4 +105,19 @@ class ShopLandingRoutingTest extends TestCase
         // Flag activado por defecto.
         $this->assertSame('1', \App\Models\Setting::get('shop_landing_enabled'));
     }
+
+    public function test_hero_background_path_resolves_to_single_storage_url(): void
+    {
+        Setting::set('shop_landing_enabled', '1');
+        LandingSection::create([
+            'type' => 'hero',
+            'sort_order' => 0,
+            'is_enabled' => true,
+            'data' => ['heading' => 'H', 'background_image_path' => 'landing/hero.jpg'],
+        ]);
+
+        $res = $this->get('/tienda')->assertOk();
+        $res->assertSee('url(/storage/landing/hero.jpg)', false);
+        $res->assertDontSee('/storage//storage', false);
+    }
 }

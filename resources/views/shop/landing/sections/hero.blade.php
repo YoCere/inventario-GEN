@@ -4,7 +4,7 @@
     $bg = $bgPath ? \Illuminate\Support\Facades\Storage::url($bgPath) : null;
 @endphp
 <section class="relative overflow-hidden"
-         style="background: {{ $bg ? 'url('.\Illuminate\Support\Facades\Storage::url($bg).') center/cover' : 'linear-gradient(135deg, var(--shop-primary), var(--shop-secondary))' }}; color: var(--shop-text-on-primary)">
+         style="background: {{ $bg ? 'url('.$bg.') center/cover' : 'linear-gradient(135deg, var(--shop-primary), var(--shop-secondary))' }}; color: var(--shop-text-on-primary)">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28 text-center">
         <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight">{{ $data['heading'] ?? '' }}</h1>
         @isset($data['subheading'])
