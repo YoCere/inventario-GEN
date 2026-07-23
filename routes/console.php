@@ -40,3 +40,11 @@ Schedule::command('reminders:dispatch')
     ->everyMinute()
     ->withoutOverlapping()
     ->onOneServer();
+
+// Fiscal SIAT: ciclo diario de autorización (CUIS/CUFD/catálogos). Alerta por
+// Telegram si falla o si el CUIS está por vencer.
+Schedule::command('fiscal:daily-cycle')
+    ->dailyAt('05:00')
+    ->timezone(config('app.timezone'))
+    ->withoutOverlapping()
+    ->onOneServer();
