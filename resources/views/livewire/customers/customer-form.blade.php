@@ -55,6 +55,75 @@
                 <x-input-error :messages="$errors->get('address')" />
             </div>
 
+            <!-- Billing identity -->
+            <div class="flex flex-col sm:flex-row gap-4">
+                <div class="w-full sm:w-1/2 space-y-2">
+                    <x-input-label for="doc_type" :value="__('Tipo de documento')" />
+                    <select
+                        id="doc_type"
+                        wire:model="doc_type"
+                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        <option value="">{{ __('Seleccionar...') }}</option>
+                        <option value="1">{{ __('CI') }}</option>
+                        <option value="2">{{ __('CEX') }}</option>
+                        <option value="3">{{ __('Pasaporte') }}</option>
+                        <option value="4">{{ __('NIT') }}</option>
+                        <option value="5">{{ __('Otro') }}</option>
+                    </select>
+                    @error('doc_type')
+                        <x-input-error :messages="$message" />
+                    @enderror
+                </div>
+
+                <div class="w-full sm:w-1/2 space-y-2">
+                    <x-input-label for="doc_number" :value="__('Número de documento')" />
+                    <x-text-input
+                        id="doc_number"
+                        name="doc_number"
+                        type="text"
+                        wire:model="doc_number"
+                        class="block w-full"
+                        placeholder="5115889"
+                    />
+                    @error('doc_number')
+                        <x-input-error :messages="$message" />
+                    @enderror
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-4">
+                <div class="w-full sm:w-1/2 space-y-2">
+                    <x-input-label for="doc_complement" :value="__('Complemento')" />
+                    <x-text-input
+                        id="doc_complement"
+                        name="doc_complement"
+                        type="text"
+                        wire:model="doc_complement"
+                        class="block w-full"
+                        placeholder="1A"
+                    />
+                    @error('doc_complement')
+                        <x-input-error :messages="$message" />
+                    @enderror
+                </div>
+
+                <div class="w-full sm:w-1/2 space-y-2">
+                    <x-input-label for="business_name" :value="__('Razón social')" />
+                    <x-text-input
+                        id="business_name"
+                        name="business_name"
+                        type="text"
+                        wire:model="business_name"
+                        class="block w-full"
+                        placeholder="Nombre para factura"
+                    />
+                    @error('business_name')
+                        <x-input-error :messages="$message" />
+                    @enderror
+                </div>
+            </div>
+
             <div class="space-y-2">
                 <x-input-label for="notes" :value="__('Notes')" />
                 <textarea

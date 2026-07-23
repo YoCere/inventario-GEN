@@ -18,7 +18,8 @@ class SaleService
         protected FinanceTransactionService $financeService,
         protected SaleAccountingService $saleAccountingService,
         protected AuditService $auditService,
-        protected StockService $stockService
+        protected StockService $stockService,
+        protected \App\Fiscal\SaleTaxCalculator $taxCalculator
     ) {
     }
 
@@ -161,12 +162,18 @@ class SaleService
                     $change = $data->cash_received - $total;
                 }
 
+                $tax = $this->taxCalculator->forTotal($total);
+
                 $sale->update([
                     'subtotal' => $totalSubtotal + $totalDiscount,
                     'total_discount' => $totalDiscount + $data->global_discount,
                     'global_discount' => $data->global_discount,
                     'total' => $total,
                     'change' => $change,
+                    'taxable_base' => $tax['taxable_base'],
+                    'iva_amount' => $tax['iva_amount'],
+                    'it_amount' => $tax['it_amount'],
+                    'wants_invoice' => $data->wants_invoice,
                 ]);
 
                 if ($sale->status === SaleStatus::COMPLETED) {

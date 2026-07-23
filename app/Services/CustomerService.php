@@ -23,6 +23,10 @@ class CustomerService
                     'phone' => $data->phone,
                     'address' => $data->address,
                     'notes' => $data->notes,
+                    'doc_type' => $data->docType,
+                    'doc_number' => $data->docNumber,
+                    'doc_complement' => $data->docComplement,
+                    'business_name' => $data->businessName,
                 ]);
 
             } catch (Exception $e) {
@@ -47,6 +51,10 @@ class CustomerService
                     'phone' => $data->phone,
                     'address' => $data->address,
                     'notes' => $data->notes,
+                    'doc_type' => $data->docType,
+                    'doc_number' => $data->docNumber,
+                    'doc_complement' => $data->docComplement,
+                    'business_name' => $data->businessName,
                 ]);
 
                 return $customer->refresh();

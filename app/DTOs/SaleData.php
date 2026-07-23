@@ -25,6 +25,7 @@ readonly class SaleData
         public ?string $buyer_name = null,
         public ?string $buyer_phone = null,
         public string $source = 'pos',
+        public bool $wants_invoice = false,
     ) {}
 
     public static function fromArray(array $data): self
@@ -43,6 +44,7 @@ readonly class SaleData
             buyer_name: $data['buyer_name'] ?? null,
             buyer_phone: $data['buyer_phone'] ?? null,
             source: $data['source'] ?? 'pos',
+            wants_invoice: (bool) ($data['wants_invoice'] ?? false),
         );
     }
 
@@ -62,6 +64,7 @@ readonly class SaleData
             'buyer_name' => $this->buyer_name,
             'buyer_phone' => $this->buyer_phone,
             'source' => $this->source,
+            'wants_invoice' => $this->wants_invoice,
         ];
     }
 }

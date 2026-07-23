@@ -20,6 +20,7 @@ class ProductData
         public readonly ?int $location_id = null,
         public readonly bool $is_public = true,
         public readonly bool $featured = false,
+        public readonly ?string $sin_code = null,
     ) {}
 
     public static function fromArray(array $data): self
@@ -40,6 +41,7 @@ class ProductData
             location_id: empty($data['location_id']) ? null : (int) $data['location_id'],
             is_public: (bool) ($data['is_public'] ?? true),
             featured: (bool) ($data['featured'] ?? false),
+            sin_code: empty($data['sin_code']) ? null : $data['sin_code'],
         );
     }
 
@@ -61,6 +63,7 @@ class ProductData
             'location_id' => $this->location_id,
             'is_public' => $this->is_public,
             'featured' => $this->featured,
+            'sin_code' => $this->sin_code,
         ];
     }
 }

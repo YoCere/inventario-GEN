@@ -321,6 +321,15 @@
                                 <select x-ref="customerSelect" placeholder="Buscar cliente [F2]…" autocomplete="off"></select>
                             </div>
                         </div>
+
+                        <label class="mt-2 flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+                            <input type="checkbox" x-model="wantsInvoice"
+                                   class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                            ¿Factura? (NIT/CI)
+                        </label>
+                        <p class="mt-1 text-xs text-amber-600" x-show="wantsInvoice && !selectedCustomer">
+                            Elegí un cliente con NIT para facturar.
+                        </p>
                     </section>
 
                     {{-- Resumen de ítems (compacto) --}}
@@ -377,6 +386,18 @@
                                     :class="payment.method === 'transfer' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
                                 TRANSFERENCIA
+                            </button>
+                            <button @click="payment.method = 'qr'"
+                                    class="py-3 px-4 text-sm font-bold rounded-lg border-2 transition-all flex items-center justify-center gap-2"
+                                    :class="payment.method === 'qr' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4h6v6H4V4zM14 4h6v6h-6V4zM4 14h6v6H4v-6zM14 14h3v3M20 14v3h-3M14 20h3M20 17v3"/></svg>
+                                QR
+                            </button>
+                            <button @click="payment.method = 'card'"
+                                    class="py-3 px-4 text-sm font-bold rounded-lg border-2 transition-all flex items-center justify-center gap-2"
+                                    :class="payment.method === 'card' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 6h18a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V7a1 1 0 011-1zM7 15h4"/></svg>
+                                TARJETA
                             </button>
                         </div>
                     </section>
@@ -479,6 +500,7 @@
                     globalDiscount: 0,
                     saleStatus: 'completed',
                     isSubmitting: false,
+                    wantsInvoice: false,
 
                     products: [],
                     visibleProducts: [],
@@ -735,6 +757,7 @@
                                 status: this.saleStatus,
                                 sale_date: new Date().toISOString().slice(0, 10),
                                 _token: '{{ csrf_token() }}',
+                                wants_invoice: this.wantsInvoice,
                             };
                             const res = await fetch('{{ route("sales.store") }}', {
                                 method: 'POST',
@@ -768,6 +791,7 @@
                         this.selectedCustomer = null;
                         this.payment = { method: 'cash', cash_received: 0, notes: '' };
                         this.globalDiscount = 0;
+                        this.wantsInvoice = false;
                         this.customerTs && this.customerTs.clear();
                     }
                 }
@@ -777,7 +801,7 @@
         {{-- Customer create modal --}}
         <x-modal name="customer-modal" focusable>
             <div class="p-6" x-data="{
-                newCust: { name: '', email: '', phone: '', address: '', notes: '' },
+                newCust: { name: '', email: '', phone: '', address: '', notes: '', doc_type: '', doc_number: '', doc_complement: '', business_name: '' },
                 errors: {}, loading: false,
                 async save() {
                     this.errors = {};
@@ -793,7 +817,7 @@
                         if (res.ok) {
                             this.$dispatch('close-modal', { name: 'customer-modal' });
                             this.$dispatch('customer-created', data);
-                            this.newCust = { name: '', email: '', phone: '', address: '', notes: '' };
+                            this.newCust = { name: '', email: '', phone: '', address: '', notes: '', doc_type: '', doc_number: '', doc_complement: '', business_name: '' };
                         } else if (data.errors) {
                             Object.keys(data.errors).forEach(k => this.errors[k] = data.errors[k][0]);
                         } else {
@@ -823,6 +847,37 @@
                         <x-input-label for="new_address" :value="__('Dirección')" />
                         <textarea id="new_address" x-model="newCust.address" rows="2" class="block w-full rounded-md border-gray-300 sm:text-sm" placeholder="Dirección"></textarea>
                     </div>
+
+                    {{-- Identidad fiscal (opcional): necesaria para poder facturar esta venta --}}
+                    <div class="border-t border-gray-200 pt-4 space-y-3">
+                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Datos para factura (opcional)</p>
+                        <div class="flex flex-col sm:flex-row gap-4">
+                            <div class="w-full sm:w-1/2">
+                                <x-input-label for="new_doc_type" :value="__('Tipo de documento')" />
+                                <select id="new_doc_type" x-model="newCust.doc_type"
+                                        class="block w-full rounded-md border-gray-300 sm:text-sm">
+                                    <option value="">Seleccionar…</option>
+                                    <option value="1">CI</option>
+                                    <option value="2">CEX</option>
+                                    <option value="3">Pasaporte</option>
+                                    <option value="4">NIT</option>
+                                    <option value="5">Otro</option>
+                                </select>
+                            </div>
+                            <div class="w-full sm:w-1/2">
+                                <x-form-input name="new_doc_number" label="Número de documento" x-model="newCust.doc_number" />
+                            </div>
+                        </div>
+                        <div class="flex flex-col sm:flex-row gap-4">
+                            <div class="w-full sm:w-1/2">
+                                <x-form-input name="new_doc_complement" label="Complemento" x-model="newCust.doc_complement" />
+                            </div>
+                            <div class="w-full sm:w-1/2">
+                                <x-form-input name="new_business_name" label="Razón social" x-model="newCust.business_name" />
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="mt-6 flex justify-end gap-3 border-t border-gray-200 pt-4">
                         <x-secondary-button type="button" x-on:click="$dispatch('close-modal', { name: 'customer-modal' })">Cancelar</x-secondary-button>
                         <x-primary-button type="button" @click="save()" x-bind:disabled="loading">

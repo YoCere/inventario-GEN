@@ -20,6 +20,7 @@ class Product extends Model
         'category_id',
         'unit_id',
         'sku',
+        'sin_code',
         'name',
         'slug',
         'purchase_price',

@@ -23,6 +23,14 @@ class CustomerForm extends Component
 
     public string $notes = '';
 
+    public string $doc_type = '';
+
+    public string $doc_number = '';
+
+    public string $doc_complement = '';
+
+    public string $business_name = '';
+
     public bool $isEditing = false;
 
     protected function rules(): array
@@ -33,6 +41,10 @@ class CustomerForm extends Component
             'phone' => ['nullable', 'string', 'max:20'],
             'address' => ['nullable', 'string', 'max:1000'],
             'notes' => ['nullable', 'string', 'max:1000'],
+            'doc_type' => ['nullable', 'string'],
+            'doc_number' => ['nullable', 'string', 'max:20'],
+            'doc_complement' => ['nullable', 'string', 'max:5'],
+            'business_name' => ['nullable', 'string', 'max:240'],
         ];
     }
 
@@ -60,6 +72,10 @@ class CustomerForm extends Component
         $this->phone = $customer->phone ?? '';
         $this->address = $customer->address ?? '';
         $this->notes = $customer->notes ?? '';
+        $this->doc_type = $customer->doc_type ?? '';
+        $this->doc_number = $customer->doc_number ?? '';
+        $this->doc_complement = $customer->doc_complement ?? '';
+        $this->business_name = $customer->business_name ?? '';
 
         $this->isEditing = true;
         $this->dispatch('open-modal', name: 'customer-modal');

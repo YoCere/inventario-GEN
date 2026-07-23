@@ -31,6 +31,21 @@
                 required
             />
 
+            <!-- Código SIN -->
+            <div class="space-y-2">
+                <x-input-label for="sin_code" value="Código SIN" />
+                <input
+                    id="sin_code"
+                    type="text"
+                    wire:model="sin_code"
+                    placeholder="ej. 58011"
+                    maxlength="20"
+                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                <p class="text-xs text-muted-foreground">Código de homologación del SIN (opcional).</p>
+                <x-input-error :messages="$errors->get('sin_code')" />
+            </div>
+
             <!-- Acciones -->
             <div class="mt-6 flex justify-end gap-3 border-t border-gray-200 pt-4">
                 <x-secondary-button type="button" x-on:click="$dispatch('close-modal', { name: 'unit-form-modal' })">

@@ -47,6 +47,10 @@ class CustomerController extends Controller
                 'email' => 'nullable|email|max:255',
                 'address' => 'nullable|string|max:500',
                 'notes' => 'nullable|string|max:500',
+                'doc_type' => 'nullable|string',
+                'doc_number' => 'nullable|string|max:20',
+                'doc_complement' => 'nullable|string|max:5',
+                'business_name' => 'nullable|string|max:240',
             ]);
 
             $data = array_merge([
@@ -54,6 +58,10 @@ class CustomerController extends Controller
                 'email' => null,
                 'address' => null,
                 'notes' => null,
+                'doc_type' => null,
+                'doc_number' => null,
+                'doc_complement' => null,
+                'business_name' => null,
             ], $validated);
 
             $customerData = CustomerData::fromArray($data);

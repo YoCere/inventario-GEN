@@ -17,6 +17,7 @@ class UnitForm extends Component
 
     public string $name = '';
     public string $symbol = '';
+    public string $sin_code = '';
 
     public function rules(): array
     {
@@ -28,6 +29,7 @@ class UnitForm extends Component
                 Rule::unique('units', 'name')->ignore($this->unit?->id),
             ],
             'symbol' => ['required', 'string', 'max:10'],
+            'sin_code' => ['nullable', 'string', 'max:20'],
         ];
     }
 
@@ -40,7 +42,7 @@ class UnitForm extends Component
     public function create(): void
     {
         abort_if(!auth()->user()->isAdmin(), 403);
-        $this->reset(['name', 'symbol', 'unit', 'isEditing']);
+        $this->reset(['name', 'symbol', 'sin_code', 'unit', 'isEditing']);
         $this->dispatch('open-modal', name: 'unit-form-modal');
     }
 
@@ -51,6 +53,7 @@ class UnitForm extends Component
         $this->unit = $unit;
         $this->name = $unit->name;
         $this->symbol = $unit->symbol;
+        $this->sin_code = $unit->sin_code ?? '';
         $this->isEditing = true;
         $this->dispatch('open-modal', name: 'unit-form-modal');
     }
