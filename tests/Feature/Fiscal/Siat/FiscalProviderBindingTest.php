@@ -3,6 +3,7 @@
 namespace Tests\Feature\Fiscal\Siat;
 
 use App\Fiscal\Siat\FiscalProvider;
+use App\Fiscal\Siat\LoggingFiscalProvider;
 use App\Fiscal\Siat\SimulatorFiscalProvider;
 use App\Models\Setting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -14,7 +15,10 @@ class FiscalProviderBindingTest extends TestCase
 
     public function test_defaults_to_simulator(): void
     {
-        $this->assertInstanceOf(SimulatorFiscalProvider::class, app(FiscalProvider::class));
+        $provider = app(FiscalProvider::class);
+
+        $this->assertInstanceOf(LoggingFiscalProvider::class, $provider);
+        $this->assertInstanceOf(SimulatorFiscalProvider::class, $provider->inner());
     }
 
     public function test_simulator_returns_valid_shaped_cuis_and_cufd(): void
@@ -33,6 +37,9 @@ class FiscalProviderBindingTest extends TestCase
     public function test_binding_switches_to_siat_when_setting_says_so(): void
     {
         Setting::set('fiscal_provider', 'siat');
-        $this->assertInstanceOf(\App\Fiscal\Siat\SiatFiscalProvider::class, app(FiscalProvider::class));
+        $provider = app(FiscalProvider::class);
+
+        $this->assertInstanceOf(LoggingFiscalProvider::class, $provider);
+        $this->assertInstanceOf(\App\Fiscal\Siat\SiatFiscalProvider::class, $provider->inner());
     }
 }

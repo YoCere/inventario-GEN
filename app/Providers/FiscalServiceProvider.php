@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Fiscal\Siat\FiscalProvider;
+use App\Fiscal\Siat\LoggingFiscalProvider;
 use App\Fiscal\Siat\SimulatorFiscalProvider;
 use App\Fiscal\Siat\SiatFiscalProvider;
 use App\Models\Setting;
@@ -13,9 +14,11 @@ class FiscalServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(FiscalProvider::class, function () {
-            return Setting::get('fiscal_provider', 'simulator') === 'siat'
+            $inner = Setting::get('fiscal_provider', 'simulator') === 'siat'
                 ? $this->app->make(SiatFiscalProvider::class)
                 : $this->app->make(SimulatorFiscalProvider::class);
+
+            return new LoggingFiscalProvider($inner);
         });
     }
 }
