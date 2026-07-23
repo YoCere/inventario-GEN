@@ -33,6 +33,7 @@ class StoreSaleRequest extends FormRequest
             'cash_received' => ['nullable', 'numeric', 'min:0'],
             'change' => ['nullable', 'numeric', 'min:0'],
             'global_discount' => ['nullable', 'numeric', 'min:0'],
+            'wants_invoice' => ['nullable', 'boolean'],
 
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'exists:products,id'],
@@ -50,5 +51,21 @@ class StoreSaleRequest extends FormRequest
             'items.*.unit_price.min' => 'El precio unitario debe ser al menos 0.',
             'items.*.discount.min' => 'El descuento debe ser al menos 0.',
         ];
+    }
+
+    public function withValidator(\Illuminate\Validation\Validator $validator): void
+    {
+        $validator->after(function ($v) {
+            if (! $this->boolean('wants_invoice')) {
+                return;
+            }
+            $customer = $this->input('customer_id')
+                ? \App\Models\Customer::find($this->input('customer_id'))
+                : null;
+
+            if (! $customer || ! $customer->hasBillingIdentity()) {
+                $v->errors()->add('wants_invoice', 'Para factura, elegí un cliente con NIT/CI cargado.');
+            }
+        });
     }
 }
