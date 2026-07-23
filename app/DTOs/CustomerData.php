@@ -10,6 +10,10 @@ class CustomerData
         public readonly ?string $phone,
         public readonly ?string $address,
         public readonly ?string $notes,
+        public readonly ?string $docType = null,
+        public readonly ?string $docNumber = null,
+        public readonly ?string $docComplement = null,
+        public readonly ?string $businessName = null,
     ) {}
 
     public static function fromArray(array $data): self
@@ -20,6 +24,10 @@ class CustomerData
             phone: empty($data['phone']) ? null : $data['phone'],
             address: empty($data['address']) ? null : $data['address'],
             notes: empty($data['notes']) ? null : $data['notes'],
+            docType: empty($data['doc_type']) ? null : $data['doc_type'],
+            docNumber: empty($data['doc_number']) ? null : $data['doc_number'],
+            docComplement: empty($data['doc_complement']) ? null : $data['doc_complement'],
+            businessName: empty($data['business_name']) ? null : $data['business_name'],
         );
     }
 
@@ -31,6 +39,10 @@ class CustomerData
             'phone' => $this->phone,
             'address' => $this->address,
             'notes' => $this->notes,
+            'doc_type' => $this->docType,
+            'doc_number' => $this->docNumber,
+            'doc_complement' => $this->docComplement,
+            'business_name' => $this->businessName,
         ];
     }
 }
