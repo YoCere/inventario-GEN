@@ -24,6 +24,8 @@ class Setting extends Model
         'openai_api_key',
         'telegram_bot_token',
         'telegram_webhook_secret',
+        'siat_api_token',
+        'siat_credential',
     ];
 
     /**
