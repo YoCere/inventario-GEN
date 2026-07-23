@@ -107,4 +107,20 @@ class PosStoreWantsInvoiceTest extends TestCase
             'wants_invoice' => true,
         ]);
     }
+
+    public function test_wants_invoice_rejected_when_customer_lacks_identity(): void
+    {
+        // Cliente existe pero SIN NIT/CI cargado → no se puede facturar.
+        $customer = Customer::factory()->create(['doc_type' => null, 'doc_number' => null]);
+
+        $response = $this->actingAs($this->seller)
+            ->postJson(route('sales.store'), $this->basePayload([
+                'customer_id' => $customer->id,
+                'wants_invoice' => 1,
+            ]));
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors('wants_invoice');
+        $this->assertDatabaseMissing('sales', ['wants_invoice' => true]);
+    }
 }
