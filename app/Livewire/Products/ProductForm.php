@@ -27,6 +27,7 @@ class ProductForm extends Component
 
     // Form Fields
     public ?string $sku = null;
+    public string $sin_code = '';
     public string $name = '';
     public ?int $category_id = null;
     public ?int $unit_id = null;
@@ -84,7 +85,7 @@ class ProductForm extends Component
     {
         abort_if(! auth()->user()->isAdmin(), 403);
         $this->reset([
-            'sku', 'name', 'category_id', 'unit_id', 'purchase_price', 'selling_price',
+            'sku', 'sin_code', 'name', 'category_id', 'unit_id', 'purchase_price', 'selling_price',
             'quantity', 'min_stock', 'description', 'notes', 'product', 'isEditing',
             'categoryName', 'unitName', 'photo', 'location_id', 'hasMultiLocationStock',
             'is_public', 'featured', 'gallery', 'newUpload', 'imagesToDelete', 'primaryImageId',
@@ -106,6 +107,7 @@ class ProductForm extends Component
         abort_if(! auth()->user()->isAdmin(), 403);
         $this->product = $product->load('images');
         $this->sku = $product->sku;
+        $this->sin_code = $product->sin_code ?? '';
         $this->name = $product->name;
         $this->category_id = $product->category_id;
         $this->unit_id = $product->unit_id;
@@ -148,6 +150,7 @@ class ProductForm extends Component
                 'max:50',
                 Rule::unique('products', 'sku')->ignore($this->product?->id),
             ],
+            'sin_code' => ['nullable', 'string', 'max:20'],
             'category_id' => ['required', 'exists:categories,id'],
             'unit_id' => ['required', 'exists:units,id'],
             'purchase_price' => ['required', 'integer', 'min:0'],

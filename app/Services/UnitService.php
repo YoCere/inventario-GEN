@@ -21,6 +21,7 @@ class UnitService
                 $unit = Unit::create([
                     'name' => $data->name,
                     'symbol' => $data->symbol,
+                    'sin_code' => $data->sin_code,
                 ]);
 
                 Cache::forget('units_list_all');
@@ -46,6 +47,7 @@ class UnitService
                 $unit->update([
                     'name' => $data->name,
                     'symbol' => $data->symbol,
+                    'sin_code' => $data->sin_code,
                 ]);
 
                 Cache::forget('units_list_all');

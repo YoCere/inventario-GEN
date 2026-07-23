@@ -40,6 +40,21 @@
                     required
                     class="{{ !$isEditing ? 'col-span-2' : '' }}"
                 />
+
+                <!-- Código SIN -->
+                <div class="space-y-2">
+                    <x-input-label for="sin_code" value="Código SIN" />
+                    <input
+                        id="sin_code"
+                        type="text"
+                        wire:model="sin_code"
+                        placeholder="ej. 87654321"
+                        maxlength="20"
+                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                    <p class="text-xs text-muted-foreground">Código de homologación del SIN (opcional).</p>
+                    <x-input-error :messages="$errors->get('sin_code')" />
+                </div>
             </div>
 
             <!-- Row 2: Category & Unit -->
