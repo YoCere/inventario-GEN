@@ -18,6 +18,10 @@ class Customer extends Model
         'phone',
         'address',
         'notes',
+        'doc_type',
+        'doc_number',
+        'doc_complement',
+        'business_name',
     ];
 
     protected $casts = [
@@ -31,5 +35,24 @@ class Customer extends Model
     public function sales()
     {
         return $this->hasMany(Sale::class);
+    }
+
+    public function billingIdentity(): ?\App\Fiscal\BillingIdentity
+    {
+        if (! $this->hasBillingIdentity()) {
+            return null;
+        }
+
+        return new \App\Fiscal\BillingIdentity(
+            (string) $this->doc_type,
+            (string) $this->doc_number,
+            $this->doc_complement,
+            $this->business_name ?: $this->name,
+        );
+    }
+
+    public function hasBillingIdentity(): bool
+    {
+        return filled($this->doc_type) && filled($this->doc_number);
     }
 }

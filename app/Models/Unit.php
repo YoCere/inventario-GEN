@@ -14,11 +14,13 @@ class Unit extends Model
     protected $fillable = [
         'name',
         'symbol',
+        'sin_code',
     ];
 
     protected $casts = [
         'name' => 'string',
         'symbol' => 'string',
+        'sin_code' => 'string',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
