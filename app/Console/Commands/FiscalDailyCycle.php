@@ -19,6 +19,14 @@ class FiscalDailyCycle extends Command
         $sucursal = (int) $this->option('sucursal');
         $pv = (int) $this->option('pv');
 
+        // Guard de go-live: si el ambiente dice producción pero el proveedor sigue en
+        // simulador, se estaría "facturando" contra datos falsos sin que nadie se entere.
+        // El simulador nunca falla, así que sin esta alerta el error sería invisible.
+        if (Setting::get('siat_environment') === 'produccion'
+            && Setting::get('fiscal_provider', 'simulator') !== 'siat') {
+            $this->notifyAdmin('⚠️ SIAT en PRODUCCIÓN pero el proveedor sigue en SIMULADOR: no se está facturando de verdad. Setear fiscal_provider=siat.');
+        }
+
         try {
             $authority->ensureCuis($sucursal, $pv);
             $authority->currentCufd($sucursal, $pv);

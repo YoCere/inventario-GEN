@@ -20,18 +20,23 @@ class LoggingFiscalProvider implements FiscalProvider
     private function log(string $service, array $request, callable $call)
     {
         $env = Setting::get('siat_environment', 'piloto');
+        // Registrar QUÉ proveedor respondió (simulador vs SIAT real) y el resultado real,
+        // para que la auditoría distinga una corrida real de una simulada.
+        $provider = class_basename($this->wrapped);
         try {
             $result = $call();
             FiscalLog::create([
                 'service' => $service, 'environment' => $env,
-                'request' => json_encode($request), 'response' => json_encode(['ok' => true]),
+                'request' => json_encode($request),
+                'response' => json_encode(['provider' => $provider, 'result' => $result]),
                 'success' => true,
             ]);
             return $result;
         } catch (\Throwable $e) {
             FiscalLog::create([
                 'service' => $service, 'environment' => $env,
-                'request' => json_encode($request), 'response' => $e->getMessage(),
+                'request' => json_encode($request),
+                'response' => json_encode(['provider' => $provider, 'error' => $e->getMessage()]),
                 'success' => false, 'error_code' => (string) $e->getCode(),
             ]);
             throw $e;
