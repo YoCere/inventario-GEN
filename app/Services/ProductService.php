@@ -266,9 +266,11 @@ class ProductService
     {
         $prefix = 'P.' . date('ymd') . '.';
 
+        // withTrashed: el índice único cuenta las filas soft-deleted, así que un
+        // SKU "libre" para el scope normal puede seguir chocando en la DB.
         do {
             $sku = $prefix . strtoupper(Str::random(4));
-        } while (Product::where('sku', $sku)->exists());
+        } while (Product::withTrashed()->where('sku', $sku)->exists());
 
         return $sku;
     }
@@ -282,7 +284,10 @@ class ProductService
         $base = Str::slug($name) ?: 'producto';
         $candidate = $base;
         $n = 1;
-        while (Product::where('slug', $candidate)->exists()) {
+        // withTrashed: un producto borrado (soft-delete) sigue ocupando el slug en
+        // el índice único; sin esto, recrear un producto con el mismo nombre choca
+        // con 1062 Duplicate entry al insertar.
+        while (Product::withTrashed()->where('slug', $candidate)->exists()) {
             $n++;
             $candidate = "{$base}-{$n}";
         }
