@@ -107,6 +107,32 @@ class ReceiptParserTest extends TestCase
         app(ReceiptParser::class)->parse($this->fakeImage());
     }
 
+    public function test_large_image_is_downscaled_before_sending_to_ai(): void
+    {
+        Setting::set('ai_provider', 'anthropic');
+        Setting::set('anthropic_api_key', 'sk-test');
+
+        Http::fake([
+            'api.anthropic.com/*' => Http::response([
+                'content' => [['type' => 'text', 'text' => '{"purchase_date":null,"supplier_name":null,"items":[{"raw_name":"X","quantity":1,"unit_price":1}]}']],
+                'usage' => ['input_tokens' => 1, 'output_tokens' => 1],
+            ], 200),
+        ]);
+
+        // Foto "de celular" 4000x3000 → debe ir capada a <=1600px de lado mayor.
+        app(ReceiptParser::class)->parse(File::image('grande.jpg', 4000, 3000));
+
+        Http::assertSent(function ($request) {
+            $source = $request->data()['messages'][0]['content'][0]['source'];
+            $this->assertSame('image/jpeg', $source['media_type']);
+            $size = getimagesizefromstring(base64_decode($source['data']));
+            $this->assertNotFalse($size);
+            $this->assertLessThanOrEqual(1600, max($size[0], $size[1]));
+
+            return true;
+        });
+    }
+
     public function test_openai_compatible_uses_image_url_data_uri(): void
     {
         Setting::set('ai_provider', 'openai_compatible');
