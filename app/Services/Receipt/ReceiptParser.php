@@ -8,6 +8,8 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Intervention\Image\Encoders\JpegEncoder;
+use Intervention\Image\Laravel\Facades\Image;
 
 class ReceiptParser
 {
@@ -42,14 +44,37 @@ TXT;
         }
 
         $provider = Setting::get('ai_provider', 'anthropic');
-        $base64   = base64_encode(file_get_contents($image->getRealPath()));
-        $mime     = $image->getMimeType() ?: 'image/jpeg';
+        [$base64, $mime] = $this->encodeImage($image);
 
         $raw = $provider === 'openai_compatible'
             ? $this->callOpenAi($base64, $mime)
             : $this->callAnthropic($base64, $mime);
 
         return $this->toReceiptData($raw);
+    }
+
+    /**
+     * Redimensiona la imagen a un lado máximo antes del base64. Fotos de celular
+     * (12MP) crudas revientan memory_limit al codificar y encarecen/enlentecen la
+     * llamada IA sin aportar precisión. Cap a 1600px + JPEG q75. Si Intervention
+     * falla por algún motivo, cae al archivo original (nunca rompe el flujo).
+     *
+     * @return array{0:string,1:string} [base64, mimeType]
+     */
+    private function encodeImage(UploadedFile $image): array
+    {
+        try {
+            $img = Image::decodePath($image->getRealPath());
+            $img->scaleDown(1600, 1600); // encaja en 1600x1600, respeta aspecto, no agranda
+            $binary = (string) $img->encode(new JpegEncoder(quality: 75));
+
+            return [base64_encode($binary), 'image/jpeg'];
+        } catch (\Throwable $e) {
+            Log::warning('ReceiptParser downscale fallback', ['error' => $e->getMessage()]);
+            $binary = (string) file_get_contents($image->getRealPath());
+
+            return [base64_encode($binary), $image->getMimeType() ?: 'image/jpeg'];
+        }
     }
 
     private function callAnthropic(string $base64, string $mime): string
