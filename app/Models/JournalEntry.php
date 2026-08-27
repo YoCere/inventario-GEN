@@ -69,7 +69,11 @@ class JournalEntry extends Model
 
     public function scopeMovimientos(Builder $query): Builder
     {
-        return $query->where('entry_type', JournalEntryType::Normal);
+        // La apertura es un movimiento base (no un ajuste); debe listarse junto a los normales.
+        return $query->whereIn('entry_type', [
+            JournalEntryType::Normal->value,
+            JournalEntryType::Apertura->value,
+        ]);
     }
 
     public function scopeAjustes(Builder $query): Builder

@@ -80,7 +80,9 @@ class ManualJournalEntryForm extends Component
         return [
             'entry_date'                       => ['required', 'date'],
             'voucher_type'                     => ['required', Rule::enum(VoucherType::class)],
-            'entry_type'                       => ['required', Rule::enum(JournalEntryType::class)],
+            // Solo normal/ajuste desde el form manual; la apertura se crea SOLO vía OpeningBalanceService
+            // (garantiza unicidad por gestión). Rule::enum aceptaría 'apertura' y rompería esa garantía.
+            'entry_type'                       => ['required', Rule::in([JournalEntryType::Normal->value, JournalEntryType::Ajuste->value])],
             'description'                      => ['nullable', 'string'],
             'lines'                            => ['array', 'min:2'],
             'lines.*.chart_of_account_id'      => ['required', 'exists:chart_of_accounts,id'],

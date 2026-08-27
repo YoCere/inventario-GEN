@@ -24,7 +24,7 @@ class TrialBalanceService
         $sumas = DB::table('ledger_account_daily as d')
             ->whereDate('d.movement_date', '>=', $from)
             ->whereDate('d.movement_date', '<=', $to)
-            ->when(!$adjusted, fn ($q) => $q->where('d.entry_type', 'normal'))
+            ->when(!$adjusted, fn ($q) => $q->whereIn('d.entry_type', ['normal', 'apertura']))
             ->selectRaw('d.chart_of_account_id, SUM(d.debit_total) as sd, SUM(d.credit_total) as sc')
             ->groupBy('d.chart_of_account_id')
             ->get()->keyBy('chart_of_account_id');
