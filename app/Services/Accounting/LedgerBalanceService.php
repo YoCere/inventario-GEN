@@ -47,7 +47,8 @@ class LedgerBalanceService
         if ($adjustmentsOnly) {
             $query->where('d.entry_type', 'ajuste');
         } elseif (!$includeAdjustments) {
-            $query->where('d.entry_type', 'normal');
+            // La apertura es saldo base (no un ajuste): va siempre con 'normal'.
+            $query->whereIn('d.entry_type', ['normal', 'apertura']);
         }
 
         return $query->get()->map(function ($row) {
