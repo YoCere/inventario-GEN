@@ -37,11 +37,11 @@ class JournalEntryService
      *     reference?: string|null
      * }> $lines
      */
-    public function createPostedEntry(array $payload, array $lines): JournalEntry
+    public function createPostedEntry(array $payload, array $lines, bool $allowClosedPeriod = false): JournalEntry
     {
         $this->validateLines($lines);
 
-        $entry = DB::transaction(function () use ($payload, $lines) {
+        $entry = DB::transaction(function () use ($payload, $lines, $allowClosedPeriod) {
             // Garantizar que no se posteen asientos a periodos cerrados.
             // Callers (Sale/Purchase services) pasan accounting_period_id directo,
             // sin pasar por resolveOpenPeriod() — validar aquí cubre todos los paths.
@@ -49,7 +49,17 @@ class JournalEntryService
             if (!$period) {
                 throw new RuntimeException("Periodo contable {$payload['accounting_period_id']} no existe.");
             }
-            if ($period->status !== AccountingPeriodStatus::Open) {
+
+            $entryTypeCheck = $payload['entry_type'] ?? JournalEntryType::Normal->value;
+            if ($entryTypeCheck instanceof JournalEntryType) {
+                $entryTypeCheck = $entryTypeCheck->value;
+            }
+
+            if ($allowClosedPeriod && $entryTypeCheck !== JournalEntryType::Apertura->value) {
+                throw new RuntimeException('allowClosedPeriod solo es válido para asientos de apertura.');
+            }
+
+            if (! $allowClosedPeriod && $period->status !== AccountingPeriodStatus::Open) {
                 throw new RuntimeException(
                     "No se puede postear al periodo '{$period->name}' (status: {$period->status->label()})."
                 );
@@ -115,6 +125,10 @@ class JournalEntryService
     {
         if ($entry->status !== JournalEntryStatus::Posted) {
             throw new RuntimeException('Solo se pueden revertir asientos contabilizados.');
+        }
+
+        if ($entry->entry_type === JournalEntryType::Apertura->value) {
+            throw new RuntimeException('El asiento de apertura no puede revertirse.');
         }
 
         $existing = JournalEntry::query()
