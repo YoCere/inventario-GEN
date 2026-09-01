@@ -33,6 +33,13 @@
                         <option value="percent">Porcentajes (simple)</option>
                         <option value="amount">Montos (tecnico)</option>
                     </select>
+                @elseif($key === 'company_entity_type')
+                    <select id="value" wire:model="value" class="block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm">
+                        <option value="unipersonal">Unipersonal (sin reserva legal)</option>
+                        <option value="persona_natural">Persona Natural (sin reserva legal)</option>
+                        <option value="srl">S.R.L. (reserva legal 5%)</option>
+                        <option value="sa">S.A. (reserva legal 5%)</option>
+                    </select>
                 @elseif($key === 'opening_balance_date')
                     <input
                         type="date"

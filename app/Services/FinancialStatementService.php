@@ -30,7 +30,7 @@ class FinancialStatementService
         $openingBalances = $this->calculateAccountBalances(null, $beforeFrom);
 
         $balanceGeneral = $this->buildBalanceGeneral($cumulativeBalances);
-        $estadoResultados = $this->buildIncomeStatement($periodBalances, $withTaxes);
+        $estadoResultados = $this->buildIncomeStatement($periodBalances, $openingBalances, $cumulativeBalances, $withTaxes);
         $netResultForEquity = $withTaxes
             ? $estadoResultados['net_result_after_tax']
             : $estadoResultados['net_result'];
@@ -102,8 +102,12 @@ class FinancialStatementService
      * @param Collection<int, object> $periodBalances
      * @return array<string, mixed>
      */
-    protected function buildIncomeStatement(Collection $periodBalances, bool $withTaxes): array
-    {
+    protected function buildIncomeStatement(
+        Collection $periodBalances,
+        Collection $openingBalances,
+        Collection $cumulativeBalances,
+        bool $withTaxes
+    ): array {
         $income = $periodBalances->where('account_type', 'income')->values();
         $costs = $periodBalances->where('account_type', 'cost')->values();
         $expenses = $periodBalances->where('account_type', 'expense')->values();
@@ -113,6 +117,34 @@ class FinancialStatementService
         $expenseTotal = (int) $expenses->sum('balance');
         $netResult = $incomeTotal - $costTotal - $expenseTotal;
         $taxes = $this->buildTaxBreakdown($periodBalances, $withTaxes);
+
+        $inventoryCode = Setting::get('accounting_inventory_code', '1.1.04');
+        $capitalCode   = Setting::get('accounting_opening_capital_code', '3.1');
+        $reserveCode   = Setting::get('accounting_legal_reserve_code', '3.4');
+
+        $balanceOf = fn (Collection $c, string $code) => (int) (optional($c->firstWhere('code', $code))->balance ?? 0);
+        $debitOf   = fn (Collection $c, string $code) => (int) (optional($c->firstWhere('code', $code))->debit_total ?? 0);
+
+        $ventas = (int) $income->filter(fn ($a) => str_starts_with((string) $a->code, '4.1'))->sum('balance');
+        $otrosIngresos = $incomeTotal - $ventas;
+
+        $cmv = [
+            'inventario_inicial' => $balanceOf($openingBalances, $inventoryCode),
+            'compras_periodo'    => $debitOf($periodBalances, $inventoryCode),
+            'inventario_final'   => $balanceOf($cumulativeBalances, $inventoryCode),
+            'devoluciones'       => 0,
+            'cmv_total'          => $costTotal,
+        ];
+
+        $utilidadBruta = $ventas - $cmv['cmv_total'];
+        $utilidadAntesImpuestos = $utilidadBruta - $expenseTotal + $otrosIngresos;
+
+        $iueRate = (float) Setting::get('tax_iue_rate', '25');
+        $iue = $utilidadAntesImpuestos > 0 ? (int) round($utilidadAntesImpuestos * $iueRate / 100) : 0;
+        $utilidadDespuesImpuestos = $utilidadAntesImpuestos - $iue;
+
+        $reserva = $this->computeLegalReserve($utilidadDespuesImpuestos, $cumulativeBalances, $capitalCode, $reserveCode, $balanceOf);
+        $utilidadGestion = $utilidadDespuesImpuestos - $reserva;
 
         return [
             'income_accounts' => $income,
@@ -125,7 +157,36 @@ class FinancialStatementService
             'with_taxes' => $withTaxes,
             'taxes' => $taxes,
             'net_result_after_tax' => $netResult - $taxes['total_tax'],
+            'ventas' => $ventas,
+            'otros_ingresos' => $otrosIngresos,
+            'cmv' => $cmv,
+            'utilidad_bruta' => $utilidadBruta,
+            'gastos_operacion' => $expenseTotal,
+            'utilidad_antes_impuestos' => $utilidadAntesImpuestos,
+            'iue' => $iue,
+            'utilidad_despues_impuestos' => $utilidadDespuesImpuestos,
+            'reserva_legal' => $reserva,
+            'utilidad_gestion' => $utilidadGestion,
         ];
+    }
+
+    /** Reserva legal 5% solo para S.A./S.R.L., con tope 50% del capital. */
+    protected function computeLegalReserve(int $utilidadDespues, Collection $cumulativeBalances, string $capitalCode, string $reserveCode, callable $balanceOf): int
+    {
+        $type = Setting::get('company_entity_type', 'unipersonal');
+        if (! in_array($type, ['srl', 'sa'], true) || $utilidadDespues <= 0) {
+            return 0;
+        }
+        $rate = (float) Setting::get('legal_reserve_rate', '5');
+        $capPct = (float) Setting::get('legal_reserve_cap_pct', '50');
+
+        $capital = $balanceOf($cumulativeBalances, $capitalCode);
+        $tope = (int) round($capital * $capPct / 100);
+        $reservaActual = $balanceOf($cumulativeBalances, $reserveCode);
+        $margen = max($tope - $reservaActual, 0);
+
+        $reserva = (int) round($utilidadDespues * $rate / 100);
+        return min($reserva, $margen);
     }
 
     /**
