@@ -112,7 +112,7 @@ class FinancialStatementService
         $costTotal = (int) $costs->sum('balance');
         $expenseTotal = (int) $expenses->sum('balance');
         $netResult = $incomeTotal - $costTotal - $expenseTotal;
-        $taxes = $this->buildTaxBreakdown($incomeTotal, $costTotal, $expenseTotal, $withTaxes);
+        $taxes = $this->buildTaxBreakdown($periodBalances, $withTaxes);
 
         return [
             'income_accounts' => $income,
@@ -129,62 +129,46 @@ class FinancialStatementService
     }
 
     /**
+     * @param Collection<int, object> $periodBalances
      * @return array<string, int|float|bool>
      */
-    protected function buildTaxBreakdown(int $incomeTotal, int $costTotal, int $expenseTotal, bool $withTaxes): array
+    protected function buildTaxBreakdown(Collection $periodBalances, bool $withTaxes): array
     {
         $ivaRate = (float) Setting::get('tax_iva_rate', '13');
-        $itRate = (float) Setting::get('tax_it_rate', '3');
+        $itRate  = (float) Setting::get('tax_it_rate', '3');
         $includeIva = Setting::get('tax_include_iva', '1') === '1';
-        $includeIt = Setting::get('tax_include_it', '1') === '1';
+        $includeIt  = Setting::get('tax_include_it', '1') === '1';
 
+        $dfCode    = Setting::get('accounting_df_iva_code', '2.1.11');
+        $cfCode    = Setting::get('accounting_cf_iva_code', '1.1.05');
+        $itPayCode = Setting::get('accounting_it_payable_code', '2.1.12');
+
+        $balanceOf = fn (string $code) => (int) abs((int) (optional($periodBalances->firstWhere('code', $code))->balance ?? 0));
+
+        $base = [
+            'include_iva' => $includeIva, 'include_it' => $includeIt,
+            'iva_rate' => $ivaRate, 'it_rate' => $itRate,
+            'taxable_sales_base' => 0, 'taxable_purchases_base' => 0,
+            'iva_debito' => 0, 'iva_credito' => 0, 'iva_determinado' => 0,
+            'it_base' => 0, 'it_amount' => 0, 'total_tax' => 0,
+        ];
         if (! $withTaxes) {
-            return [
-                'include_iva' => $includeIva,
-                'include_it' => $includeIt,
-                'iva_rate' => $ivaRate,
-                'it_rate' => $itRate,
-                'taxable_sales_base' => 0,
-                'taxable_purchases_base' => 0,
-                'iva_debito' => 0,
-                'iva_credito' => 0,
-                'iva_determinado' => 0,
-                'it_base' => 0,
-                'it_amount' => 0,
-                'total_tax' => 0,
-            ];
+            return $base;
         }
 
-        $taxableSalesBase = max($incomeTotal, 0);
-        $taxablePurchasesBase = max($costTotal + $expenseTotal, 0);
-
-        $ivaDebito = $includeIva
-            ? (int) round($taxableSalesBase * ($ivaRate / 100))
-            : 0;
-        $ivaCredito = $includeIva
-            ? (int) round($taxablePurchasesBase * ($ivaRate / 100))
-            : 0;
+        $ivaDebito      = $includeIva ? $balanceOf($dfCode) : 0;
+        $ivaCredito     = $includeIva ? $balanceOf($cfCode) : 0;
         $ivaDeterminado = max($ivaDebito - $ivaCredito, 0);
+        $itAmount       = $includeIt ? $balanceOf($itPayCode) : 0;
 
-        $itBase = max($incomeTotal, 0);
-        $itAmount = $includeIt
-            ? (int) round($itBase * ($itRate / 100))
-            : 0;
-
-        return [
-            'include_iva' => $includeIva,
-            'include_it' => $includeIt,
-            'iva_rate' => $ivaRate,
-            'it_rate' => $itRate,
-            'taxable_sales_base' => $taxableSalesBase,
-            'taxable_purchases_base' => $taxablePurchasesBase,
+        return array_merge($base, [
             'iva_debito' => $ivaDebito,
             'iva_credito' => $ivaCredito,
             'iva_determinado' => $ivaDeterminado,
-            'it_base' => $itBase,
             'it_amount' => $itAmount,
-            'total_tax' => $ivaDeterminado + $itAmount,
-        ];
+            // IT ya está registrado como gasto (cuenta 6.7) en expense_total -> NO se resta de nuevo.
+            'total_tax' => $ivaDeterminado,
+        ]);
     }
 
     /**

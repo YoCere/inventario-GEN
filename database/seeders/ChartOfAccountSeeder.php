@@ -76,6 +76,8 @@ class ChartOfAccountSeeder extends Seeder
             ['code' => '6.4', 'name' => 'Gasto Depreciacion', 'level' => 2, 'parent_code' => '6', 'account_type' => 'expense', 'normal_balance' => 'debit', 'allows_posting' => true],
             ['code' => '6.5', 'name' => 'Gasto Amortizacion', 'level' => 2, 'parent_code' => '6', 'account_type' => 'expense', 'normal_balance' => 'debit', 'allows_posting' => true],
             ['code' => '6.6', 'name' => 'Perdida en Venta de Activos', 'level' => 2, 'parent_code' => '6', 'account_type' => 'expense', 'normal_balance' => 'debit', 'allows_posting' => true],
+            // Gasto IT — Impuesto a las Transacciones 3% sobre ingresos brutos (asientos de venta/compra)
+            ['code' => '6.7', 'name' => 'Impuesto a las Transacciones', 'level' => 2, 'parent_code' => '6', 'account_type' => 'expense', 'normal_balance' => 'debit', 'allows_posting' => true],
         ];
 
         foreach ($accounts as $account) {

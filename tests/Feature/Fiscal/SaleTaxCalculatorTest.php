@@ -34,6 +34,10 @@ class SaleTaxCalculatorTest extends TestCase
 
     public function test_unset_rates_do_not_crash(): void
     {
+        // Las tasas ahora se siembran (homologación 13/3), así que "sin configurar" se
+        // fuerza dejándolas vacías. El calculador debe degradar a 0 sin romper.
+        Setting::set('tax_iva_rate', '');
+        Setting::set('tax_it_rate', '');
         $r = (new SaleTaxCalculator())->forTotal(10000);
         $this->assertSame(0, $r['iva_amount']);
         $this->assertSame(0, $r['it_amount']);

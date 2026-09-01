@@ -20,7 +20,8 @@ class PurchaseService
         protected FinanceTransactionService $financeService,
         protected PurchaseAccountingService $purchaseAccountingService,
         protected AuditService $auditService,
-        protected StockService $stockService
+        protected StockService $stockService,
+        protected \App\Fiscal\PurchaseTaxCalculator $taxCalculator
     ) {
     }
 
@@ -361,6 +362,14 @@ class PurchaseService
             $total += $subtotal;
         }
 
-        $purchase->update(['total' => $total]);
+        $tax = $this->taxCalculator->forTotal($total);
+
+        $purchase->update([
+            'total' => $total,
+            'taxable_base' => $tax['taxable_base'],
+            'iva_amount' => $tax['iva_amount'],
+            // TODO: capturar "quiere factura" en el flujo de compra
+            'wants_invoice' => false,
+        ]);
     }
 }

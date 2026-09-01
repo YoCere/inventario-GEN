@@ -24,6 +24,9 @@ class Purchase extends Model
         'notes',
         'proof_image',
         'created_by',
+        'taxable_base',
+        'iva_amount',
+        'wants_invoice',
     ];
 
     protected $casts = [
@@ -33,6 +36,9 @@ class Purchase extends Model
         'supplier_id' => 'integer',
         'created_by' => 'integer',
         'status' => PurchaseStatus::class,
+        'taxable_base' => 'integer',
+        'iva_amount' => 'integer',
+        'wants_invoice' => 'boolean',
     ];
 
     public function supplier(): BelongsTo

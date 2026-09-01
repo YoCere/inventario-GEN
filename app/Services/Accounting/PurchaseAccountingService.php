@@ -15,7 +15,8 @@ use RuntimeException;
 class PurchaseAccountingService
 {
     public function __construct(
-        protected JournalEntryService $journalEntryService
+        protected JournalEntryService $journalEntryService,
+        protected TaxLinesBuilder $taxLines
     ) {
     }
 
@@ -42,6 +43,8 @@ class PurchaseAccountingService
 
         $inventoryAccount = $this->findPostingAccount(Setting::get('accounting_inventory_code', '1.1.04'));
         $total = (int) $purchase->total;
+        $withInvoice = (bool) $purchase->wants_invoice;
+        $inventoryDebit = $withInvoice ? ((int) $purchase->total - (int) $purchase->iva_amount) : $total;
 
         // Seleccionar cuenta de contrapartida según método de pago
         $paymentMethod = $purchase->payment_method ?? 'cash';
@@ -58,7 +61,7 @@ class PurchaseAccountingService
             [
                 'chart_of_account_id' => $inventoryAccount->id,
                 'description' => 'Ingreso de inventario por compra ' . $purchase->invoice_number,
-                'debit_amount' => $total,
+                'debit_amount' => $inventoryDebit,
                 'credit_amount' => 0,
                 'reference' => $purchase->invoice_number,
             ],
@@ -70,6 +73,12 @@ class PurchaseAccountingService
                 'reference' => $purchase->invoice_number,
             ],
         ];
+
+        if ($withInvoice) {
+            foreach ($this->taxLines->purchaseTaxLines((int) $purchase->iva_amount) as $tl) {
+                $lines[] = $tl + ['reference' => $purchase->invoice_number];
+            }
+        }
 
         return $this->journalEntryService->createPostedEntry([
             'entry_date'           => $entryDate,
