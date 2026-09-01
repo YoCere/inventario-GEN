@@ -97,11 +97,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     Route::prefix('finance')->name('finance.')->group(function () {
+        // Hubs: solo agrupan navegación hacia páginas ya existentes (no
+        // agregan datos ni cambian permisos). Gate = OR de los permisos de
+        // las tarjetas que agrupan, igual que el @canany que mostraba/ocultaba
+        // la sección completa en el menú.
+        Route::get('contabilidad', function () {
+            abort_unless(auth()->user()?->canAny(['finance.accounting', 'products.kardex']), 403);
+            return view('finance.hubs.contabilidad');
+        })->name('hub.accounting');
+
+        Route::get('modulos', function () {
+            abort_unless(auth()->user()?->canAny(['assets.manage', 'loans.manage', 'budgets.manage', 'production.manage', 'users.payroll']), 403);
+            return view('finance.hubs.modulos');
+        })->name('hub.modules');
+
         Route::middleware('can:finance.view')->group(function () {
             Route::view('/', 'finance.index')->name('index');
             Route::view('categories', 'finance-categories.index')->name('categories.index');
             Route::view('transactions', 'finance-transactions.index')->name('transactions.index');
             Route::get('transactions/print/{printId}', [FinanceReportController::class, 'print'])->name('transactions.print');
+            Route::view('tesoreria', 'finance.hubs.tesoreria')->name('hub.treasury');
         });
 
         Route::middleware('can:finance.accounting')->group(function () {
