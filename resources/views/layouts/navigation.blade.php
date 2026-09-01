@@ -109,10 +109,7 @@
                                 @endcan
                                 @can('finance.accounting')
                                 <div class="my-1 border-t border-border"></div>
-                                <div class="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Contabilidad</div>
-                                <x-dropdown-link :href="route('finance.chart-of-accounts.index')" :active="request()->routeIs('finance.chart-of-accounts.index')">
-                                    Plan de cuentas
-                                </x-dropdown-link>
+                                <div class="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Registros</div>
                                 <x-dropdown-link :href="route('finance.journal-entries.index')" :active="request()->routeIs('finance.journal-entries.index')">
                                     Libro diario
                                 </x-dropdown-link>
@@ -121,6 +118,8 @@
                                     Asiento de apertura
                                 </x-dropdown-link>
                                 @endif
+                                <div class="my-1 border-t border-border"></div>
+                                <div class="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Reportes</div>
                                 <x-dropdown-link :href="route('finance.statements.index')" :active="request()->routeIs('finance.statements.index')">
                                     Estados financieros
                                 </x-dropdown-link>
@@ -129,6 +128,11 @@
                                 </x-dropdown-link>
                                 <x-dropdown-link :href="route('finance.worksheet')" :active="request()->routeIs('finance.worksheet')">
                                     Hoja Teórica
+                                </x-dropdown-link>
+                                <div class="my-1 border-t border-border"></div>
+                                <div class="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Maestros</div>
+                                <x-dropdown-link :href="route('finance.chart-of-accounts.index')" :active="request()->routeIs('finance.chart-of-accounts.index')">
+                                    Plan de cuentas
                                 </x-dropdown-link>
                                 @endcan
                                 @can('assets.manage')
@@ -429,15 +433,17 @@
                                     <a class="text-sm font-semibold py-1 {{ request()->routeIs('finance.index') ? 'text-primary' : '' }}" href="{{ route('finance.index') }}">Resumen financiero</a>
                                     @endcan
                                     @can('finance.accounting')
-                                    <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mt-2">Contabilidad</p>
-                                    <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.chart-of-accounts.index') ? 'text-primary' : '' }}" href="{{ route('finance.chart-of-accounts.index') }}">Plan de cuentas</a>
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mt-2">Registros</p>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.journal-entries.index') ? 'text-primary' : '' }}" href="{{ route('finance.journal-entries.index') }}">Libro diario</a>
                                     @if(auth()->user()?->isAdmin())
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('accounting.opening.index') ? 'text-primary' : '' }}" href="{{ route('accounting.opening.index') }}">Asiento de apertura</a>
                                     @endif
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mt-2">Reportes</p>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.statements.index') ? 'text-primary' : '' }}" href="{{ route('finance.statements.index') }}">Estados financieros</a>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.trial-balance') ? 'text-primary' : '' }}" href="{{ route('finance.trial-balance') }}">Balance de Sumas y Saldos</a>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.worksheet') ? 'text-primary' : '' }}" href="{{ route('finance.worksheet') }}">Hoja Teórica</a>
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mt-2">Maestros</p>
+                                    <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.chart-of-accounts.index') ? 'text-primary' : '' }}" href="{{ route('finance.chart-of-accounts.index') }}">Plan de cuentas</a>
                                     @endcan
                                     @can('assets.manage')
                                     <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mt-2">Activos Fijos</p>
