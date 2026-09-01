@@ -142,4 +142,49 @@ class SaleTaxPostingTest extends TestCase
         $this->assertNotNull($ventasLine);
         $this->assertEquals(10000, $ventasLine->credit_amount, 'Sin factura, Ventas = total');
     }
+
+    public function test_venta_con_factura_total_impar_cuadra_al_centavo(): void
+    {
+        // Total impar: la línea Ventas = total − iva, y Caja = total; el asiento cuadra
+        // al centavo porque el mismo entero (iva) se resta de Ventas y se suma en DF-IVA.
+        $sale = $this->makeSale([
+            'total'         => 9999,
+            'iva_amount'    => 1300,
+            'it_amount'     => 300,
+            'wants_invoice' => true,
+        ]);
+        $this->addItem($sale, 8700, 9999);
+
+        $entry = $this->service->postCompletedSale($sale->fresh(), $this->user->id);
+        $this->assertNotNull($entry);
+
+        $lines = $entry->lines;
+        $this->assertEquals($lines->sum('debit_amount'), $lines->sum('credit_amount'), 'Cuadra con total impar');
+
+        $ventasLine = $lines->firstWhere('chart_of_account_id', $this->accountId('4.1'));
+        $this->assertEquals(8699, $ventasLine->credit_amount, 'Ventas = 9999 − 1300');
+    }
+
+    public function test_reverso_de_venta_con_factura_deja_saldos_fiscales_en_cero(): void
+    {
+        $sale = $this->makeSale([
+            'total'         => 10000,
+            'iva_amount'    => 1300,
+            'it_amount'     => 300,
+            'wants_invoice' => true,
+        ]);
+        $this->addItem($sale, 8700, 10000);
+        $this->service->postCompletedSale($sale->fresh(), $this->user->id);
+
+        $reversal = $this->service->reverseSaleEntry($sale->fresh(), $this->user->id, 'test');
+        $this->assertNotNull($reversal);
+        $this->assertEquals($reversal->lines->sum('debit_amount'), $reversal->lines->sum('credit_amount'));
+
+        // Tras el reverso, el saldo neto de cada cuenta afectada vuelve a 0.
+        $balances = app(\App\Services\Accounting\LedgerBalanceService::class)->balancesAt(now()->toDateString());
+        foreach (['2.1.11', '2.1.12', '6.7', '1.1.04', '4.1', '1.1.01'] as $code) {
+            $row = $balances->firstWhere('code', $code);
+            $this->assertSame(0, $row ? (int) $row->balance : 0, "Saldo de {$code} debe ser 0 tras reverso");
+        }
+    }
 }

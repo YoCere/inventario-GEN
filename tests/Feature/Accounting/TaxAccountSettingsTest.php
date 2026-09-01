@@ -20,6 +20,8 @@ class TaxAccountSettingsTest extends TestCase
         $this->assertSame('13', Setting::get('tax_iva_rate'));
         $this->assertSame('3', Setting::get('tax_it_rate'));
 
+        // La cuenta 6.7 la crea el seeder (no la migración — evita huérfanos en install fresco).
+        $this->seed(\Database\Seeders\ChartOfAccountSeeder::class);
         $itExpense = ChartOfAccount::where('code', '6.7')->first();
         $this->assertNotNull($itExpense);
         $this->assertSame('expense', $itExpense->account_type->value);

@@ -55,24 +55,11 @@ return new class extends Migration
             }
         }
 
-        // Cuenta "Gasto IT" (6.7) bajo GASTOS, idempotente.
-        if (! DB::table('chart_of_accounts')->where('code', '6.7')->exists()) {
-            $parentId = DB::table('chart_of_accounts')->where('code', '6')->value('id');
-
-            DB::table('chart_of_accounts')->insert([
-                'code' => '6.7',
-                'name' => 'Impuesto a las Transacciones',
-                'level' => 2,
-                'parent_id' => $parentId,
-                'account_type' => 'expense',
-                'normal_balance' => 'debit',
-                'allows_posting' => true,
-                'is_active' => true,
-                'description' => null,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
+        // NOTA: la cuenta contable "Gasto IT" (6.7) NO se crea aquí. En un install fresco
+        // las migraciones corren ANTES del ChartOfAccountSeeder, así que insertarla acá la
+        // dejaría huérfana (parent_id null) y correría los ids del plan de cuentas — el
+        // mismo anti-patrón que ya se neutralizó en 2026_06_05_000001. La cuenta 6.7 vive
+        // en ChartOfAccountSeeder (idempotente), que es la fuente de verdad del plan.
     }
 
     /**
@@ -86,7 +73,5 @@ return new class extends Migration
             'accounting_it_payable_code',
             'accounting_it_expense_code',
         ])->delete();
-
-        DB::table('chart_of_accounts')->where('code', '6.7')->delete();
     }
 };
