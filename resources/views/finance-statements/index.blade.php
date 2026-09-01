@@ -108,42 +108,65 @@
 
             <div class="bg-card border border-border rounded-lg p-4 break-inside-avoid">
                 <h3 class="text-lg font-semibold mb-3">2. Estado de Resultados</h3>
+                @php($er = $statements['estado_resultados'])
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                     <div>
                         <p class="font-medium mb-2">Ingresos</p>
-                        @forelse($statements['estado_resultados']['income_accounts'] as $row)
+                        @forelse($er['income_accounts'] as $row)
                             @if($row->balance != 0)
                                 <p class="flex justify-between gap-2"><span>{{ $row->code }} - {{ $row->name }}</span><span>@money($row->balance)</span></p>
                             @endif
                         @empty
                             <p>-</p>
                         @endforelse
-                        <p class="mt-2 font-semibold">Total Ingresos: @money($statements['estado_resultados']['income_total'])</p>
+                        <p class="mt-2 font-semibold">Total Ingresos: @money($er['income_total'])</p>
                     </div>
                     <div>
                         <p class="font-medium mb-2">Costos</p>
-                        @forelse($statements['estado_resultados']['cost_accounts'] as $row)
+                        @forelse($er['cost_accounts'] as $row)
                             @if($row->balance != 0)
                                 <p class="flex justify-between gap-2"><span>{{ $row->code }} - {{ $row->name }}</span><span>@money($row->balance)</span></p>
                             @endif
                         @empty
                             <p>-</p>
                         @endforelse
-                        <p class="mt-2 font-semibold">Total Costos: @money($statements['estado_resultados']['cost_total'])</p>
+                        <p class="mt-2 font-semibold">Total Costos: @money($er['cost_total'])</p>
                     </div>
                     <div>
                         <p class="font-medium mb-2">Gastos</p>
-                        @forelse($statements['estado_resultados']['expense_accounts'] as $row)
+                        @forelse($er['expense_accounts'] as $row)
                             @if($row->balance != 0)
                                 <p class="flex justify-between gap-2"><span>{{ $row->code }} - {{ $row->name }}</span><span>@money($row->balance)</span></p>
                             @endif
                         @empty
                             <p>-</p>
                         @endforelse
-                        <p class="mt-2 font-semibold">Total Gastos: @money($statements['estado_resultados']['expense_total'])</p>
+                        <p class="mt-2 font-semibold">Total Gastos: @money($er['expense_total'])</p>
                     </div>
                 </div>
-                <p class="mt-4 text-base font-bold">Resultado Neto: @money($statements['estado_resultados']['net_result'])</p>
+                <p class="mt-4 text-base font-bold">Resultado Neto: @money($er['net_result'])</p>
+
+                <div class="mt-4 border-t border-border pt-3 text-sm space-y-1">
+                    <p class="font-medium mb-1">Estructura del Estado de Resultados</p>
+                    <p class="flex justify-between gap-2"><span>Ventas</span><span>@money($er['ventas'])</span></p>
+                    <p class="flex justify-between gap-2"><span>(-) Costo de Ventas (CMV)</span><span>@money($er['cmv']['cmv_total'])</span></p>
+                    <div class="pl-4 text-xs text-muted-foreground space-y-0.5">
+                        <p class="flex justify-between gap-2"><span>Inventario Inicial</span><span>@money($er['cmv']['inventario_inicial'])</span></p>
+                        <p class="flex justify-between gap-2"><span>(+) Compras del Periodo</span><span>@money($er['cmv']['compras_periodo'])</span></p>
+                        <p class="flex justify-between gap-2"><span>(-) Inventario Final</span><span>@money($er['cmv']['inventario_final'])</span></p>
+                        <p class="flex justify-between gap-2"><span>(-) Devoluciones</span><span>@money($er['cmv']['devoluciones'])</span></p>
+                    </div>
+                    <p class="flex justify-between gap-2 font-semibold border-t border-border pt-1"><span>= Utilidad Bruta</span><span>@money($er['utilidad_bruta'])</span></p>
+                    <p class="flex justify-between gap-2"><span>(-) Gastos de Operación</span><span>@money($er['gastos_operacion'])</span></p>
+                    <p class="flex justify-between gap-2"><span>(+) Otros Ingresos</span><span>@money($er['otros_ingresos'])</span></p>
+                    <p class="flex justify-between gap-2 font-semibold border-t border-border pt-1"><span>= Utilidad antes de Impuestos</span><span>@money($er['utilidad_antes_impuestos'])</span></p>
+                    <p class="flex justify-between gap-2"><span>(-) IUE ({{ (int) \App\Models\Setting::get('tax_iue_rate', '25') }}%)</span><span>@money($er['iue'])</span></p>
+                    <p class="flex justify-between gap-2 font-semibold border-t border-border pt-1"><span>= Utilidad después de Impuestos</span><span>@money($er['utilidad_despues_impuestos'])</span></p>
+                    @if($er['reserva_legal'] > 0)
+                        <p class="flex justify-between gap-2"><span>(-) Reserva Legal</span><span>@money($er['reserva_legal'])</span></p>
+                    @endif
+                    <p class="flex justify-between gap-2 text-base font-bold border-t border-border pt-1"><span>= Utilidad de la Gestión</span><span>@money($er['utilidad_gestion'])</span></p>
+                </div>
                 @if($withTaxes)
                     <div class="mt-3 text-sm border-t border-border pt-3 space-y-1">
                         <p class="font-medium">Impuestos estimados Bolivia</p>
