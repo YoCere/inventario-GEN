@@ -90,4 +90,21 @@ class IncomeStatementClosingTest extends TestCase
         $this->assertSame(375000, $er['reserva_legal']);
         $this->assertSame($er['utilidad_despues_impuestos'] - 375000, $er['utilidad_gestion']);
     }
+
+    public function test_reserva_legal_respeta_tope_cercano(): void
+    {
+        $this->seedAll();
+        $this->acc('3.4', 'Reserva Legal', 'equity', 'credit');
+        \App\Models\Setting::set('company_entity_type', 'srl');
+
+        // Capital 100.000 -> tope 50% = 50.000. Reserva ya acumulada = 49.900 -> margen 100.
+        $this->postEntry('1.1.01', '3.1', 10000000);
+        $this->postEntry('1.1.01', '3.4', 4990000);
+        // Utilidad grande: 5% daría más que el margen -> se clampea al margen (100).
+        $this->postEntry('1.1.01', '4.1', 10000000);
+
+        $er = app(FinancialStatementService::class)->build('2026-01-01', '2026-12-31', withTaxes: true)['estado_resultados'];
+
+        $this->assertSame(10000, $er['reserva_legal']); // = margen (50.000 - 49.900), no el 5%
+    }
 }
