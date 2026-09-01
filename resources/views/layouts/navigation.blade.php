@@ -116,6 +116,11 @@
                                 <x-dropdown-link :href="route('finance.journal-entries.index')" :active="request()->routeIs('finance.journal-entries.index')">
                                     Libro diario
                                 </x-dropdown-link>
+                                @if(auth()->user()?->isAdmin())
+                                <x-dropdown-link :href="route('accounting.opening.index')" :active="request()->routeIs('accounting.opening.index')">
+                                    Asiento de apertura
+                                </x-dropdown-link>
+                                @endif
                                 <x-dropdown-link :href="route('finance.statements.index')" :active="request()->routeIs('finance.statements.index')">
                                     Estados financieros
                                 </x-dropdown-link>
@@ -427,6 +432,9 @@
                                     <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mt-2">Contabilidad</p>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.chart-of-accounts.index') ? 'text-primary' : '' }}" href="{{ route('finance.chart-of-accounts.index') }}">Plan de cuentas</a>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.journal-entries.index') ? 'text-primary' : '' }}" href="{{ route('finance.journal-entries.index') }}">Libro diario</a>
+                                    @if(auth()->user()?->isAdmin())
+                                    <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('accounting.opening.index') ? 'text-primary' : '' }}" href="{{ route('accounting.opening.index') }}">Asiento de apertura</a>
+                                    @endif
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.statements.index') ? 'text-primary' : '' }}" href="{{ route('finance.statements.index') }}">Estados financieros</a>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.trial-balance') ? 'text-primary' : '' }}" href="{{ route('finance.trial-balance') }}">Balance de Sumas y Saldos</a>
                                     <a class="text-sm font-medium hover:underline py-1 {{ request()->routeIs('finance.worksheet') ? 'text-primary' : '' }}" href="{{ route('finance.worksheet') }}">Hoja Teórica</a>
