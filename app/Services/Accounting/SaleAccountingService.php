@@ -15,7 +15,8 @@ use RuntimeException;
 class SaleAccountingService
 {
     public function __construct(
-        protected JournalEntryService $journalEntryService
+        protected JournalEntryService $journalEntryService,
+        protected TaxLinesBuilder $taxLines
     ) {
     }
 
@@ -49,6 +50,10 @@ class SaleAccountingService
         $inventoryAccount = $this->findPostingAccount(Setting::get('accounting_inventory_code', '1.1.04'));
 
         $cogs = (int) $sale->items->sum(fn ($item) => (int) $item->quantity * (int) $item->cost_price);
+        $withInvoice = (bool) $sale->wants_invoice;
+        $ventasCredit = $withInvoice
+            ? ((int) $sale->total - (int) $sale->iva_amount)
+            : (int) $sale->total;
 
         $lines = [
             [
@@ -62,7 +67,7 @@ class SaleAccountingService
                 'chart_of_account_id' => $salesIncomeAccount->id,
                 'description' => 'Ingreso por venta ' . $sale->invoice_number,
                 'debit_amount' => 0,
-                'credit_amount' => (int) $sale->total,
+                'credit_amount' => $ventasCredit,
                 'reference' => $sale->invoice_number,
             ],
         ];
@@ -82,6 +87,12 @@ class SaleAccountingService
                 'credit_amount' => $cogs,
                 'reference' => $sale->invoice_number,
             ];
+        }
+
+        if ($withInvoice) {
+            foreach ($this->taxLines->saleTaxLines((int) $sale->iva_amount, (int) $sale->it_amount) as $tl) {
+                $lines[] = $tl + ['reference' => $sale->invoice_number];
+            }
         }
 
         return $this->journalEntryService->createPostedEntry([
