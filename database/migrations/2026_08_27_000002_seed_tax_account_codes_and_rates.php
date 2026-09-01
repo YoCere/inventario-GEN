@@ -21,7 +21,7 @@ return new class extends Migration
             'accounting_df_iva_code'     => '2.1.11', // Débito Fiscal IVA (ventas)
             'accounting_cf_iva_code'     => '1.1.05', // Crédito Fiscal IVA (compras)
             'accounting_it_payable_code' => '2.1.12', // IT por Pagar
-            'accounting_it_expense_code' => '5.2.01', // Gasto IT (impuesto a las transacciones como gasto)
+            'accounting_it_expense_code' => '6.7', // Gasto IT bajo GASTOS (impuesto a las transacciones)
         ];
 
         foreach ($codes as $key => $value) {
@@ -55,14 +55,14 @@ return new class extends Migration
             }
         }
 
-        // Cuenta "Gasto IT" (5.2.01), idempotente.
-        if (! DB::table('chart_of_accounts')->where('code', '5.2.01')->exists()) {
-            $parentId = DB::table('chart_of_accounts')->where('code', '5.2')->value('id');
+        // Cuenta "Gasto IT" (6.7) bajo GASTOS, idempotente.
+        if (! DB::table('chart_of_accounts')->where('code', '6.7')->exists()) {
+            $parentId = DB::table('chart_of_accounts')->where('code', '6')->value('id');
 
             DB::table('chart_of_accounts')->insert([
-                'code' => '5.2.01',
+                'code' => '6.7',
                 'name' => 'Impuesto a las Transacciones',
-                'level' => 3,
+                'level' => 2,
                 'parent_id' => $parentId,
                 'account_type' => 'expense',
                 'normal_balance' => 'debit',
@@ -87,6 +87,6 @@ return new class extends Migration
             'accounting_it_expense_code',
         ])->delete();
 
-        DB::table('chart_of_accounts')->where('code', '5.2.01')->delete();
+        DB::table('chart_of_accounts')->where('code', '6.7')->delete();
     }
 };

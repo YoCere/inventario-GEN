@@ -67,8 +67,6 @@ class ChartOfAccountSeeder extends Seeder
             ['code' => '5.2', 'name' => 'Mano de Obra Directa', 'level' => 2, 'parent_code' => '5', 'account_type' => 'cost', 'normal_balance' => 'debit', 'allows_posting' => true],
             ['code' => '5.3', 'name' => 'Mano de Obra Indirecta', 'level' => 2, 'parent_code' => '5', 'account_type' => 'cost', 'normal_balance' => 'debit', 'allows_posting' => true],
             ['code' => '5.4', 'name' => 'Costos Indirectos de Fabricacion', 'level' => 2, 'parent_code' => '5', 'account_type' => 'cost', 'normal_balance' => 'debit', 'allows_posting' => true],
-            // Gasto IT — Impuesto a las Transacciones 3% sobre ingresos brutos (asientos de venta/compra)
-            ['code' => '5.2.01', 'name' => 'Impuesto a las Transacciones', 'level' => 3, 'parent_code' => '5.2', 'account_type' => 'expense', 'normal_balance' => 'debit', 'allows_posting' => true],
 
             // 6 - GASTOS
             ['code' => '6', 'name' => 'GASTOS', 'level' => 1, 'parent_code' => null, 'account_type' => 'expense', 'normal_balance' => 'debit', 'allows_posting' => false],
@@ -78,6 +76,8 @@ class ChartOfAccountSeeder extends Seeder
             ['code' => '6.4', 'name' => 'Gasto Depreciacion', 'level' => 2, 'parent_code' => '6', 'account_type' => 'expense', 'normal_balance' => 'debit', 'allows_posting' => true],
             ['code' => '6.5', 'name' => 'Gasto Amortizacion', 'level' => 2, 'parent_code' => '6', 'account_type' => 'expense', 'normal_balance' => 'debit', 'allows_posting' => true],
             ['code' => '6.6', 'name' => 'Perdida en Venta de Activos', 'level' => 2, 'parent_code' => '6', 'account_type' => 'expense', 'normal_balance' => 'debit', 'allows_posting' => true],
+            // Gasto IT — Impuesto a las Transacciones 3% sobre ingresos brutos (asientos de venta/compra)
+            ['code' => '6.7', 'name' => 'Impuesto a las Transacciones', 'level' => 2, 'parent_code' => '6', 'account_type' => 'expense', 'normal_balance' => 'debit', 'allows_posting' => true],
         ];
 
         foreach ($accounts as $account) {
