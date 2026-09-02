@@ -55,8 +55,11 @@ class JournalEntryService
                 $entryTypeCheck = $entryTypeCheck->value;
             }
 
-            if ($allowClosedPeriod && $entryTypeCheck !== JournalEntryType::Apertura->value) {
-                throw new RuntimeException('allowClosedPeriod solo es válido para asientos de apertura.');
+            if ($allowClosedPeriod && ! in_array($entryTypeCheck, [
+                JournalEntryType::Apertura->value,
+                JournalEntryType::Cierre->value,
+            ], true)) {
+                throw new RuntimeException('allowClosedPeriod solo es válido para asientos de apertura o cierre.');
             }
 
             if (! $allowClosedPeriod && $period->status !== AccountingPeriodStatus::Open) {
@@ -127,8 +130,12 @@ class JournalEntryService
             throw new RuntimeException('Solo se pueden revertir asientos contabilizados.');
         }
 
-        if ($entry->entry_type === JournalEntryType::Apertura->value) {
-            throw new RuntimeException('El asiento de apertura no puede revertirse.');
+        $entryTypeValue = $entry->entry_type instanceof JournalEntryType
+            ? $entry->entry_type->value
+            : $entry->entry_type;
+
+        if (in_array($entryTypeValue, [JournalEntryType::Apertura->value, JournalEntryType::Cierre->value], true)) {
+            throw new RuntimeException('El asiento de apertura o cierre no puede revertirse.');
         }
 
         $existing = JournalEntry::query()
