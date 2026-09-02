@@ -2,11 +2,15 @@
 
 namespace App\Services\Accounting;
 
+use App\Enums\JournalEntryStatus;
 use App\Enums\JournalEntryType;
+use App\Enums\VoucherType;
 use App\Models\AccountingPeriod;
 use App\Models\ChartOfAccount;
+use App\Models\JournalEntry;
 use App\Models\Setting;
 use App\Services\FinancialStatementService;
+use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 class GestionCierreService
@@ -32,16 +36,53 @@ class GestionCierreService
         ];
     }
 
+    public function close(int $year, int $userId): ?JournalEntry
+    {
+        return DB::transaction(function () use ($year, $userId) {
+            $period = AccountingPeriod::whereYear('start_date', $year)->orderBy('start_date')->lockForUpdate()->first();
+            if (! $period) {
+                throw new RuntimeException("No existe período contable para la gestión {$year}.");
+            }
+            if ($this->cierreExists($period->id)) {
+                throw new RuntimeException("La gestión {$year} ya está cerrada.");
+            }
+
+            $er = $this->statements->build("{$year}-01-01", "{$year}-12-31", withTaxes: true)['estado_resultados'];
+            $lines = $this->buildLines((int) $er['iue'], (int) $er['reserva_legal']);
+            if (empty($lines)) {
+                return null;
+            }
+
+            return $this->journalEntryService->createPostedEntry([
+                'entry_date' => "{$year}-12-31",
+                'accounting_period_id' => $period->id,
+                'description' => "Cierre de gestión {$year}: provisión IUE y reserva legal",
+                'source_type' => AccountingPeriod::class,
+                'source_id' => $period->id,
+                'voucher_type' => VoucherType::Cierre->value,
+                'entry_type' => JournalEntryType::Cierre->value,
+                'created_by' => $userId,
+                'posted_by' => $userId,
+            ], $lines, allowClosedPeriod: true);
+        });
+    }
+
     protected function alreadyClosed(int $year): bool
     {
         $period = AccountingPeriod::whereYear('start_date', $year)->orderBy('start_date')->first();
-        if (! $period) {
-            return false;
-        }
 
-        $entry = $this->journalEntryService->findPostedSourceEntry(AccountingPeriod::class, $period->id);
+        return $period ? $this->cierreExists($period->id) : false;
+    }
 
-        return $entry !== null && $entry->entry_type === JournalEntryType::Cierre;
+    /** Guard de unicidad: existe un asiento de CIERRE posteado para el período (no confundir con apertura). */
+    protected function cierreExists(int $periodId): bool
+    {
+        return JournalEntry::query()
+            ->where('source_type', AccountingPeriod::class)
+            ->where('source_id', $periodId)
+            ->where('entry_type', JournalEntryType::Cierre->value)
+            ->where('status', JournalEntryStatus::Posted)
+            ->exists();
     }
 
     /** @return array<int, array{chart_of_account_id:int,debit_amount:int,credit_amount:int,description:string}> */
