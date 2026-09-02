@@ -47,6 +47,8 @@ class ChartOfAccountSeeder extends Seeder
             ['code' => '2.1.11', 'name' => 'Debito Fiscal IVA', 'level' => 3, 'parent_code' => '2.1', 'account_type' => 'liability', 'normal_balance' => 'credit', 'allows_posting' => true],
             // IT — Impuesto a las Transacciones 3% sobre ingresos brutos
             ['code' => '2.1.12', 'name' => 'IT por Pagar', 'level' => 3, 'parent_code' => '2.1', 'account_type' => 'liability', 'normal_balance' => 'credit', 'allows_posting' => true],
+            // IUE — Impuesto sobre las Utilidades de las Empresas (cierre de gestión)
+            ['code' => '2.1.13', 'name' => 'IUE por Pagar', 'level' => 3, 'parent_code' => '2.1', 'account_type' => 'liability', 'normal_balance' => 'credit', 'allows_posting' => true],
             ['code' => '2.2', 'name' => 'PASIVO NO CORRIENTE', 'level' => 2, 'parent_code' => '2', 'account_type' => 'liability', 'normal_balance' => 'credit', 'allows_posting' => false],
             ['code' => '2.2.01', 'name' => 'Prestamos por Pagar LP', 'level' => 3, 'parent_code' => '2.2', 'account_type' => 'liability', 'normal_balance' => 'credit', 'allows_posting' => true],
 
@@ -55,6 +57,7 @@ class ChartOfAccountSeeder extends Seeder
             ['code' => '3.1', 'name' => 'Capital Social', 'level' => 2, 'parent_code' => '3', 'account_type' => 'equity', 'normal_balance' => 'credit', 'allows_posting' => true],
             ['code' => '3.2', 'name' => 'Resultados Acumulados', 'level' => 2, 'parent_code' => '3', 'account_type' => 'equity', 'normal_balance' => 'credit', 'allows_posting' => true],
             ['code' => '3.3', 'name' => 'Resultado del Ejercicio', 'level' => 2, 'parent_code' => '3', 'account_type' => 'equity', 'normal_balance' => 'credit', 'allows_posting' => true],
+            ['code' => '3.4', 'name' => 'Reserva Legal', 'level' => 2, 'parent_code' => '3', 'account_type' => 'equity', 'normal_balance' => 'credit', 'allows_posting' => true],
 
             // 4 - INGRESOS
             ['code' => '4', 'name' => 'INGRESOS', 'level' => 1, 'parent_code' => null, 'account_type' => 'income', 'normal_balance' => 'credit', 'allows_posting' => false],
@@ -78,6 +81,8 @@ class ChartOfAccountSeeder extends Seeder
             ['code' => '6.6', 'name' => 'Perdida en Venta de Activos', 'level' => 2, 'parent_code' => '6', 'account_type' => 'expense', 'normal_balance' => 'debit', 'allows_posting' => true],
             // Gasto IT — Impuesto a las Transacciones 3% sobre ingresos brutos (asientos de venta/compra)
             ['code' => '6.7', 'name' => 'Impuesto a las Transacciones', 'level' => 2, 'parent_code' => '6', 'account_type' => 'expense', 'normal_balance' => 'debit', 'allows_posting' => true],
+            // Gasto IUE — Impuesto sobre las Utilidades (cierre de gestión)
+            ['code' => '6.8', 'name' => 'Impuesto sobre las Utilidades (IUE)', 'level' => 2, 'parent_code' => '6', 'account_type' => 'expense', 'normal_balance' => 'debit', 'allows_posting' => true],
         ];
 
         foreach ($accounts as $account) {
