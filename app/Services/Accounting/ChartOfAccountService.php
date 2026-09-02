@@ -8,6 +8,9 @@ use RuntimeException;
 
 class ChartOfAccountService
 {
+    /** Profundidad máxima del plan de cuentas (Clase → … → sub-cuenta imputable). */
+    private const MAX_LEVELS = 5;
+
     /**
      * Crea una nueva cuenta contable aplicando las reglas de integridad.
      *
@@ -122,6 +125,23 @@ class ChartOfAccountService
             );
         }
 
+        // Regla 3b: el código del hijo debe ser coherente con el árbol (empezar con el
+        // código del padre + separador). Se valida ANTES de voltear al padre.
+        $childCode = (string) ($data['code'] ?? '');
+        if (! str_starts_with($childCode, $parent->code . '.')) {
+            throw new RuntimeException(
+                "El código del hijo debe comenzar con el código del padre ({$parent->code}.)."
+            );
+        }
+
+        // Regla 3c: profundidad máxima del plan de cuentas.
+        $level = $parent->level + 1;
+        if ($level > self::MAX_LEVELS) {
+            throw new RuntimeException(
+                'No se pueden crear más de ' . self::MAX_LEVELS . ' niveles en el plan de cuentas.'
+            );
+        }
+
         // Regla 2: si el padre es imputable, verificar si tiene movimientos
         if ($parent->allows_posting) {
             if ($this->hasMovements($parent)) {
@@ -133,8 +153,8 @@ class ChartOfAccountService
             $parent->update(['allows_posting' => false]);
         }
 
-        // Regla 4: derivar level
-        return $parent->level + 1;
+        // Regla 4: level ya derivado arriba.
+        return $level;
     }
 
     /**
