@@ -106,6 +106,16 @@ class RolesAndPermissionsSeeder extends Seeder
             'customers.manage',
             'sales.view', 'sales.create',
         ],
+        'emprendedor' => [
+            'dashboard.view',
+            'products.view', 'products.manage', 'categories.manage', 'units.manage',
+            'customers.manage', 'suppliers.manage',
+            'purchases.view', 'purchases.manage',
+            'sales.view', 'sales.create', 'sales.complete', 'sales.cancel',
+            'shop.admin', 'shop.landing.manage',
+            'settings.view', 'settings.edit-business',
+            // NO incluye: contabilidad/finanzas, auditoría, ni gestión de usuarios/roles
+        ],
     ];
 
     public function run(): void
@@ -122,6 +132,7 @@ class RolesAndPermissionsSeeder extends Seeder
         $developer = Role::firstOrCreate(['name' => 'developer', 'guard_name' => 'web']);
         $admin = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
         $staff = Role::firstOrCreate(['name' => 'staff', 'guard_name' => 'web']);
+        $emprendedor = Role::firstOrCreate(['name' => 'emprendedor', 'guard_name' => 'web']);
 
         // 3. Asigna permisos a roles (syncPermissions = idempotente).
         // Developer recibe TODOS por consistencia, aunque Gate::before en
@@ -130,6 +141,7 @@ class RolesAndPermissionsSeeder extends Seeder
 
         $admin->syncPermissions(self::ROLE_PERMISSIONS['admin']);
         $staff->syncPermissions(self::ROLE_PERMISSIONS['staff']);
+        $emprendedor->syncPermissions(self::ROLE_PERMISSIONS['emprendedor']);
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
