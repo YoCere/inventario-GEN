@@ -164,6 +164,8 @@ class SaleService
 
                 $tax = $this->taxCalculator->forTotal($total);
 
+                $facturacionOn = \App\Models\Setting::get('facturacion_activada', '0') === '1';
+
                 $sale->update([
                     'subtotal' => $totalSubtotal + $totalDiscount,
                     'total_discount' => $totalDiscount + $data->global_discount,
@@ -173,7 +175,7 @@ class SaleService
                     'taxable_base' => $tax['taxable_base'],
                     'iva_amount' => $tax['iva_amount'],
                     'it_amount' => $tax['it_amount'],
-                    'wants_invoice' => $data->wants_invoice,
+                    'wants_invoice' => $data->wants_invoice && $facturacionOn,
                 ]);
 
                 if ($sale->status === SaleStatus::COMPLETED) {

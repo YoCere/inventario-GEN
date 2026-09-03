@@ -322,14 +322,16 @@
                             </div>
                         </div>
 
-                        <label class="mt-2 flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
-                            <input type="checkbox" x-model="wantsInvoice"
-                                   class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
-                            ¿Factura? (NIT/CI)
-                        </label>
-                        <p class="mt-1 text-xs text-amber-600" x-show="wantsInvoice && !selectedCustomer">
-                            Elegí un cliente con NIT para facturar.
-                        </p>
+                        @if(\App\Models\Setting::get('facturacion_activada','0') === '1')
+                            <label class="mt-2 flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+                                <input type="checkbox" x-model="wantsInvoice"
+                                       class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                ¿Factura? (NIT/CI)
+                            </label>
+                            <p class="mt-1 text-xs text-amber-600" x-show="wantsInvoice && !selectedCustomer">
+                                Elegí un cliente con NIT para facturar.
+                            </p>
+                        @endif
                     </section>
 
                     {{-- Resumen de ítems (compacto) --}}
@@ -848,35 +850,37 @@
                         <textarea id="new_address" x-model="newCust.address" rows="2" class="block w-full rounded-md border-gray-300 sm:text-sm" placeholder="Dirección"></textarea>
                     </div>
 
-                    {{-- Identidad fiscal (opcional): necesaria para poder facturar esta venta --}}
-                    <div class="border-t border-gray-200 pt-4 space-y-3">
-                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Datos para factura (opcional)</p>
-                        <div class="flex flex-col sm:flex-row gap-4">
-                            <div class="w-full sm:w-1/2">
-                                <x-input-label for="new_doc_type" :value="__('Tipo de documento')" />
-                                <select id="new_doc_type" x-model="newCust.doc_type"
-                                        class="block w-full rounded-md border-gray-300 sm:text-sm">
-                                    <option value="">Seleccionar…</option>
-                                    <option value="1">CI</option>
-                                    <option value="2">CEX</option>
-                                    <option value="3">Pasaporte</option>
-                                    <option value="4">NIT</option>
-                                    <option value="5">Otro</option>
-                                </select>
+                    @if(\App\Models\Setting::get('facturacion_activada','0') === '1')
+                        {{-- Identidad fiscal (opcional): necesaria para poder facturar esta venta --}}
+                        <div class="border-t border-gray-200 pt-4 space-y-3">
+                            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Datos para factura (opcional)</p>
+                            <div class="flex flex-col sm:flex-row gap-4">
+                                <div class="w-full sm:w-1/2">
+                                    <x-input-label for="new_doc_type" :value="__('Tipo de documento')" />
+                                    <select id="new_doc_type" x-model="newCust.doc_type"
+                                            class="block w-full rounded-md border-gray-300 sm:text-sm">
+                                        <option value="">Seleccionar…</option>
+                                        <option value="1">CI</option>
+                                        <option value="2">CEX</option>
+                                        <option value="3">Pasaporte</option>
+                                        <option value="4">NIT</option>
+                                        <option value="5">Otro</option>
+                                    </select>
+                                </div>
+                                <div class="w-full sm:w-1/2">
+                                    <x-form-input name="new_doc_number" label="Número de documento" x-model="newCust.doc_number" />
+                                </div>
                             </div>
-                            <div class="w-full sm:w-1/2">
-                                <x-form-input name="new_doc_number" label="Número de documento" x-model="newCust.doc_number" />
+                            <div class="flex flex-col sm:flex-row gap-4">
+                                <div class="w-full sm:w-1/2">
+                                    <x-form-input name="new_doc_complement" label="Complemento" x-model="newCust.doc_complement" />
+                                </div>
+                                <div class="w-full sm:w-1/2">
+                                    <x-form-input name="new_business_name" label="Razón social" x-model="newCust.business_name" />
+                                </div>
                             </div>
                         </div>
-                        <div class="flex flex-col sm:flex-row gap-4">
-                            <div class="w-full sm:w-1/2">
-                                <x-form-input name="new_doc_complement" label="Complemento" x-model="newCust.doc_complement" />
-                            </div>
-                            <div class="w-full sm:w-1/2">
-                                <x-form-input name="new_business_name" label="Razón social" x-model="newCust.business_name" />
-                            </div>
-                        </div>
-                    </div>
+                    @endif
 
                     <div class="mt-6 flex justify-end gap-3 border-t border-gray-200 pt-4">
                         <x-secondary-button type="button" x-on:click="$dispatch('close-modal', { name: 'customer-modal' })">Cancelar</x-secondary-button>
