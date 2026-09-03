@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\Location;
 use App\Models\Product;
 use App\Models\ProductStock;
+use App\Models\Setting;
 use App\Models\User;
 use App\Models\Warehouse;
 use Database\Seeders\AccountingPeriodSeeder;
@@ -72,6 +73,8 @@ class PosStoreWantsInvoiceTest extends TestCase
 
     public function test_store_persists_wants_invoice_with_identified_customer(): void
     {
+        Setting::set('facturacion_activada', '1');
+
         $customer = Customer::factory()->create([
             'doc_type' => '4',
             'doc_number' => '1234567',
