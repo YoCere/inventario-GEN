@@ -60,7 +60,14 @@ class OpeningBalanceService
                 throw new RuntimeException("No existe período contable para la gestión {$year}.");
             }
 
-            if ($this->journalEntryService->findPostedSourceEntry(AccountingPeriod::class, $period->id)) {
+            // Unicidad SOLO contra otra apertura (no contra el cierre, que ancla al mismo período).
+            $aperturaExists = \App\Models\JournalEntry::query()
+                ->where('source_type', AccountingPeriod::class)
+                ->where('source_id', $period->id)
+                ->where('entry_type', JournalEntryType::Apertura->value)
+                ->where('status', \App\Enums\JournalEntryStatus::Posted)
+                ->exists();
+            if ($aperturaExists) {
                 throw new RuntimeException("Ya existe un asiento de apertura para la gestión {$year}.");
             }
 
