@@ -41,6 +41,15 @@
                                 <span class="text-sm text-muted-foreground">Registro inicial del ejercicio contable.</span>
                             </span>
                         </a>
+                        <a href="{{ route('accounting.closing.index') }}" class="group flex items-start gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted">
+                            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted text-foreground">
+                                <x-heroicon-o-lock-closed class="h-5 w-5" />
+                            </span>
+                            <span class="flex flex-col">
+                                <span class="font-medium text-foreground">Cerrar gestión</span>
+                                <span class="text-sm text-muted-foreground">Provisión de IUE y reserva legal de fin de gestión.</span>
+                            </span>
+                        </a>
                     @endif
 
                     <a href="{{ route('finance.accounting-periods.index') }}" class="group flex items-start gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted">
