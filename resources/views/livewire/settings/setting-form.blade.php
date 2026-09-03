@@ -105,6 +105,7 @@
                     'ai_voice_enabled', 'ai_voice_reply', 'ai_vision_enabled',
                     'shop_show_out_of_stock',
                     'auto_create_next_period',
+                    'facturacion_activada',
                 ]))
                     <select id="value" wire:model="value" class="block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm">
                         <option value="1">✅ Activo</option>
