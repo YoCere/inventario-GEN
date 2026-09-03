@@ -110,7 +110,13 @@ class FinancialStatementService
     ): array {
         $income = $periodBalances->where('account_type', 'income')->values();
         $costs = $periodBalances->where('account_type', 'cost')->values();
-        $expenses = $periodBalances->where('account_type', 'expense')->values();
+        // El Gasto IUE (posteado por el cierre de gestión) NO es un gasto operativo: el IUE se
+        // calcula SOBRE la utilidad antes de impuestos y se muestra como su propia línea. Excluirlo
+        // del subtotal evita que, tras el cierre, deflacione recursivamente la utilidad.
+        $iueExpenseCode = Setting::get('accounting_iue_expense_code', '6.8');
+        $expenses = $periodBalances->where('account_type', 'expense')
+            ->reject(fn ($a) => (string) $a->code === (string) $iueExpenseCode)
+            ->values();
 
         $incomeTotal = (int) $income->sum('balance');
         $costTotal = (int) $costs->sum('balance');

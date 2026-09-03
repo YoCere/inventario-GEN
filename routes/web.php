@@ -164,6 +164,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // =========================================================================
     Route::middleware('admin')->group(function () {
         Route::view('contabilidad/apertura', 'accounting.opening-balance')->name('accounting.opening.index');
+        Route::view('finance/cierre-gestion', 'accounting.gestion-cierre')->name('accounting.closing.index');
         Route::view('users', 'users.index')->name('users.index');
         Route::get('users/payroll', [PayrollController::class, 'index'])->name('users.payroll.index');
         Route::get('users/payroll/create', [PayrollController::class, 'create'])->name('users.payroll.create');

@@ -8,6 +8,7 @@ enum VoucherType: string
     case Egreso   = 'egreso';
     case Traspaso = 'traspaso';
     case Apertura = 'apertura';
+    case Cierre   = 'cierre';
 
     public function label(): string
     {
@@ -16,6 +17,7 @@ enum VoucherType: string
             self::Egreso   => 'Comprobante de Egreso',
             self::Traspaso => 'Comprobante de Traspaso',
             self::Apertura => 'Comprobante de Apertura',
+            self::Cierre   => 'Comprobante de Cierre',
         };
     }
 
@@ -26,6 +28,7 @@ enum VoucherType: string
             self::Egreso   => 'EGRESO',
             self::Traspaso => 'TRASPASO',
             self::Apertura => 'APERTURA',
+            self::Cierre   => 'CIERRE',
         };
     }
 }

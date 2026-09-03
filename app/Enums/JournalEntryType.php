@@ -7,6 +7,7 @@ enum JournalEntryType: string
     case Normal = 'normal';
     case Ajuste = 'ajuste';
     case Apertura = 'apertura';
+    case Cierre = 'cierre';
 
     public function label(): string
     {
@@ -14,6 +15,7 @@ enum JournalEntryType: string
             self::Normal => 'Normal',
             self::Ajuste => 'Ajuste',
             self::Apertura => 'Apertura',
+            self::Cierre => 'Cierre',
         };
     }
 }
