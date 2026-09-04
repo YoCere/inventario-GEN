@@ -6,6 +6,7 @@ use App\Models\TelegramConversation;
 use App\Models\TelegramUser;
 use App\Services\Agent\AgentContext;
 use App\Services\Agent\AgentService;
+use App\Services\Agent\ToolRegistry;
 use App\Services\Agent\TtsService;
 use App\Services\Messaging\TelegramService;
 use Illuminate\Support\Facades\Log;
@@ -19,7 +20,7 @@ class BotAgentHandler
 
     public function __construct(
         protected TelegramService $telegram,
-        protected AgentService $agent,
+        protected ToolRegistry $tools,
         protected TtsService $tts,
     ) {}
 
@@ -47,7 +48,13 @@ class BotAgentHandler
                 // non-critical
             }
 
-            $result = $this->agent->run($userText, $history, $context);
+            // Least-privilege: filtrar las tools por permisos del usuario vinculado
+            // (espejo de AssistantWebHandler, pero forUser — el bot sí escribe).
+            // Sin usuario vinculado → registry vacío (fail-closed).
+            $registry = $user ? $this->tools->forUser($user) : new ToolRegistry();
+            $agent = app()->makeWith(AgentService::class, ['tools' => $registry]);
+
+            $result = $agent->run($userText, $history, $context);
 
             // Check if a tool set a bot flow state (e.g. start_sale → busqueda:resultado,
             // start_product_creation → nuevo:*). Tool already sent UI; skip agent text.
