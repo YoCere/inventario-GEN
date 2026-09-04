@@ -15,6 +15,11 @@ class CancelLastSaleTool extends BaseTool
         return false;
     }
 
+    public function requiredPermission(): ?string
+    {
+        return 'sales.cancel';
+    }
+
     public function name(): string
     {
         return 'cancel_last_sale';

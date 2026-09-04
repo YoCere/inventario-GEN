@@ -20,6 +20,11 @@ class SellProductTool extends BaseTool
         return false; // Nunca accesible desde el asistente web.
     }
 
+    public function requiredPermission(): ?string
+    {
+        return 'sales.create';
+    }
+
     public function name(): string
     {
         return 'sell_product';

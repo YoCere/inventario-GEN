@@ -17,6 +17,11 @@ class StartSaleTool extends BaseTool
         return false;
     }
 
+    public function requiredPermission(): ?string
+    {
+        return 'sales.create';
+    }
+
     public function name(): string
     {
         return 'start_sale';
