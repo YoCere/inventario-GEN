@@ -58,4 +58,33 @@ class BotAgentHandlerPermissionTest extends TestCase
         $this->assertArrayNotHasKey('get_balance_sheet', $keys); // sin finance.view
         $this->assertArrayHasKey('start_sale', $keys);           // con sales.create
     }
+
+    public function test_unlinked_chat_gets_empty_registry_fail_closed(): void
+    {
+        // Chat SIN TelegramUser vinculado → $user es null → registry vacío (fail-closed):
+        // el LLM no recibe ninguna tool.
+        $this->mock(TelegramService::class, function ($mock) {
+            $mock->shouldReceive('sendChatAction')->andReturn([]);
+            $mock->shouldReceive('sendMessage')->andReturn([]);
+            $mock->shouldReceive('sendVoice')->andReturn([]);
+        });
+
+        $capturedTools = null;
+        $this->app->bind(AgentService::class, function ($app, $params) use (&$capturedTools) {
+            $capturedTools = $params['tools'];
+            return new class($params['tools']) extends AgentService {
+                public function __construct(public ToolRegistry $reg) {}
+                public function run(string $userMessage, array $history, AgentContext $context): array
+                {
+                    return ['text' => 'ok', 'messages' => []];
+                }
+            };
+        });
+
+        // '555111' no tiene fila en telegram_users.
+        app(BotAgentHandler::class)->handle('555111', 'hola');
+
+        $this->assertNotNull($capturedTools, 'BotAgentHandler debe construir un AgentService aun sin usuario.');
+        $this->assertSame([], $capturedTools->all(), 'Sin usuario vinculado el registry debe estar vacío.');
+    }
 }
