@@ -17,6 +17,11 @@ class StartProductCreationTool extends BaseTool
         return false;
     }
 
+    public function requiredPermission(): ?string
+    {
+        return 'products.manage';
+    }
+
     public function name(): string
     {
         return 'start_product_creation';
