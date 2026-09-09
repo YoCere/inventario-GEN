@@ -30,6 +30,14 @@ Schedule::command('backup:clean')
     ->withoutOverlapping()
     ->onOneServer();
 
+// Chequea la salud de los backups (edad/tamano) en ambos discos y alerta por Telegram
+// si alguno esta viejo/faltante. Sin esto los health checks de monitor_backups son config muerta.
+Schedule::command('backup:monitor')
+    ->dailyAt('03:15')
+    ->when(fn () => \App\Models\Setting::get('backup_schedule_enabled', '1') === '1')
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // Activos fijos: postea la depreciación del mes recién cerrado el día 1 a las 02:00.
 Schedule::command('depreciation:run', ['--month' => now()->subMonthNoOverflow()->format('Y-m')])
     ->monthlyOn(1, '02:00')
