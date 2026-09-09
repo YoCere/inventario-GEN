@@ -37,3 +37,6 @@ android.keystore
 
 # Mockups del brainstorming visual (superpowers)
 .superpowers/
+
+# Secretos de provisioning por cliente (generados por ops/provision-client-backup.sh)
+ops/provisioned/
