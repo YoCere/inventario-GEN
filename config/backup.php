@@ -95,7 +95,15 @@ return [
              */
             'disks' => [
                 'backups',
+                'backups_offsite',
             ],
+
+            /*
+             * Si un disco falla, seguir con los demas en vez de abortar toda la corrida.
+             * REQUERIDO: sin esto, un corte off-site rompe tambien el backup local, y el
+             * evento per-disk BackupHasFailed (con diskName) no se emite. Default vendor: false.
+             */
+            'continue_on_failure' => true,
         ],
 
         /*
@@ -136,9 +144,9 @@ return [
     'notifications' => [
 
         'notifications' => [
-            \Spatie\Backup\Notifications\Notifications\BackupHasFailedNotification::class         => [],
-            \Spatie\Backup\Notifications\Notifications\UnhealthyBackupWasFoundNotification::class => [],
-            \Spatie\Backup\Notifications\Notifications\CleanupHasFailedNotification::class        => [],
+            \Spatie\Backup\Notifications\Notifications\BackupHasFailedNotification::class         => [\App\Notifications\Channels\BackupTelegramChannel::class],
+            \Spatie\Backup\Notifications\Notifications\UnhealthyBackupWasFoundNotification::class => [\App\Notifications\Channels\BackupTelegramChannel::class],
+            \Spatie\Backup\Notifications\Notifications\CleanupHasFailedNotification::class        => [\App\Notifications\Channels\BackupTelegramChannel::class],
             \Spatie\Backup\Notifications\Notifications\BackupWasSuccessfulNotification::class     => [],
             \Spatie\Backup\Notifications\Notifications\HealthyBackupWasFoundNotification::class   => [],
             \Spatie\Backup\Notifications\Notifications\CleanupWasSuccessfulNotification::class    => [],
@@ -192,7 +200,7 @@ return [
     'monitor_backups' => [
         [
             'name' => config('app.name', 'inventory'),
-            'disks' => ['backups'],
+            'disks' => ['backups', 'backups_offsite'],
             'health_checks' => [
                 \Spatie\Backup\Tasks\Monitor\HealthChecks\MaximumAgeInDays::class => 1,
                 \Spatie\Backup\Tasks\Monitor\HealthChecks\MaximumStorageInMegabytes::class => 5000,
