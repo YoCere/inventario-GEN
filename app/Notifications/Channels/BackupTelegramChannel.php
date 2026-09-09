@@ -39,7 +39,11 @@ class BackupTelegramChannel
 
         // Telegram corta a 4096; dejamos margen (el trace de la excepcion puede ser largo).
         if (mb_strlen($text) > 3500) {
-            $text = mb_substr($text, 0, 3500) . '…';
+            $text = mb_substr($text, 0, 3500);
+            // No cortar una entidad HTML a la mitad (&gt; -> &g): Telegram rechaza el
+            // mensaje entero con 400 y se pierde la alerta. Quitar cualquier entidad
+            // incompleta que haya quedado al final del corte.
+            $text = preg_replace('/&[#a-zA-Z0-9]*$/', '', $text) . '…';
         }
 
         SendTelegramMessage::dispatchSync($chatId, $text);
