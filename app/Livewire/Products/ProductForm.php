@@ -83,7 +83,7 @@ class ProductForm extends Component
     #[On('create-product')]
     public function create(): void
     {
-        abort_if(! auth()->user()->isAdmin(), 403);
+        abort_if(! auth()->user()->can('products.manage'), 403);
         $this->reset([
             'sku', 'sin_code', 'name', 'category_id', 'unit_id', 'purchase_price', 'selling_price',
             'quantity', 'min_stock', 'description', 'notes', 'product', 'isEditing',
@@ -104,7 +104,7 @@ class ProductForm extends Component
     #[On('edit-product')]
     public function edit(Product $product): void
     {
-        abort_if(! auth()->user()->isAdmin(), 403);
+        abort_if(! auth()->user()->can('products.manage'), 403);
         $this->product = $product->load('images');
         $this->sku = $product->sku;
         $this->sin_code = $product->sin_code ?? '';
@@ -259,7 +259,7 @@ class ProductForm extends Component
 
     public function save(ProductService $service, ImageProcessor $imageProcessor): void
     {
-        abort_if(! auth()->user()->isAdmin(), 403);
+        abort_if(! auth()->user()->can('products.manage'), 403);
         $validated = $this->validate();
 
         // Imagen legacy single (campo $photo) — solo si se subió y NO hay galería múltiple.
