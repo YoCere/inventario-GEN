@@ -20,7 +20,7 @@ class DashboardStatsService
     {
         $cacheKey = "dashboard_sales_{$periodKey}_{$startDate->format('Ymd')}_{$endDate->format('Ymd')}";
 
-        return Cache::remember($cacheKey, now()->addMinutes(15), function () use ($startDate, $endDate) {
+        return Cache::remember($cacheKey, $this->ttlFor($endDate, 15), function () use ($startDate, $endDate) {
             // Optimize: Use aggregate queries instead of loading all models into memory
             $salesData = Sale::whereBetween('sale_date', [$startDate, $endDate])
                 ->where('status', 'completed')
@@ -55,7 +55,7 @@ class DashboardStatsService
     {
         $cacheKey = "dashboard_cashflow_{$periodKey}_{$startDate->format('Ymd')}_{$endDate->format('Ymd')}";
 
-        return Cache::remember($cacheKey, now()->addMinutes(15), function () use ($startDate, $endDate) {
+        return Cache::remember($cacheKey, $this->ttlFor($endDate, 15), function () use ($startDate, $endDate) {
             // Optimize: Calculate Income and Expense directly in the DB using joins
             $totals = FinanceTransaction::join('finance_categories', 'finance_transactions.finance_category_id', '=', 'finance_categories.id')
                 ->whereBetween('finance_transactions.transaction_date', [$startDate, $endDate])
@@ -80,7 +80,7 @@ class DashboardStatsService
     public function getLowStockProducts(int $limit = 5): array
     {
         // Cache for 5 minutes as stock levels change frequently.
-        return Cache::remember('dashboard_low_stock', now()->addMinutes(5), function () use ($limit) {
+        return Cache::remember("dashboard_low_stock_{$limit}", now()->addMinutes(5), function () use ($limit) {
             return Product::whereColumn('quantity', '<=', 'min_stock')
                 ->where('is_active', true)
                 ->orderBy('quantity', 'asc')
@@ -88,6 +88,26 @@ class DashboardStatsService
                 ->get()
                 ->toArray();
         });
+    }
+
+    /**
+     * Total de productos activos en o bajo su stock mínimo.
+     */
+    public function getLowStockCount(): int
+    {
+        return Cache::remember('dashboard_low_stock_count', now()->addMinutes(5), function () {
+            return Product::whereColumn('quantity', '<=', 'min_stock')
+                ->where('is_active', true)
+                ->count();
+        });
+    }
+
+    /**
+     * Rangos que incluyen hoy cambian con cada venta: cache corto.
+     */
+    private function ttlFor(Carbon $endDate, int $minutes): Carbon
+    {
+        return $endDate->isPast() ? now()->addMinutes($minutes) : now()->addMinute();
     }
 
     /**
@@ -124,9 +144,11 @@ class DashboardStatsService
      */
     public function getRecentSales(int $limit = 5): array
     {
-        return Cache::remember('dashboard_recent_sales', now()->addMinutes(1), function () use ($limit) {
+        return Cache::remember("dashboard_recent_sales_{$limit}", now()->addMinutes(1), function () use ($limit) {
+            // created_at = momento real de registro (sale_date del POS no trae hora).
             return Sale::with('customer:id,name')
-                ->orderByDesc('sale_date')
+                ->orderByDesc('created_at')
+                ->orderByDesc('id')
                 ->limit($limit)
                 ->get()
                 ->toArray();
@@ -140,7 +162,7 @@ class DashboardStatsService
     {
          $cacheKey = "dashboard_sales_trend_{$startDate->format('Ymd')}_{$endDate->format('Ymd')}";
 
-         return Cache::remember($cacheKey, now()->addMinutes(30), function () use ($startDate, $endDate) {
+         return Cache::remember($cacheKey, $this->ttlFor($endDate, 30), function () use ($startDate, $endDate) {
             $data = Sale::selectRaw('DATE(sale_date) as date, SUM(total) as total')
                 ->whereBetween('sale_date', [$startDate, $endDate])
                 ->where('status', 'completed')

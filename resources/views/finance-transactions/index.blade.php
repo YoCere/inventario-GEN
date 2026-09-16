@@ -27,4 +27,10 @@
             .print\:hidden { display: none !important; }
         }
     </style>
+    {{-- Atajo desde Inicio: ?nuevo=1 abre el formulario de alta --}}
+    @if(request()->boolean('nuevo'))
+        <script>
+            document.addEventListener('livewire:initialized', () => Livewire.dispatch('create-finance-transaction'));
+        </script>
+    @endif
 </x-app-layout>

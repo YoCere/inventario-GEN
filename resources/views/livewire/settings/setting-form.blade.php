@@ -28,11 +28,6 @@
                         <option value="left">Izquierda (Ejemplo: Rp 10.000)</option>
                         <option value="right">Derecha (Ejemplo: 10.000 Rp)</option>
                     </select>
-                @elseif($key === 'dashboard_display_mode')
-                    <select id="value" wire:model="value" class="block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm">
-                        <option value="percent">Porcentajes (simple)</option>
-                        <option value="amount">Montos (tecnico)</option>
-                    </select>
                 @elseif($key === 'company_entity_type')
                     <select id="value" wire:model="value" class="block w-full rounded-md border-input bg-background shadow-sm focus:border-ring focus:ring-ring sm:text-sm">
                         <option value="unipersonal">Unipersonal (sin reserva legal)</option>
