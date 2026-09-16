@@ -6,40 +6,41 @@ use Carbon\Carbon;
 use Livewire\Component;
 use App\Enums\DatePeriod;
 use App\Models\AccountingPeriod;
-use App\Models\Setting;
+use App\Models\Product;
+use App\Models\Sale;
 use App\Services\DashboardStatsService;
+use App\Support\BusinessTime;
 
 class Dashboard extends Component
 {
+    /** Períodos que ofrece el selector segmentado de Inicio. */
+    public const PERIOD_OPTIONS = [
+        DatePeriod::TODAY,
+        DatePeriod::THIS_WEEK,
+        DatePeriod::THIS_MONTH,
+        DatePeriod::CUSTOM,
+    ];
+
     public string $dateFilter = DatePeriod::TODAY->value;
     public ?string $customStartDate = null;
     public ?string $customEndDate = null;
 
     public array $stats = [];
     public array $lowStockProducts = [];
+    public int $lowStockCount = 0;
     public array $recentSales = [];
-    public array $topProducts = [];
-    public array $topCustomers = [];
-
-    // Charts Data
-    public array $salesChart = [];
-    public array $cashFlowChart = [];
-    public array $expenseChart = [];
-    public string $displayMode = 'percent';
-    public bool $showSalesTotals = false;
+    public array $weekSales = [];
 
     public function mount(DashboardStatsService $service)
     {
-        $this->displayMode = Setting::get('dashboard_display_mode', 'percent') === 'amount'
-            ? 'amount'
-            : 'percent';
-
         $this->loadStats($service);
     }
 
-    public function updatedDateFilter()
+    public function setPeriod(string $period): void
     {
-        // If Custom is selected, we wait for dates.
+        $this->dateFilter = DatePeriod::tryFrom($period)?->value ?? DatePeriod::TODAY->value;
+
+        // Personalizado espera a que el usuario elija el rango.
         if ($this->dateFilter !== DatePeriod::CUSTOM->value) {
             $this->loadStats(app(DashboardStatsService::class));
         }
@@ -59,104 +60,49 @@ class Dashboard extends Component
     {
         [$startDate, $endDate] = $this->getDateRange();
 
-        // 1. Sales Stats
         $salesStats = $service->getSalesStats($startDate, $endDate, $this->dateFilter);
-
-        // 2. Cash Flow Stats
-        $cashFlowStats = $service->getCashFlowStats($startDate, $endDate, $this->dateFilter);
-
 
         $this->stats = [
             'total_sales' => $salesStats['total_revenue'],
             'sales_count' => $salesStats['count'],
             'gross_profit' => $salesStats['gross_profit'],
-            'income' => $cashFlowStats['income'],
-            'expense' => $cashFlowStats['expense'],
-            'net_cash_flow' => $cashFlowStats['net_cash_flow'],
         ];
 
-        // 3. Lists
+        // Caja solo se consulta si el usuario puede verla.
+        if (auth()->user()?->can('finance.view')) {
+            $cashFlowStats = $service->getCashFlowStats($startDate, $endDate, $this->dateFilter);
+            $this->stats += [
+                'income' => $cashFlowStats['income'],
+                'expense' => $cashFlowStats['expense'],
+                'net_cash_flow' => $cashFlowStats['net_cash_flow'],
+            ];
+        }
+
         $this->lowStockProducts = $service->getLowStockProducts(5);
-        $this->topProducts = $service->getTopProducts($startDate, $endDate, 5);
-        $this->recentSales = $service->getRecentSales(5);
-        $this->topCustomers = $service->getTopCustomers($startDate, $endDate, 5);
+        $this->lowStockCount = $service->getLowStockCount();
+        $this->recentSales = $service->getRecentSales(4);
 
-        // 4. Prepare Chart Data
-        $salesTrend = $service->getSalesTrend($startDate, $endDate);
-
-        $this->salesChart = [
-            'labels' => array_keys($salesTrend),
-            'data' => array_values($salesTrend),
-        ];
-
-        $cashFlowTrend = $service->getCashFlowTrend($startDate, $endDate);
-
-        $this->cashFlowChart = [
-            'labels' => array_keys($cashFlowTrend['income']),
-            'income' => array_values($cashFlowTrend['income']),
-            'expense' => array_values($cashFlowTrend['expense']),
-        ];
-
-        $expenseBreakdown = $service->getExpenseBreakdown($startDate, $endDate);
-        $this->expenseChart = [
-            'labels' => array_column($expenseBreakdown, 'category_name'),
-            'series' => array_column($expenseBreakdown, 'total_amount'),
-        ];
-
-        $this->dispatch('stats-updated', [
-            'sales' => $this->salesChart,
-            'cashFlow' => $this->cashFlowChart,
-            'expense' => $this->expenseChart,
-        ]);
+        $today = Carbon::now();
+        $this->weekSales = $service->getSalesTrend(
+            $today->copy()->subDays(6)->startOfDay(),
+            $today->copy()->endOfDay()
+        );
     }
 
-    public function setDisplayMode(string $mode): void
+    /** Ticket promedio en centavos, null si no hubo ventas. */
+    public function getAverageTicketProperty(): ?float
     {
-        if (! auth()->user()?->isAdmin()) {
-            return;
-        }
+        $count = (int) ($this->stats['sales_count'] ?? 0);
 
-        $this->displayMode = $mode === 'amount' ? 'amount' : 'percent';
-        Setting::set('dashboard_display_mode', $this->displayMode);
+        return $count > 0 ? ((float) $this->stats['total_sales']) / $count : null;
     }
 
-    public function toggleSalesVisibility(): void
-    {
-        if (! auth()->user()?->isAdmin()) {
-            return;
-        }
-
-        $this->showSalesTotals = ! $this->showSalesTotals;
-    }
-
-    public function getSalesToIncomePercentProperty(): ?float
-    {
-        $income = (float) ($this->stats['income'] ?? 0);
-        if ($income <= 0) {
-            return null;
-        }
-
-        return round((((float) ($this->stats['total_sales'] ?? 0)) / $income) * 100, 2);
-    }
-
-    public function getNetCashFlowPercentProperty(): ?float
-    {
-        $income = (float) ($this->stats['income'] ?? 0);
-        if ($income <= 0) {
-            return null;
-        }
-
-        return round((((float) ($this->stats['net_cash_flow'] ?? 0)) / $income) * 100, 2);
-    }
-
-    public function getGrossProfitMarginPercentProperty(): ?float
+    /** Cuántos Bs quedan de ganancia por cada Bs 100 vendidos. */
+    public function getProfitPerHundredProperty(): ?int
     {
         $sales = (float) ($this->stats['total_sales'] ?? 0);
-        if ($sales <= 0) {
-            return null;
-        }
 
-        return round((((float) ($this->stats['gross_profit'] ?? 0)) / $sales) * 100, 2);
+        return $sales > 0 ? (int) round(((float) $this->stats['gross_profit']) / $sales * 100) : null;
     }
 
     protected function getDateRange(): array
@@ -169,20 +115,57 @@ class Dashboard extends Component
             DatePeriod::THIS_WEEK => [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()],
             DatePeriod::THIS_MONTH => [$now->copy()->startOfMonth(), $now->copy()->endOfMonth()],
             DatePeriod::LAST_MONTH => [$now->copy()->subMonth()->startOfMonth(), $now->copy()->subMonth()->endOfMonth()],
-            DatePeriod::CUSTOM => [
-                Carbon::parse($this->customStartDate)->startOfDay(),
-                Carbon::parse($this->customEndDate)->endOfDay()
-            ],
+            DatePeriod::CUSTOM => $this->customStartDate && $this->customEndDate
+                ? [Carbon::parse($this->customStartDate)->startOfDay(), Carbon::parse($this->customEndDate)->endOfDay()]
+                : [$now->copy()->startOfDay(), $now->copy()->endOfDay()],
             default => [$now->copy()->startOfDay(), $now->copy()->endOfDay()],
         };
     }
 
     public function render()
     {
+        $user = auth()->user();
+        $localNow = BusinessTime::now()->locale('es');
+        $hour = (int) $localNow->format('G');
+
+        $onboarding = null;
+        if ($user?->hasRole('emprendedor')) {
+            $hasProducts = Product::query()->exists();
+            $hasSales = Sale::query()->exists();
+            if (! ($hasProducts && $hasSales)) {
+                $onboarding = ['products' => $hasProducts, 'sales' => $hasSales];
+            }
+        }
+
         return view('livewire.dashboard.dashboard', [
-            'periodAlert' => auth()->user()?->isAdmin()
-                ? AccountingPeriod::dashboardAlert()
-                : null,
+            'greeting' => $hour < 12 ? 'Buenos días' : ($hour < 19 ? 'Buenas tardes' : 'Buenas noches'),
+            'firstName' => strtok((string) $user?->name, ' ') ?: '',
+            'todayLabel' => $localNow->isoFormat('dddd D [de] MMMM'),
+            'periodAlert' => $user?->isAdmin() ? AccountingPeriod::dashboardAlert() : null,
+            'onboarding' => $onboarding,
+            'weekBars' => $this->buildWeekBars(),
         ]);
+    }
+
+    /** Barras de los últimos 7 días: etiqueta corta, monto y alto relativo. */
+    protected function buildWeekBars(): array
+    {
+        $max = max(array_map('floatval', $this->weekSales) ?: [0]);
+        $todayKey = Carbon::now()->format('Y-m-d');
+
+        $bars = [];
+        foreach ($this->weekSales as $date => $total) {
+            $day = Carbon::parse($date)->locale('es');
+            $isToday = $date === $todayKey;
+            $bars[] = [
+                'label' => $isToday ? 'Hoy' : ucfirst(rtrim($day->isoFormat('ddd'), '.')),
+                'title' => ucfirst($day->isoFormat('dddd D [de] MMMM')),
+                'total' => (float) $total,
+                'height' => $max > 0 ? max(2, (int) round(((float) $total) / $max * 100)) : 2,
+                'is_today' => $isToday,
+            ];
+        }
+
+        return $bars;
     }
 }

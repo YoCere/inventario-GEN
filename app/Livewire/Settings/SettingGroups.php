@@ -38,7 +38,6 @@ class SettingGroups extends Component
         ],
         'finanzas' => [
             'discount_rate_annual',
-            'dashboard_display_mode',
         ],
         'periodo_contable' => [
             'default_accounting_period_type',
@@ -198,7 +197,6 @@ class SettingGroups extends Component
         'facturacion_activada' => '0',
         'default_accounting_period_type' => 'monthly',
         'auto_create_next_period'        => '1',
-        'dashboard_display_mode' => 'percent',
         'telegram_enabled' => '0',
         'telegram_bot_paused' => '0',
         'telegram_bot_token' => '',
@@ -637,7 +635,6 @@ class SettingGroups extends Component
             'facturacion_activada' => 'Facturación activada',
             'default_accounting_period_type' => 'Tipo de periodo contable por defecto',
             'auto_create_next_period'        => 'Auto-crear siguiente periodo al cerrar',
-            'dashboard_display_mode' => 'Modo del dashboard',
             'telegram_enabled' => 'Habilitar Telegram',
             'telegram_bot_paused' => 'Bot en pausa',
             'telegram_bot_token' => 'Token del bot',
@@ -730,7 +727,6 @@ class SettingGroups extends Component
             'ai_chatbot_enabled', 'ai_voice_enabled', 'ai_voice_reply', 'ai_vision_enabled',
             'shop_enabled', 'shop_show_out_of_stock', 'facturacion_activada' => $value === '1' ? 'Activo' : 'Inactivo',
             'telegram_bot_paused' => $value === '1' ? '🔴 Pausado' : '✅ Activo',
-            'dashboard_display_mode' => $value === 'amount' ? 'Montos' : 'Porcentajes',
             'tax_iva_rate', 'tax_it_rate', 'discount_rate_annual',
             'payroll_border_bonus_rate', 'payroll_labor_contribution_rate', 'payroll_rc_iva_rate',
             'payroll_solidarity_1_rate', 'payroll_solidarity_2_rate', 'payroll_employer_contribution_rate',

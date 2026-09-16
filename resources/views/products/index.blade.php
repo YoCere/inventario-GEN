@@ -11,14 +11,16 @@
                         Generar informe
                     </x-secondary-button>
                 </a>
-                <x-secondary-button x-data x-on:click="$dispatch('import-receipt')">
-                    <x-heroicon-o-camera class="w-4 h-4 mr-2" />
-                    Importar de recibo
-                </x-secondary-button>
-                <x-primary-button x-data x-on:click="$dispatch('create-product')">
-                    <x-heroicon-o-plus class="w-4 h-4 mr-2" />
-                    Crear producto
-                </x-primary-button>
+                @can('products.manage')
+                    <x-secondary-button x-data x-on:click="$dispatch('import-receipt')">
+                        <x-heroicon-o-camera class="w-4 h-4 mr-2" />
+                        Importar de recibo
+                    </x-secondary-button>
+                    <x-primary-button x-data x-on:click="$dispatch('create-product')">
+                        <x-heroicon-o-plus class="w-4 h-4 mr-2" />
+                        Crear producto
+                    </x-primary-button>
+                @endcan
             </div>
         </div>
     </x-slot>
@@ -32,4 +34,10 @@
     <livewire:products.product-form />
     <livewire:products.product-detail />
     <livewire:products.receipt-import />
+    {{-- Atajo desde Inicio: ?nuevo=1 abre el formulario de alta --}}
+    @if(request()->boolean('nuevo') && auth()->user()->can('products.manage'))
+        <script>
+            document.addEventListener('livewire:initialized', () => Livewire.dispatch('create-product'));
+        </script>
+    @endif
 </x-app-layout>

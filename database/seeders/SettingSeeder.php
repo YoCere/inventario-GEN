@@ -19,7 +19,6 @@ class SettingSeeder extends Seeder
         Setting::set('opening_balance_date', now()->startOfYear()->toDateString());
         Setting::set('opening_balance_amount', '50000');
         Setting::set('discount_rate_annual', '12');
-        Setting::set('dashboard_display_mode', 'percent');
         Setting::set('tax_iva_rate', '13');
         Setting::set('tax_it_rate', '3');
         Setting::set('tax_include_iva', '1');

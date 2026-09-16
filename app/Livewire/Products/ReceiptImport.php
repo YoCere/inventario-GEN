@@ -40,7 +40,7 @@ class ReceiptImport extends Component
     #[On('import-receipt')]
     public function open(): void
     {
-        abort_if(! auth()->user()->isAdmin(), 403);
+        abort_if(! auth()->user()->can('products.manage'), 403);
         $this->reset(['newPage', 'pages', 'rows', 'analyzing']);
         $this->dispatch('open-modal', name: 'receipt-import-modal');
     }
@@ -73,7 +73,7 @@ class ReceiptImport extends Component
 
     public function analyze(ReceiptParser $parser, ProductMatcher $matcher): void
     {
-        abort_if(! auth()->user()->isAdmin(), 403);
+        abort_if(! auth()->user()->can('products.manage'), 403);
 
         if (empty($this->pages)) {
             $this->dispatch('toast', message: 'Agrega al menos una foto del recibo.', type: 'info');
@@ -199,7 +199,7 @@ class ReceiptImport extends Component
 
     public function import(ProductService $service): void
     {
-        abort_if(! auth()->user()->isAdmin(), 403);
+        abort_if(! auth()->user()->can('products.manage'), 403);
 
         $created = 0;
         $failed = [];
