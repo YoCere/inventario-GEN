@@ -5,6 +5,7 @@ namespace App\Shop\Listeners;
 use App\Models\Setting;
 use App\Services\Messaging\TelegramService;
 use App\Shop\Events\WebReservationCreated;
+use App\Shop\ShopSettings;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -29,8 +30,8 @@ class NotifyAdminViaTelegram
 
         $sale = $event->sale->loadMissing(['items.product']);
 
-        $businessName = Setting::get('shop_business_name') ?: config('app.name');
-        $currency = Setting::get('shop_currency_symbol', 'Bs.');
+        $businessName = ShopSettings::businessName();
+        $currency = ShopSettings::currencySymbol();
 
         $lines = [];
         $lines[] = "🛒 <b>Nueva reserva web — {$businessName}</b>";

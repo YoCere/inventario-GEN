@@ -2,8 +2,8 @@
 
 @php
     use App\Models\Setting;
-    $currencySymbol = Setting::get('shop_currency_symbol', 'Bs.');
-    $businessName = Setting::get('shop_business_name') ?: config('app.name');
+    $currencySymbol = \App\Shop\ShopSettings::currencySymbol();
+    $businessName = \App\Shop\ShopSettings::businessName();
 @endphp
 
 @section('title', 'Confirmar pedido')

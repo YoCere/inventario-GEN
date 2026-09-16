@@ -1,6 +1,6 @@
 @php
     use App\Models\Setting;
-    $currencySymbol = Setting::get('shop_currency_symbol', 'Bs.');
+    $currencySymbol = \App\Shop\ShopSettings::currencySymbol();
 @endphp
 
 {{-- Backdrop --}}

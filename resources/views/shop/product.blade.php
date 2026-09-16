@@ -3,7 +3,7 @@
 @php
     use App\Models\Setting;
     use Illuminate\Support\Facades\Storage;
-    $currencySymbol = Setting::get('shop_currency_symbol', 'Bs.');
+    $currencySymbol = \App\Shop\ShopSettings::currencySymbol();
 
     $gallery = $product->images->isNotEmpty()
         ? $product->images

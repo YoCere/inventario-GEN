@@ -4,6 +4,7 @@ namespace App\Shop\Services;
 
 use App\Models\Sale;
 use App\Models\Setting;
+use App\Shop\ShopSettings;
 
 class WhatsAppLinkBuilder
 {
@@ -28,8 +29,8 @@ class WhatsAppLinkBuilder
     {
         $sale->loadMissing(['items.product']);
 
-        $currency = Setting::get('shop_currency_symbol', 'Bs.');
-        $businessName = Setting::get('shop_business_name') ?: config('app.name');
+        $currency = ShopSettings::currencySymbol();
+        $businessName = ShopSettings::businessName();
 
         $lines = [];
         $lines[] = "🛒 *Nueva reserva en {$businessName}*";

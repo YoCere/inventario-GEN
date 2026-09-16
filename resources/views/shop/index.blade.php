@@ -3,7 +3,7 @@
 @php
     use App\Models\Setting;
     $welcomeMessage = Setting::get('shop_welcome_message');
-    $currencySymbol = Setting::get('shop_currency_symbol', 'Bs.');
+    $currencySymbol = \App\Shop\ShopSettings::currencySymbol();
 @endphp
 
 @section('title', 'Catálogo')

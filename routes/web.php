@@ -172,8 +172,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('users/payroll/{sheet}', [PayrollController::class, 'show'])->name('users.payroll.show');
         Route::post('users/payroll/{sheet}/post', [PayrollController::class, 'post'])->name('users.payroll.post');
         Route::get('users/payroll/{sheet}/print', [PayrollController::class, 'print'])->name('users.payroll.print');
-        Route::view('settings', 'settings.index')->name('settings.index');
     });
+
+    // Ajustes — por permiso; cada sección filtra además por su propio permiso (SettingsCatalog).
+    Route::view('settings', 'settings.index')
+        ->middleware('can:settings.view')
+        ->name('settings.index');
 
     // Editor de la landing de la tienda — por permiso (delegable sin dar todo Ajustes).
     // Va acá y no en routes/shop-admin.php a propósito: esas rutas solo se cargan con

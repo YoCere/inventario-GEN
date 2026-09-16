@@ -20,7 +20,7 @@ class WhatsAppLinkBuilderTest extends TestCase
     {
         Setting::set('shop_whatsapp_number', '+591 700-12345');
         Setting::set('shop_business_name', 'Mi Tienda');
-        Setting::set('shop_currency_symbol', 'Bs.');
+        Setting::set('currency_symbol', 'Bs.');
 
         $user = User::factory()->create();
         $sale = Sale::create([

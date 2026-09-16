@@ -5,6 +5,7 @@ namespace App\Shop\Seo;
 use App\Models\Product;
 use App\Models\Setting;
 use App\Shop\Models\LandingSection;
+use App\Shop\ShopSettings;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -74,7 +75,7 @@ class ShareMetaBuilder
 
     public function businessName(): string
     {
-        return Setting::get('shop_business_name') ?: (string) config('app.name');
+        return ShopSettings::businessName();
     }
 
     private function landingTitle(): string
