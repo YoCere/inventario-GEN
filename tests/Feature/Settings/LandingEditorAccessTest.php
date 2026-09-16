@@ -48,7 +48,7 @@ class LandingEditorAccessTest extends TestCase
         $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)
-            ->get(route('settings.index'))
+            ->get(route('settings.index', ['seccion' => 'tienda']))
             ->assertOk()
             ->assertSee(route('settings.shop-landing'), false);
     }

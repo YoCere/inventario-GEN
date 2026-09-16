@@ -25,8 +25,8 @@ class SettingSeeder extends Seeder
         Setting::set('tax_include_it', '1');
 
         // Cuentas contables para IVA e IT
-        Setting::set('accounting_iva_receivable_code', '1.1.05');
-        Setting::set('accounting_iva_payable_code', '2.1.11');
+        Setting::set('accounting_cf_iva_code', '1.1.05');
+        Setting::set('accounting_df_iva_code', '2.1.11');
         Setting::set('accounting_it_payable_code', '2.1.12');
 
         // Periodos contables

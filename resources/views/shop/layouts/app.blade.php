@@ -2,14 +2,14 @@
     use App\Models\Setting;
     use Illuminate\Support\Facades\Storage;
 
-    $businessName = Setting::get('shop_business_name') ?: config('app.name');
+    $businessName = \App\Shop\ShopSettings::businessName();
     $logoPath = Setting::get('shop_logo_path');
     $logoUrl = $logoPath ? Storage::url($logoPath) : null;
     $primaryColor = Setting::get('shop_primary_color', '#2563EB');
     $secondaryColor = Setting::get('shop_secondary_color', '#64748B');
     $accentColor = Setting::get('shop_accent_color', '#F59E0B');
     $textOnPrimary = Setting::get('shop_text_on_primary', '#FFFFFF');
-    $currencySymbol = Setting::get('shop_currency_symbol', 'Bs.');
+    $currencySymbol = \App\Shop\ShopSettings::currencySymbol();
 @endphp
 <!DOCTYPE html>
 <html lang="es" class="antialiased">

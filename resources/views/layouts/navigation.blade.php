@@ -221,11 +221,11 @@
                             Perfil
                         </x-dropdown-link>
 
-                        @if(auth()->user()->isAdmin())
+                        @can('settings.view')
                         <x-dropdown-link :href="route('settings.index')" :active="request()->routeIs('settings.index')">
                             Ajustes
                         </x-dropdown-link>
-                        @endif
+                        @endcan
 
                         @if(auth()->user()->isDeveloper())
                         <x-dropdown-link :href="route('settings.backups')" :active="request()->routeIs('settings.backups')">
@@ -454,11 +454,11 @@
                                 <a href="{{ route('profile.index') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input h-9 px-4 py-2 w-full {{ request()->routeIs('profile.*') ? 'bg-accent text-accent-foreground' : 'bg-background hover:bg-accent hover:text-accent-foreground' }}">
                                     Perfil
                                 </a>
-                                @if(auth()->user()->isAdmin())
+                                @can('settings.view')
                                 <a href="{{ route('settings.index') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input h-9 px-4 py-2 w-full {{ request()->routeIs('settings.index') ? 'bg-accent text-accent-foreground' : 'bg-background hover:bg-accent hover:text-accent-foreground' }}">
                                     Ajustes
                                 </a>
-                                @endif
+                                @endcan
                                 @if(auth()->user()->isDeveloper())
                                 <a href="{{ route('settings.backups') }}" class="inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md text-sm font-medium border border-input h-9 px-4 py-2 w-full {{ request()->routeIs('settings.backups') ? 'bg-accent text-accent-foreground' : 'bg-background hover:bg-accent hover:text-accent-foreground' }}">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

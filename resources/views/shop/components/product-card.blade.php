@@ -1,6 +1,6 @@
 @props(['product'])
 @php
-    $currencySymbol = \App\Models\Setting::get('shop_currency_symbol', 'Bs.');
+    $currencySymbol = \App\Shop\ShopSettings::currencySymbol();
     $img = $product->primaryImage;
     $cardUrl = $img && $img->path_card ? \Illuminate\Support\Facades\Storage::url($img->path_card) : $product->card_image_url;
     $fullUrl = $img && $img->path_full ? \Illuminate\Support\Facades\Storage::url($img->path_full) : $cardUrl;
