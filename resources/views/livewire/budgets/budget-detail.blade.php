@@ -135,13 +135,13 @@
                         <td class="px-4 py-2">
                             @php
                                 $typeColors = [
-                                    'income'  => 'bg-green-100 text-green-800',
-                                    'cost'    => 'bg-red-100 text-red-800',
-                                    'expense' => 'bg-amber-100 text-amber-800',
+                                    'income'  => \App\Support\Ui\Tone::badge('success'),
+                                    'cost'    => \App\Support\Ui\Tone::badge('danger'),
+                                    'expense' => \App\Support\Ui\Tone::badge('warning'),
                                 ];
                                 $typeLabels = ['income' => 'Ingreso', 'cost' => 'Costo', 'expense' => 'Gasto'];
                             @endphp
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ $typeColors[$line->line_type] ?? 'bg-gray-100 text-gray-800' }}">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ $typeColors[$line->line_type] ?? \App\Support\Ui\Tone::badge('neutral') }}">
                                 {{ $typeLabels[$line->line_type] ?? $line->line_type }}
                             </span>
                         </td>

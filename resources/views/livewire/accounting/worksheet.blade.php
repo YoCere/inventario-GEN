@@ -16,12 +16,12 @@
 
             @if($data)
                 @if($data['cuadra'])
-                    <span class="pt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-green-700 bg-green-100 px-3 py-1.5 rounded-full">
+                    <span class="pt-5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold {{ \App\Support\Ui\Tone::badge('success') }}">
                         <x-heroicon-o-check-circle class="w-4 h-4" />
                         Cuadra
                     </span>
                 @else
-                    <span class="pt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-red-700 bg-red-100 px-3 py-1.5 rounded-full">
+                    <span class="pt-5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold {{ \App\Support\Ui\Tone::badge('danger') }}">
                         <x-heroicon-o-exclamation-circle class="w-4 h-4" />
                         DESCUADRE
                     </span>

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\AccountingPeriods;
 
+use App\Support\Ui\Tone;
 use App\Enums\AccountingPeriodStatus;
 use App\Models\AccountingPeriod;
 use App\Models\Setting;
@@ -60,19 +61,19 @@ final class AccountingPeriodTable extends PowerGridComponent
                     $planned = $model->planned_end_date->format('d/m/Y');
                     return $formatted
                         . ' <span title="Planificado hasta ' . $planned . '" '
-                        . 'class="inline-flex items-center ml-1 px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700 cursor-help">'
+                        . 'class="inline-flex items-center ml-1 px-1.5 py-0.5 rounded text-xs font-medium cursor-help ' . Tone::badge(Tone::WARNING) . '">'
                         . '⚠️ ant.</span>';
                 }
                 return $formatted;
             })
             ->add('status_badge', function (AccountingPeriod $model) {
                 if ($model->status === AccountingPeriodStatus::Open) {
-                    return '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">Abierto</span>';
+                    return Tone::badgeHtml(Tone::SUCCESS, 'Abierto');
                 }
                 if ($model->wasClosedEarly()) {
-                    return '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">Cerrado (ant.)</span>';
+                    return Tone::badgeHtml(Tone::WARNING, 'Cerrado (ant.)');
                 }
-                return '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">Cerrado</span>';
+                return Tone::badgeHtml(Tone::NEUTRAL, 'Cerrado');
             })
             ->add('journal_entries_count')
             ->add('closed_at_formatted', fn (AccountingPeriod $model) => $model->closed_at?->format('d/m/Y H:i') ?? '-')
@@ -148,7 +149,7 @@ final class AccountingPeriodTable extends PowerGridComponent
 
             $actions[] = Button::add('close')
                 ->slot('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" /></svg>')
-                ->class('bg-amber-500 hover:bg-amber-600 text-white p-2 rounded-md flex items-center justify-center')
+                ->class('border border-border bg-background text-foreground hover:bg-muted p-2 rounded-md flex items-center justify-center')
                 ->dispatch('open-delete-modal', [
                     'component'          => 'accounting-periods.accounting-period-table',
                     'method'             => 'closePeriod',

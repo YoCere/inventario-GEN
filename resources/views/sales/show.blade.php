@@ -58,9 +58,7 @@
                         <div>
                             <label class="text-sm font-medium leading-none text-gray-500">Estado</label>
                             <div class="mt-1">
-                                <span class="px-2.5 py-0.5 rounded-full text-xs font-medium border {{ $sale->status->color() }}">
-                                    {{ $sale->status->label() }}
-                                </span>
+                                <x-status-badge :status="$sale->status" />
                             </div>
                         </div>
 

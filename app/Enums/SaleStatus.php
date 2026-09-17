@@ -2,6 +2,8 @@
 
 namespace App\Enums;
 
+use App\Support\Ui\Tone;
+
 enum SaleStatus: string
 {
     case PENDING = 'pending';
@@ -17,12 +19,19 @@ enum SaleStatus: string
         };
     }
 
+    /** @deprecated Usa <x-status-badge> o Tone::badge($this->tone()). */
     public function color(): string
     {
+        return Tone::badge($this->tone());
+    }
+
+    /** Tono de color del estado (ver App\Support\Ui\Tone). */
+    public function tone(): string
+    {
         return match ($this) {
-            self::PENDING => 'text-yellow-600 bg-yellow-100',
-            self::COMPLETED => 'text-green-600 bg-green-100',
-            self::CANCELLED => 'text-red-600 bg-red-100',
+            self::PENDING => Tone::WARNING,
+            self::COMPLETED => Tone::SUCCESS,
+            self::CANCELLED => Tone::DANGER,
         };
     }
 }

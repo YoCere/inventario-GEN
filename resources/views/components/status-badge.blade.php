@@ -1,10 +1,14 @@
-@props(['status'])
+@props(['status' => null, 'tone' => null, 'label' => null])
 
 @php
-    $color = method_exists($status, 'color') ? $status->color() : 'bg-gray-100 text-gray-800 border-gray-200';
-    $label = method_exists($status, 'label') ? $status->label() : $status;
+    use App\Support\Ui\Tone;
+
+    // Acepta un enum con tone()/label(), o tono y texto sueltos.
+    $tone ??= (is_object($status) && method_exists($status, 'tone')) ? $status->tone() : Tone::NEUTRAL;
+    $label ??= (is_object($status) && method_exists($status, 'label')) ? $status->label() : (string) $status;
 @endphp
 
-<span class="px-2.5 py-0.5 rounded-full text-xs font-medium border {{ $color }}">
+<span {{ $attributes->merge(['class' => 'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ' . Tone::badge($tone)]) }}>
+    <span class="h-1.5 w-1.5 rounded-full {{ Tone::dot($tone) }}"></span>
     {{ $label }}
 </span>

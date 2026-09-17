@@ -42,7 +42,7 @@ class DeleteModal extends Component
         if ($title) $this->title = $title;
         if ($description) $this->description = $description;
         $this->confirmButtonText = $confirmButtonText;
-        $this->confirmButtonClass = $confirmButtonClass ?: 'bg-red-600 text-white hover:bg-red-500';
+        $this->confirmButtonClass = $confirmButtonClass ?: 'bg-rose-600 text-white hover:bg-rose-500';
 
         $this->open = true;
     }
