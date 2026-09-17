@@ -116,11 +116,11 @@
                                         </td>
                                         <td class="px-4 py-2.5 text-center">
                                             @if($p->quantity <= 0)
-                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium {{ \App\Support\Ui\Tone::badge('danger') }}">
                                                     Sin stock
                                                 </span>
                                             @else
-                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium {{ \App\Support\Ui\Tone::badge('warning') }}">
                                                     Bajo mínimo
                                                 </span>
                                             @endif

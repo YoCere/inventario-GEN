@@ -1,6 +1,6 @@
 <x-app-layout title="Productos">
     <x-slot name="header">
-        <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 class="font-semibold text-xl text-foreground leading-tight">
                 {{ __('Productos') }}
             </h2>

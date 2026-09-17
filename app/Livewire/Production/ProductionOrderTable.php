@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Production;
 
+use App\Support\Ui\Tone;
 use App\Models\ProductionOrder;
 use Illuminate\Database\Eloquent\Builder;
 use PowerComponents\LivewirePowerGrid\Column;
@@ -57,17 +58,17 @@ final class ProductionOrderTable extends PowerGridComponent
             ->add('unit_fmt', fn (ProductionOrder $model) => format_money($model->unit_cost))
             ->add('production_date', fn (ProductionOrder $model) => $model->production_date?->format('Y-m-d') ?? '-')
             ->add('status_badge', function (ProductionOrder $model) {
-                $color = match ($model->status) {
-                    'completed' => 'bg-green-100 text-green-800',
-                    'cancelled' => 'bg-red-100 text-red-800',
-                    default     => 'bg-gray-100 text-gray-800',
+                $tone = match ($model->status) {
+                    'completed' => Tone::SUCCESS,
+                    'cancelled' => Tone::DANGER,
+                    default     => Tone::NEUTRAL,
                 };
                 $label = match ($model->status) {
                     'completed' => 'Completada',
                     'cancelled' => 'Cancelada',
                     default     => ucfirst($model->status),
                 };
-                return "<span class='inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {$color}'>{$label}</span>";
+                return Tone::badgeHtml($tone, $label);
             })
             ->add('created_at');
     }

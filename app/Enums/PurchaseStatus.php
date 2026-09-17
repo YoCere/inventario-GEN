@@ -2,6 +2,8 @@
 
 namespace App\Enums;
 
+use App\Support\Ui\Tone;
+
 enum PurchaseStatus: string
 {
     case DRAFT = 'draft';
@@ -21,14 +23,21 @@ enum PurchaseStatus: string
         };
     }
 
+    /** @deprecated Usa <x-status-badge> o Tone::badge($this->tone()). */
     public function color(): string
     {
-        return match($this) {
-            self::DRAFT => 'text-gray-600 bg-gray-50 border-gray-200',
-            self::ORDERED => 'text-sky-700 bg-sky-50 border-sky-200',
-            self::RECEIVED => 'text-green-700 bg-green-50 border-green-200',
-            self::PAID => 'text-emerald-700 bg-emerald-50 border-emerald-200',
-            self::CANCELLED => 'text-red-700 bg-red-50 border-red-200',
+        return Tone::badge($this->tone());
+    }
+
+    /** Tono de color del estado (ver App\Support\Ui\Tone). */
+    public function tone(): string
+    {
+        return match ($this) {
+            self::DRAFT => Tone::NEUTRAL,
+            self::ORDERED => Tone::WARNING,
+            self::RECEIVED => Tone::SUCCESS,
+            self::PAID => Tone::SUCCESS,
+            self::CANCELLED => Tone::DANGER,
         };
     }
 }

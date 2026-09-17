@@ -34,7 +34,7 @@
                         <!-- Sales Dropdown -->
                         <x-nav-dropdown active="{{ request()->routeIs(['sales.*', 'customers.*']) }}">
                             <x-slot name="icon">
-                                <x-heroicon-o-banknotes class="mr-2 h-4 w-4" />
+                                <x-heroicon-o-banknotes class="mr-2 h-4 w-4 {{ request()->routeIs(['sales.*', 'customers.*', 'shop.admin.*']) ? \App\Support\Ui\Module::iconColor('ventas') : '' }}" />
                             </x-slot>
                             <x-slot name="trigger">
                                 Ventas
@@ -77,7 +77,7 @@
                         <!-- Purchases Dropdown -->
                         <x-nav-dropdown active="{{ request()->routeIs(['purchases.*', 'suppliers.*']) }}">
                             <x-slot name="icon">
-                                <x-heroicon-o-shopping-cart class="mr-2 h-4 w-4" />
+                                <x-heroicon-o-shopping-cart class="mr-2 h-4 w-4 {{ request()->routeIs(['purchases.*', 'suppliers.*']) ? \App\Support\Ui\Module::iconColor('compras') : '' }}" />
                             </x-slot>
                             <x-slot name="trigger">
                                 Compras
@@ -96,7 +96,7 @@
                         @canany(['finance.view','finance.accounting','assets.manage','loans.manage','budgets.manage','production.manage','products.kardex','users.payroll'])
                         <x-nav-dropdown active="{{ request()->routeIs(['finance.*']) }}">
                             <x-slot name="icon">
-                                <x-heroicon-o-currency-dollar class="mr-2 h-4 w-4" />
+                                <x-heroicon-o-currency-dollar class="mr-2 h-4 w-4 {{ request()->routeIs(['finance.*', 'accounting.*']) ? \App\Support\Ui\Module::iconColor('finanzas') : '' }}" />
                             </x-slot>
                             <x-slot name="trigger">
                                 Finanzas
@@ -130,7 +130,7 @@
                         @if(auth()->user()->isAdmin())
                         <x-nav-dropdown active="{{ request()->routeIs('users.*') }}">
                             <x-slot name="icon">
-                                <x-heroicon-o-users class="mr-2 h-4 w-4" />
+                                <x-heroicon-o-users class="mr-2 h-4 w-4 {{ request()->routeIs('users.*') ? \App\Support\Ui\Module::iconColor('usuarios') : '' }}" />
                             </x-slot>
                             <x-slot name="trigger">
                                 Usuarios
@@ -149,7 +149,7 @@
                         <!-- Products Dropdown -->
                         <x-nav-dropdown active="{{ request()->routeIs(['products.*', 'categories.*', 'units.*']) }}">
                             <x-slot name="icon">
-                                <x-heroicon-o-cube class="mr-2 h-4 w-4" />
+                                <x-heroicon-o-cube class="mr-2 h-4 w-4 {{ request()->routeIs(['products.*', 'categories.*', 'units.*', 'warehouses.*', 'locations.*', 'transfers.*']) ? \App\Support\Ui\Module::iconColor('productos') : '' }}" />
                             </x-slot>
                             <x-slot name="trigger">
                                 Productos

@@ -14,7 +14,7 @@
                         <div class="flex items-center gap-2 flex-wrap">
                             <span class="font-mono text-sm text-foreground break-all">{{ $role->name }}</span>
                             @if(in_array($role->name, \App\Livewire\Roles\RolesIndex::BASE_ROLES, true))
-                                <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium uppercase">Base</span>
+                                <span class="text-[10px] px-1.5 py-0.5 rounded-full font-medium uppercase {{ \App\Support\Ui\Tone::badge('info') }}">Base</span>
                             @endif
                         </div>
                         <p class="text-xs text-muted-foreground mt-0.5">

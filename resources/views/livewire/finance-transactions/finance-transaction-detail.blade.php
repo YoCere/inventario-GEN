@@ -45,9 +45,7 @@
                     <div class="space-y-1">
                         <label class="text-sm font-medium leading-none text-muted-foreground">{{ __('Tipo') }}</label>
                         <div>
-                            <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset {{ $transaction->category->type->color() }}">
-                                {{ $transaction->category->type->label() }}
-                            </span>
+                            <x-status-badge :status="$transaction->category->type" />
                         </div>
                     </div>
 

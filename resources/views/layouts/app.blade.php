@@ -40,8 +40,15 @@
 
                 <!-- Page Heading -->
                 @isset($header)
-                    <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-                        {{ $header }}
+                    @php $module = \App\Support\Ui\Module::get(\App\Support\Ui\Module::current()); @endphp
+                    <div class="max-w-7xl mx-auto flex items-center gap-3 py-6 px-4 sm:px-6 lg:px-8">
+                        {{-- Ícono con el color del módulo: dice dónde estás sin leer. --}}
+                        @if($module)
+                            <div class="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl sm:flex {{ $module['chip'] }}">
+                                <x-dynamic-component :component="'heroicon-o-' . $module['icon']" class="h-5 w-5 {{ $module['icon_color'] }}" />
+                            </div>
+                        @endif
+                        <div class="min-w-0 flex-1">{{ $header }}</div>
                     </div>
                 @endisset
 

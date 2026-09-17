@@ -2,6 +2,8 @@
 
 namespace App\Enums;
 
+use App\Support\Ui\Tone;
+
 enum FinanceCategoryType: string
 {
     case Expense = 'expense';
@@ -15,11 +17,18 @@ enum FinanceCategoryType: string
         };
     }
 
+    /** @deprecated Usa <x-status-badge> o Tone::badge($this->tone()). */
     public function color(): string
     {
+        return Tone::badge($this->tone());
+    }
+
+    /** Tono de color del estado (ver App\Support\Ui\Tone). */
+    public function tone(): string
+    {
         return match ($this) {
-            self::Expense => 'bg-red-100 text-red-800 border-red-200',
-            self::Income => 'bg-emerald-100 text-emerald-800 border-emerald-200',
+            self::Expense => Tone::DANGER,
+            self::Income => Tone::SUCCESS,
         };
     }
 }
