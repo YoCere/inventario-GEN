@@ -2,91 +2,96 @@
 
 namespace Database\Seeders;
 
+use App\Enums\FinanceCategoryType;
+use App\Models\FinanceCategory;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
-use App\Models\FinanceCategory;
-use App\Enums\FinanceCategoryType;
 
+/**
+ * Categorías de entradas y salidas de caja, en el lenguaje del negocio.
+ *
+ * Idempotente (firstOrCreate por slug): correrlo dos veces no duplica, y una
+ * instancia existente no pierde las categorías que el cliente haya creado.
+ */
 class FinanceCategorySeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
         $categories = [
-            // Income
+            // Entradas de dinero.
             [
-                'name' => 'Penjualan Produk',
+                'name' => 'Venta de productos',
                 'type' => FinanceCategoryType::Income,
-                'description' => 'Pendapatan langsung dari penjualan produk toko.',
+                'description' => 'Lo que entra por vender tu mercadería.',
             ],
             [
-                'name' => 'Layanan Jasa',
+                'name' => 'Servicios y trabajos',
                 'type' => FinanceCategoryType::Income,
-                'description' => 'Pendapatan dari layanan jasa service atau konsultasi.',
+                'description' => 'Arreglos, trabajos a pedido o servicios que cobres aparte.',
             ],
             [
-                'name' => 'Investasi',
+                'name' => 'Otros ingresos',
                 'type' => FinanceCategoryType::Income,
-                'description' => 'Dividen atau bunga dari investasi modal.',
-            ],
-            [
-                'name' => 'Pendapatan Lain-lain',
-                'type' => FinanceCategoryType::Income,
-                'description' => 'Pendapatan di luar operasional utama.',
+                'description' => 'Dinero que entra por fuera de la venta habitual.',
             ],
 
-            // Expenses
+            // Salidas de dinero.
             [
-                'name' => 'Gaji Karyawan',
+                'name' => 'Compra de mercadería',
                 'type' => FinanceCategoryType::Expense,
-                'description' => 'Biaya gaji bulanan dan tunjangan karyawan.',
+                'description' => 'Lo que pagas por la mercadería o los materiales que vendes.',
             ],
             [
-                'name' => 'Sewa Gedung',
+                'name' => 'Sueldos',
                 'type' => FinanceCategoryType::Expense,
-                'description' => 'Biaya sewa toko atau gudang operasional.',
+                'description' => 'Sueldos, aguinaldos y beneficios del personal.',
             ],
             [
-                'name' => 'Listrik & Air',
+                'name' => 'Alquiler',
                 'type' => FinanceCategoryType::Expense,
-                'description' => 'Tagihan utilitas bulanan.',
+                'description' => 'Alquiler del local, taller o depósito.',
             ],
             [
-                'name' => 'Internet & Telepon',
+                'name' => 'Luz, agua e internet',
                 'type' => FinanceCategoryType::Expense,
-                'description' => 'Biaya komunikasi dan koneksi internet.',
+                'description' => 'Servicios básicos y comunicación.',
             ],
             [
-                'name' => 'Pemasaran & Iklan',
+                'name' => 'Transporte y envíos',
                 'type' => FinanceCategoryType::Expense,
-                'description' => 'Biaya promosi, iklan sosial media, dan cetak.',
+                'description' => 'Combustible, pasajes, fletes y entregas.',
             ],
             [
-                'name' => 'Perawatan & Perbaikan',
+                'name' => 'Publicidad',
                 'type' => FinanceCategoryType::Expense,
-                'description' => 'Biaya maintenance aset dan peralatan.',
+                'description' => 'Promoción, redes sociales e impresiones.',
             ],
             [
-                'name' => 'Transportasi & Logistik',
+                'name' => 'Mantenimiento y reparaciones',
                 'type' => FinanceCategoryType::Expense,
-                'description' => 'Biaya bensin, pengiriman, dan perjalanan dinas.',
+                'description' => 'Arreglo de máquinas, herramientas y equipos.',
             ],
             [
-                'name' => 'Pembelian Stok',
+                'name' => 'Impuestos y trámites',
                 'type' => FinanceCategoryType::Expense,
-                'description' => 'Biaya pembelian barang dagangan (HPP).',
+                'description' => 'Pagos a Impuestos, patentes y trámites del negocio.',
+            ],
+            [
+                'name' => 'Otros gastos',
+                'type' => FinanceCategoryType::Expense,
+                'description' => 'Gastos que no entran en las categorías de arriba.',
             ],
         ];
 
         foreach ($categories as $category) {
-            FinanceCategory::create([
-                'name' => $category['name'],
-                'slug' => Str::slug($category['name']),
-                'type' => $category['type'],
-                'description' => $category['description'],
-            ]);
+            FinanceCategory::firstOrCreate(
+                ['slug' => Str::slug($category['name'])],
+                [
+                    'name' => $category['name'],
+                    'type' => $category['type'],
+                    'description' => $category['description'],
+                ]
+            );
         }
     }
 }
