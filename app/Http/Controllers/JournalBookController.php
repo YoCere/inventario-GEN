@@ -7,6 +7,7 @@ use App\Enums\JournalEntryStatus;
 use App\Models\AccountingPeriod;
 use App\Models\JournalEntry;
 use App\Models\Setting;
+use App\Support\BusinessTime;
 use Illuminate\Http\Request;
 
 class JournalBookController extends Controller
@@ -34,16 +35,16 @@ class JournalBookController extends Controller
         if (! $from || ! $to) {
             $period = AccountingPeriod::query()
                 ->where('status', AccountingPeriodStatus::Open->value)
-                ->whereDate('start_date', '<=', today())
-                ->whereDate('end_date', '>=', today())
+                ->whereDate('start_date', '<=', BusinessTime::todayString())
+                ->whereDate('end_date', '>=', BusinessTime::todayString())
                 ->first();
 
             if ($period) {
                 $from = $from ?: $period->start_date->format('Y-m-d');
                 $to   = $to   ?: $period->end_date->format('Y-m-d');
             } else {
-                $from = $from ?: now()->startOfMonth()->format('Y-m-d');
-                $to   = $to   ?: now()->endOfMonth()->format('Y-m-d');
+                $from = $from ?: BusinessTime::now()->startOfMonth()->format('Y-m-d');
+                $to   = $to   ?: BusinessTime::now()->endOfMonth()->format('Y-m-d');
             }
         }
 

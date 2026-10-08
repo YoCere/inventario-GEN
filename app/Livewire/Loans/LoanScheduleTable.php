@@ -7,6 +7,7 @@ use App\Enums\InstallmentStatus;
 use App\Models\Loan;
 use App\Models\LoanInstallment;
 use App\Services\Accounting\LoanService;
+use App\Support\BusinessTime;
 use Illuminate\Database\Eloquent\Builder;
 use Livewire\Attributes\On;
 use PowerComponents\LivewirePowerGrid\Button;
@@ -108,7 +109,7 @@ final class LoanScheduleTable extends PowerGridComponent
     {
         abort_unless(auth()->user()->isAdmin(), 403);
         $installment = LoanInstallment::findOrFail($installmentId);
-        app(LoanService::class)->registerPayment($installment, now()->toDateString(), null, auth()->id());
+        app(LoanService::class)->registerPayment($installment, BusinessTime::todayString(), null, auth()->id());
         session()->flash('saved', 'Pago registrado.');
         $this->dispatch('pg:eventRefresh-' . $this->tableName);
     }
@@ -117,7 +118,7 @@ final class LoanScheduleTable extends PowerGridComponent
     public function payoffLoan(): void
     {
         abort_unless(auth()->user()->isAdmin(), 403);
-        app(LoanService::class)->payoff(Loan::findOrFail($this->loan), now()->toDateString(), null, auth()->id());
+        app(LoanService::class)->payoff(Loan::findOrFail($this->loan), BusinessTime::todayString(), null, auth()->id());
         session()->flash('saved', 'Préstamo cancelado.');
         $this->dispatch('pg:eventRefresh-' . $this->tableName);
     }

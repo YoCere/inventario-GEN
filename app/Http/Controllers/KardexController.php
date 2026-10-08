@@ -4,14 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Services\KardexService;
+use App\Support\BusinessTime;
 use Illuminate\Http\Request;
 
 class KardexController extends Controller
 {
     public function index(Request $request, KardexService $kardexService)
     {
-        $from = $request->input('from', now()->startOfMonth()->toDateString());
-        $to = $request->input('to', now()->toDateString());
+        $from = $request->input('from', BusinessTime::now()->startOfMonth()->toDateString());
+        $to = $request->input('to', BusinessTime::todayString());
         $productId = $request->integer('product_id');
 
         $products = Product::query()
@@ -34,8 +35,8 @@ class KardexController extends Controller
 
     public function print(Request $request, KardexService $kardexService)
     {
-        $from = $request->input('from', now()->startOfMonth()->toDateString());
-        $to   = $request->input('to', now()->toDateString());
+        $from = $request->input('from', BusinessTime::now()->startOfMonth()->toDateString());
+        $to   = $request->input('to', BusinessTime::todayString());
         $productId = $request->integer('product_id');
 
         if (!$productId) {

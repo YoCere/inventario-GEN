@@ -8,6 +8,7 @@ use App\Models\AccountingPeriod;
 use App\Models\ChartOfAccount;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
+use App\Support\BusinessTime;
 
 class ManualJournalEntryForm extends Component
 {
@@ -20,7 +21,7 @@ class ManualJournalEntryForm extends Component
 
     public function mount(): void
     {
-        $this->entry_date = now()->format('Y-m-d');
+        $this->entry_date = BusinessTime::todayString();
 
         $this->lines = [
             ['chart_of_account_id' => null, 'side' => 'debit',  'amount' => null, 'description' => null],

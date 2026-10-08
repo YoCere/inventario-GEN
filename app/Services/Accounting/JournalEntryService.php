@@ -11,6 +11,7 @@ use App\Models\AccountingPeriod;
 use App\Models\JournalEntry;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use App\Support\BusinessTime;
 use InvalidArgumentException;
 use RuntimeException;
 
@@ -149,7 +150,7 @@ class JournalEntryService
 
         $entry->loadMissing('lines');
 
-        $reverseDate = now()->toDateString();
+        $reverseDate = BusinessTime::todayString();
         $period = $this->resolveOpenPeriod($reverseDate);
 
         $reverseLines = $entry->lines->map(function ($line) {
@@ -231,7 +232,7 @@ class JournalEntryService
 
     protected function generateEntryNumber(): string
     {
-        $prefix = 'JRN.' . now()->format('ymd') . '.';
+        $prefix = 'JRN.' . BusinessTime::now()->format('ymd') . '.';
         $latest = JournalEntry::query()
             ->where('entry_number', 'like', $prefix . '%')
             ->orderByDesc('id')

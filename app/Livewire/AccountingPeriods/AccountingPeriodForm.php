@@ -9,6 +9,7 @@ use Carbon\Carbon;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\On;
 use Livewire\Component;
+use App\Support\BusinessTime;
 
 class AccountingPeriodForm extends Component
 {
@@ -106,7 +107,7 @@ class AccountingPeriodForm extends Component
             $lastPeriod = AccountingPeriod::orderByDesc('end_date')->first();
             $this->start_date = $lastPeriod
                 ? $lastPeriod->end_date->addDay()->format('Y-m-d')
-                : now()->startOfMonth()->format('Y-m-d');
+                : BusinessTime::now()->startOfMonth()->format('Y-m-d');
         }
 
         $this->name     = '';

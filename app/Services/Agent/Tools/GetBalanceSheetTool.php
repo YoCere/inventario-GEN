@@ -5,6 +5,7 @@ namespace App\Services\Agent\Tools;
 use App\Services\Accounting\FinancialReadModel;
 use App\Services\Agent\AgentContext;
 use App\Services\Agent\BaseTool;
+use App\Support\BusinessTime;
 
 class GetBalanceSheetTool extends BaseTool
 {
@@ -43,7 +44,7 @@ class GetBalanceSheetTool extends BaseTool
             return ['error' => 'Solo el administrador puede consultar información financiera.'];
         }
 
-        $date = (string) ($input['as_of'] ?? now()->toDateString());
+        $date = (string) ($input['as_of'] ?? BusinessTime::todayString());
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
             return ['error' => "Formato de fecha inválido: usa YYYY-MM-DD."];
         }

@@ -4,6 +4,7 @@ namespace App\DTOs;
 
 use App\Enums\PaymentMethod;
 use App\Enums\SaleStatus;
+use App\Support\BusinessTime;
 use Carbon\Carbon;
 
 readonly class SaleData
@@ -31,7 +32,10 @@ readonly class SaleData
     public static function fromArray(array $data): self
     {
         return new self(
-            sale_date: Carbon::parse($data['sale_date']),
+            // BusinessTime::parse interpreta un string sin zona como hora local del
+            // negocio (Carbon::parse lo leería como UTC y una venta de las 21:00 caería
+            // en el día siguiente). Sin fecha -> "ahora" local: es el caso del POS.
+            sale_date: BusinessTime::parse($data['sale_date'] ?? null),
             payment_method: PaymentMethod::from($data['payment_method']),
             created_by: (int) $data['created_by'],
             items: array_map(fn($item) => SaleItemData::fromArray($item), $data['items']),

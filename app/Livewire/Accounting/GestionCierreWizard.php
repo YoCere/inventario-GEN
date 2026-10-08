@@ -3,6 +3,7 @@
 namespace App\Livewire\Accounting;
 
 use App\Services\Accounting\GestionCierreService;
+use App\Support\BusinessTime;
 use Livewire\Component;
 
 class GestionCierreWizard extends Component
@@ -12,7 +13,8 @@ class GestionCierreWizard extends Component
     public function mount(): void
     {
         abort_if(! auth()->user()?->isAdmin(), 403);
-        $this->year = (int) now()->year;
+        // Gestión local: el 31/12 a las 21:00 locales now() (UTC) ya marca el año siguiente.
+        $this->year = (int) BusinessTime::now()->year;
     }
 
     public function getPreviewProperty(): array

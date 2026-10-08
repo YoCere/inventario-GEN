@@ -4,6 +4,7 @@ namespace App\Livewire\Sales;
 
 use Carbon\Carbon;
 use App\Models\Sale;
+use App\Support\BusinessTime;
 use App\Enums\SaleStatus;
 use App\Services\SaleService;
 use App\Exceptions\SaleException;
@@ -156,27 +157,10 @@ final class SalesTable extends PowerGridComponent
                 ->optionLabel('name')
                 ->optionValue('value')
                 ->builder(function (Builder $query, string $value) {
-                    switch ($value) {
-                        case 'today':
-                            $query->whereDate('sale_date', now());
-                            break;
-                        case 'yesterday':
-                            $query->whereDate('sale_date', now()->subDay());
-                            break;
-                        case 'this_week':
-                            $query->whereBetween('sale_date', [now()->startOfWeek(), now()->endOfWeek()]);
-                            break;
-                        case 'last_week':
-                            $query->whereBetween('sale_date', [now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek()]);
-                            break;
-                        case 'this_month':
-                            $query->whereMonth('sale_date', now()->month)
-                                ->whereYear('sale_date', now()->year);
-                            break;
-                        case 'last_month':
-                            $query->whereMonth('sale_date', now()->subMonth()->month)
-                                ->whereYear('sale_date', now()->subMonth()->year);
-                            break;
+                    // El rango sale de BusinessTime: now() es UTC y a partir de las 20:00
+                    // locales "Hoy" ya apuntaba al día siguiente.
+                    if ($range = BusinessTime::periodRange($value)) {
+                        $query->whereBetween('sale_date', $range);
                     }
                 }),
         ];

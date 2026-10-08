@@ -4,8 +4,8 @@ namespace App\Livewire\AccountingPeriods;
 
 use App\Models\AccountingPeriod;
 use App\Models\Setting;
-use Carbon\Carbon;
 use Livewire\Component;
+use App\Support\BusinessTime;
 
 class AccountingPeriodSettings extends Component
 {
@@ -41,7 +41,7 @@ class AccountingPeriodSettings extends Component
 
     protected function loadPeriodStatus(): void
     {
-        $today = now()->toDateString();
+        $today = BusinessTime::todayString();
 
         $active = AccountingPeriod::query()
             ->where('status', 'open')
@@ -51,7 +51,7 @@ class AccountingPeriodSettings extends Component
             ->first();
 
         if ($active) {
-            $daysLeft = (int) now()->diffInDays($active->end_date, false);
+            $daysLeft = BusinessTime::daysUntil($active->end_date);
             $this->activePeriodName     = $active->name;
             $this->activePeriodEnd      = $active->end_date->format('d/m/Y');
             $this->activePeriodDaysLeft = $daysLeft;

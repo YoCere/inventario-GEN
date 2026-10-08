@@ -8,6 +8,7 @@ use App\Enums\SaleStatus;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\User;
+use App\Support\BusinessTime;
 
 /**
  * Motor de venta/anulación instantánea. Capa fina sobre SaleService: reúne los
@@ -64,7 +65,9 @@ class QuickSaleService
 
         $saleData = SaleData::fromArray([
             'created_by'      => $actorId,
-            'sale_date'       => now()->toDateTimeString(),
+            // Hora local del negocio: con now() (UTC) una venta de las 21:00 se guardaba
+            // con la fecha del día siguiente.
+            'sale_date'       => BusinessTime::now()->toDateTimeString(),
             'status'          => SaleStatus::COMPLETED->value,
             'payment_method'  => $method->value,
             'source'          => $source,

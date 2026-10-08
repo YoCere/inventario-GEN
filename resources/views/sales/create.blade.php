@@ -757,7 +757,6 @@
                                 notes: this.payment.notes,
                                 global_discount: this.globalDiscount,
                                 status: this.saleStatus,
-                                sale_date: new Date().toISOString().slice(0, 10),
                                 _token: '{{ csrf_token() }}',
                                 wants_invoice: this.wantsInvoice,
                             };

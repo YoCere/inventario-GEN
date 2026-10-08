@@ -5,6 +5,7 @@ namespace App\Services\Agent\Tools;
 use App\Models\SaleItem;
 use App\Services\Agent\AgentContext;
 use App\Services\Agent\BaseTool;
+use App\Support\BusinessTime;
 use Illuminate\Support\Facades\DB;
 
 class GetTopSellersTool extends BaseTool
@@ -39,7 +40,7 @@ class GetTopSellersTool extends BaseTool
     {
         $days = max(1, min(365, (int) ($input['days'] ?? 30)));
         $limit = max(1, min(50, (int) ($input['limit'] ?? 5)));
-        $start = now()->subDays($days);
+        $start = BusinessTime::now()->subDays($days);
 
         $rows = SaleItem::query()
             ->join('sales', 'sales.id', '=', 'sale_items.sale_id')

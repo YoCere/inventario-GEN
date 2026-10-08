@@ -7,6 +7,7 @@ use App\Enums\SaleStatus;
 use App\Models\Product;
 use App\Models\PurchaseItem;
 use App\Models\SaleItem;
+use App\Support\BusinessTime;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -195,7 +196,7 @@ class KardexService
      */
     public function averageUnitCost(int $productId, ?string $asOf = null, ?int $locationId = null): int
     {
-        $to = $asOf ?: now()->toDateString();
+        $to = $asOf ?: BusinessTime::todayString();
         $kardex = $this->build($productId, '1900-01-01', $to, $locationId);
         $qty = (int) $kardex['totals']['closing_qty'];
         $value = (float) $kardex['totals']['closing_total'];

@@ -11,7 +11,7 @@ use App\Models\Location;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Services\SaleService;
-use Illuminate\Support\Carbon;
+use App\Support\BusinessTime;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -91,7 +91,8 @@ class ReservationService
             $systemUserId = (int) (\App\Models\User::role(['developer', 'admin'])->orderBy('id')->value('id') ?? 1);
 
             $saleData = new SaleData(
-                sale_date: Carbon::now(),
+                // Fecha local del negocio: la reserva pertenece al día local, no al UTC.
+                sale_date: BusinessTime::now(),
                 payment_method: PaymentMethod::CASH, // placeholder; admin define real al confirmar
                 created_by: $systemUserId,
                 items: $saleItems,

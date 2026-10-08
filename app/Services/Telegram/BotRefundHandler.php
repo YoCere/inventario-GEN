@@ -6,6 +6,7 @@ use App\Models\TelegramConversation;
 use App\Models\Sale;
 use App\Services\Messaging\TelegramService;
 use App\Services\SaleService;
+use App\Support\BusinessTime;
 use Illuminate\Support\Facades\Log;
 
 class BotRefundHandler
@@ -34,9 +35,9 @@ class BotRefundHandler
 
     public function start(string $chatId): void
     {
-        // Get latest sales from today
-        $today = now()->toDateString();
-        $sales = Sale::whereDate('created_at', $today)
+        // created_at es un instante UTC real, así que el "hoy" local se traduce a un
+        // rango UTC; whereDate() compararía el día UTC y de noche perdería las ventas.
+        $sales = Sale::whereBetween('created_at', BusinessTime::dayRangeUtc())
             ->where('status', 'completed')
             ->orderBy('created_at', 'desc')
             ->with(['items.product'])
