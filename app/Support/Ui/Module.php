@@ -29,6 +29,7 @@ final class Module
         'warehouses.' => 'productos',
         'locations.' => 'productos',
         'transfers.' => 'productos',
+        'reports.' => 'productos',
         'finance' => 'finanzas',
         'accounting.' => 'finanzas',
         'users.' => 'usuarios',

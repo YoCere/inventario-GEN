@@ -1,7 +1,7 @@
-<x-app-layout title="Módulos">
+<x-app-layout title="Activos y operaciones">
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-foreground leading-tight">
-            Módulos
+            Activos y operaciones
         </h2>
     </x-slot>
 
