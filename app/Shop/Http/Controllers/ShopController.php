@@ -2,6 +2,7 @@
 
 namespace App\Shop\Http\Controllers;
 
+use App\Shop\ShopSettings;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Product;
@@ -63,9 +64,11 @@ class ShopController extends Controller
             $query->where('category_id', $categoryId);
         }
 
-        // Filtro precio.
-        $min = $request->integer('min');
-        $max = $request->integer('max');
+        // Filtro precio. Con precios ocultos se ignora aunque venga en la URL: si no,
+        // cualquiera deduce el precio de un producto probando rangos a mano.
+        $showPrices = ShopSettings::showPrices();
+        $min = $showPrices ? $request->integer('min') : 0;
+        $max = $showPrices ? $request->integer('max') : 0;
         if ($min > 0) {
             $query->where('selling_price', '>=', $min * 100); // UI maneja unidades, BD centavos.
         }
@@ -73,8 +76,13 @@ class ShopController extends Controller
             $query->where('selling_price', '<=', $max * 100);
         }
 
-        // Ordenamiento.
-        match ($request->input('sort', 'newest')) {
+        // Ordenamiento. Ordenar por precio también lo revela, así que con precios
+        // ocultos esas dos opciones caen al orden por defecto.
+        $sort = $request->input('sort', 'newest');
+        if (! $showPrices && in_array($sort, ['price_asc', 'price_desc'], true)) {
+            $sort = 'newest';
+        }
+        match ($sort) {
             'price_asc'  => $query->orderBy('selling_price', 'asc'),
             'price_desc' => $query->orderBy('selling_price', 'desc'),
             'name'       => $query->orderBy('name', 'asc'),
@@ -160,12 +168,15 @@ class ShopController extends Controller
             return response()->json(['results' => [], 'query' => $q]);
         }
 
-        $cacheKey = 'shop.search.' . md5(mb_strtolower($q));
-        $results = Cache::remember($cacheKey, 60, function () use ($q) {
+        // El estado del interruptor entra en la clave: si no, al apagar los precios el
+        // buscador seguiría sirviéndolos desde el cache hasta un minuto después.
+        $showPrices = ShopSettings::showPrices();
+        $cacheKey = 'shop.search.' . md5(mb_strtolower($q)) . ($showPrices ? '' : '.sin-precios');
+        $results = Cache::remember($cacheKey, 60, function () use ($q, $showPrices) {
             $raw = $this->searchService->searchPublic($q);
 
             // Re-shape para frontend: precio en unidades + url detalle + imagen.
-            return collect($raw)->map(function ($item) {
+            return collect($raw)->map(function ($item) use ($showPrices) {
                 $product = Product::with('primaryImage')->find($item['id']);
                 if (! $product) return null;
                 return [
@@ -173,8 +184,9 @@ class ShopController extends Controller
                     'name' => $product->name,
                     'slug' => $product->slug,
                     'sku' => $product->sku,
-                    'price' => number_format($product->selling_price / 100, 2),
-                    'price_cents' => $product->selling_price,
+                    // Sin precios, el buscador tampoco los devuelve: el JSON es público.
+                    'price' => $showPrices ? number_format($product->selling_price / 100, 2) : null,
+                    'price_cents' => $showPrices ? $product->selling_price : null,
                     'image' => $product->card_image_url,
                     'url' => route('shop.product', $product->slug),
                 ];

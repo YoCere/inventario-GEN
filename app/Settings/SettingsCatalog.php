@@ -127,6 +127,7 @@ final class SettingsCatalog
                     ['key' => 'shop_business_name', 'label' => 'Nombre en la tienda', 'type' => 'text', 'default' => '', 'help' => 'Si lo dejas vacío se usa el nombre de tu negocio.'],
                     ['key' => 'shop_welcome_message', 'label' => 'Mensaje de bienvenida', 'type' => 'textarea', 'default' => '', 'wide' => true],
                     ['key' => 'shop_show_out_of_stock', 'label' => 'Mostrar productos sin stock', 'type' => 'toggle', 'default' => '0', 'wide' => true],
+                    ['key' => 'shop_show_prices', 'label' => 'Mostrar precios en la tienda', 'type' => 'toggle', 'default' => '1', 'wide' => true, 'help' => 'Apagado: los visitantes ven los productos y piden por WhatsApp, pero no el precio. Útil para que la competencia no copie tu lista. Vos seguís viendo los montos en Reservas web.'],
                     ['key' => 'shop_primary_color', 'label' => 'Color principal', 'type' => 'color', 'default' => '#2563EB', 'advanced' => true],
                     ['key' => 'shop_secondary_color', 'label' => 'Color secundario', 'type' => 'color', 'default' => '#64748B', 'advanced' => true],
                     ['key' => 'shop_accent_color', 'label' => 'Color de ofertas', 'type' => 'color', 'default' => '#F59E0B', 'advanced' => true],

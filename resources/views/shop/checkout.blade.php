@@ -3,6 +3,7 @@
 @php
     use App\Models\Setting;
     $currencySymbol = \App\Shop\ShopSettings::currencySymbol();
+    $showPrices = \App\Shop\ShopSettings::showPrices();
     $businessName = \App\Shop\ShopSettings::businessName();
 @endphp
 
@@ -111,29 +112,37 @@
                                  class="w-14 h-14 object-cover rounded-lg bg-zinc-100 shrink-0">
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm font-medium text-zinc-900 line-clamp-2" x-text="item.name"></p>
-                                <p class="text-xs text-zinc-500" x-text="`${item.qty} × {{ $currencySymbol }} ${(item.price/100).toFixed(2)}`"></p>
+                                <p class="text-xs text-zinc-500" x-text="@if($showPrices) `${item.qty} × {{ $currencySymbol }} ${(item.price/100).toFixed(2)}` @else `Cantidad: ${item.qty}` @endif"></p>
                             </div>
-                            <div class="text-sm font-semibold shrink-0" :style="`color: var(--shop-primary)`">
-                                {{ $currencySymbol }} <span x-text="((item.price * item.qty)/100).toFixed(2)"></span>
-                            </div>
+                            @if($showPrices)
+                                <div class="text-sm font-semibold shrink-0" :style="`color: var(--shop-primary)`">
+                                    {{ $currencySymbol }} <span x-text="((item.price * item.qty)/100).toFixed(2)"></span>
+                                </div>
+                            @endif
                         </div>
                     </template>
                 </div>
 
                 <div class="px-5 py-4 space-y-2">
+                    @if($showPrices)
                     <div class="flex items-center justify-between text-sm text-zinc-600">
                         <span>Subtotal</span>
                         <span x-text="`{{ $currencySymbol }} ${$store.cart.totalFormatted()}`"></span>
                     </div>
+                    @endif
                     <div class="flex items-center justify-between text-sm text-zinc-600">
                         <span>Envío</span>
                         <span>A coordinar</span>
                     </div>
                     <div class="flex items-center justify-between pt-2 border-t border-zinc-100">
                         <span class="font-semibold text-zinc-900">Total estimado</span>
-                        <span class="text-xl font-bold" :style="`color: var(--shop-primary)`">
-                            {{ $currencySymbol }} <span x-text="$store.cart.totalFormatted()"></span>
-                        </span>
+                        @if($showPrices)
+                            <span class="text-xl font-bold" :style="`color: var(--shop-primary)`">
+                                {{ $currencySymbol }} <span x-text="$store.cart.totalFormatted()"></span>
+                            </span>
+                        @else
+                            <span class="text-sm font-medium text-zinc-500">Te lo confirmamos por WhatsApp</span>
+                        @endif
                     </div>
                 </div>
             </div>

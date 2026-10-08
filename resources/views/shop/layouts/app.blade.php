@@ -10,6 +10,7 @@
     $accentColor = Setting::get('shop_accent_color', '#F59E0B');
     $textOnPrimary = Setting::get('shop_text_on_primary', '#FFFFFF');
     $currencySymbol = \App\Shop\ShopSettings::currencySymbol();
+    $showPrices = \App\Shop\ShopSettings::showPrices();
 @endphp
 <!DOCTYPE html>
 <html lang="es" class="antialiased">
@@ -110,9 +111,11 @@
                                     <p class="font-medium text-sm text-zinc-900 truncate" x-text="r.name"></p>
                                     <p class="text-xs text-zinc-500" x-text="'SKU: ' + r.sku"></p>
                                 </div>
-                                <p class="font-semibold text-sm shrink-0" :style="`color: var(--shop-primary)`">
-                                    {{ $currencySymbol }} <span x-text="r.price"></span>
-                                </p>
+                                @if($showPrices)
+                                    <p class="font-semibold text-sm shrink-0" :style="`color: var(--shop-primary)`">
+                                        {{ $currencySymbol }} <span x-text="r.price"></span>
+                                    </p>
+                                @endif
                             </a>
                         </template>
                     </div>

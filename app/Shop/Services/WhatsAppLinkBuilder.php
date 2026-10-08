@@ -46,16 +46,30 @@ class WhatsAppLinkBuilder
         $lines[] = '';
         $lines[] = '📦 *Productos:*';
 
+        // Este mensaje lo manda el CLIENTE desde su teléfono, así que con precios
+        // ocultos tampoco puede llevarlos: sería la lista de precios servida en bandeja.
+        $showPrices = ShopSettings::showPrices();
+
         foreach ($sale->items as $item) {
             $name = $item->product?->name ?? 'Producto';
             $qty = (int) $item->quantity;
+
+            if (! $showPrices) {
+                $lines[] = "  • {$qty}× {$name}";
+                continue;
+            }
+
             $lineTotal = number_format(($item->subtotal ?? ($item->unit_price * $qty)) / 100, 2);
             $lines[] = "  • {$qty}× {$name} — {$currency} {$lineTotal}";
         }
 
         $lines[] = '';
-        $total = number_format($sale->total / 100, 2);
-        $lines[] = "💰 *Total: {$currency} {$total}*";
+        if ($showPrices) {
+            $total = number_format($sale->total / 100, 2);
+            $lines[] = "💰 *Total: {$currency} {$total}*";
+        } else {
+            $lines[] = '💬 *Por favor confirmame el precio.*';
+        }
         $lines[] = '';
         $lines[] = 'Reservado en línea — pendiente de pago.';
         $lines[] = 'Por favor confírmame disponibilidad y forma de pago. ¡Gracias!';

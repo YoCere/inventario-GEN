@@ -4,6 +4,7 @@
     use App\Models\Setting;
     use Illuminate\Support\Facades\Storage;
     $currencySymbol = \App\Shop\ShopSettings::currencySymbol();
+    $showPrices = \App\Shop\ShopSettings::showPrices();
 
     $gallery = $product->images->isNotEmpty()
         ? $product->images
@@ -73,9 +74,13 @@
             <h1 class="text-3xl font-bold text-zinc-900 leading-tight">{{ $product->name }}</h1>
 
             <div class="flex items-baseline gap-3">
-                <span class="text-3xl font-bold" style="color: var(--shop-primary)">
-                    {{ $currencySymbol }} {{ number_format($product->selling_price / 100, 2) }}
-                </span>
+                @if($showPrices)
+                    <span class="text-3xl font-bold" style="color: var(--shop-primary)">
+                        {{ $currencySymbol }} {{ number_format($product->selling_price / 100, 2) }}
+                    </span>
+                @else
+                    <span class="text-lg font-medium text-zinc-500">Consultá el precio por WhatsApp</span>
+                @endif
                 @if($product->featured)
                     <span class="shop-badge-accent">⭐ Destacado</span>
                 @endif
@@ -108,7 +113,7 @@
                             id: {{ $product->id }},
                             name: @js($product->name),
                             slug: @js($product->slug),
-                            price_cents: {{ $product->selling_price }},
+                            price_cents: {{ $showPrices ? $product->selling_price : 0 }},
                             image: @js($product->card_image_url),
                         });
                     }

@@ -4,6 +4,9 @@
     use App\Models\Setting;
     $welcomeMessage = Setting::get('shop_welcome_message');
     $currencySymbol = \App\Shop\ShopSettings::currencySymbol();
+    // Con precios ocultos se va también el filtro y el orden por precio: con ellos
+    // se deduce el precio de cada producto aunque el número no se muestre.
+    $showPrices = \App\Shop\ShopSettings::showPrices();
 @endphp
 
 @section('title', 'Catálogo')
@@ -53,7 +56,7 @@
                 </div>
 
                 {{-- Filtro precio --}}
-                @if($priceRange['max'] > 0)
+                @if($showPrices && $priceRange['max'] > 0)
                     <div class="bg-white rounded-2xl border border-zinc-200 p-5">
                         <h3 class="font-semibold text-zinc-900 mb-3">Rango de precio</h3>
                         <div class="space-y-3">
@@ -120,8 +123,10 @@
                         <select name="sort" onchange="this.form.submit()"
                                 class="px-3 py-2 text-sm rounded-lg border border-zinc-200 bg-white">
                             <option value="newest" {{ $selectedSort === 'newest' ? 'selected' : '' }}>Más recientes</option>
-                            <option value="price_asc" {{ $selectedSort === 'price_asc' ? 'selected' : '' }}>Precio: menor a mayor</option>
-                            <option value="price_desc" {{ $selectedSort === 'price_desc' ? 'selected' : '' }}>Precio: mayor a menor</option>
+                            @if($showPrices)
+                                <option value="price_asc" {{ $selectedSort === 'price_asc' ? 'selected' : '' }}>Precio: menor a mayor</option>
+                                <option value="price_desc" {{ $selectedSort === 'price_desc' ? 'selected' : '' }}>Precio: mayor a menor</option>
+                            @endif
                             <option value="name" {{ $selectedSort === 'name' ? 'selected' : '' }}>Nombre A-Z</option>
                         </select>
                     </form>
@@ -191,7 +196,7 @@
                 </div>
             </div>
 
-            @if($priceRange['max'] > 0)
+            @if($showPrices && $priceRange['max'] > 0)
                 <div class="bg-white rounded-2xl border border-zinc-200 p-4">
                     <h3 class="font-semibold mb-3">Precio</h3>
                     <div class="grid grid-cols-2 gap-2">
