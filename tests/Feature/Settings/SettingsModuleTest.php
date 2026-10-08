@@ -230,6 +230,19 @@ class SettingsModuleTest extends TestCase
             ->assertSet('section', 'negocio');
     }
 
+    public function test_el_interruptor_de_precios_de_la_tienda_se_ve_y_se_guarda(): void
+    {
+        Livewire::actingAs($this->userWithRole('admin'))->test(SettingsPage::class)
+            ->call('goTo', 'tienda')
+            ->assertSeeText('Mostrar precios en la tienda')
+            ->assertSet('values.shop_show_prices', '1')
+            ->set('values.shop_show_prices', '0')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame('0', Setting::get('shop_show_prices'));
+        $this->assertFalse(\App\Shop\ShopSettings::showPrices());
+    }
     public function test_paleta_se_aplica_al_guardar(): void
     {
         Livewire::actingAs($this->userWithRole('admin'))->test(SettingsPage::class)

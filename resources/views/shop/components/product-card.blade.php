@@ -1,6 +1,7 @@
 @props(['product'])
 @php
     $currencySymbol = \App\Shop\ShopSettings::currencySymbol();
+    $showPrices = \App\Shop\ShopSettings::showPrices();
     $img = $product->primaryImage;
     $cardUrl = $img && $img->path_card ? \Illuminate\Support\Facades\Storage::url($img->path_card) : $product->card_image_url;
     $fullUrl = $img && $img->path_full ? \Illuminate\Support\Facades\Storage::url($img->path_full) : $cardUrl;
@@ -13,7 +14,7 @@
             id: {{ $product->id }},
             name: @js($product->name),
             slug: @js($product->slug),
-            price_cents: {{ $product->selling_price }},
+            price_cents: {{ $showPrices ? $product->selling_price : 0 }},
             image: @js($cardUrl),
         });
     }
@@ -48,9 +49,13 @@
                 <p class="text-xs text-zinc-500 uppercase tracking-wide">{{ $product->category->name }}</p>
             @endif
             <h3 class="font-semibold text-zinc-900 line-clamp-2 leading-snug">{{ $product->name }}</h3>
-            <p class="text-lg font-bold pt-1" style="color: var(--shop-primary)">
-                {{ $currencySymbol }} {{ number_format($product->selling_price / 100, 2) }}
-            </p>
+            @if($showPrices)
+                <p class="text-lg font-bold pt-1" style="color: var(--shop-primary)">
+                    {{ $currencySymbol }} {{ number_format($product->selling_price / 100, 2) }}
+                </p>
+            @else
+                <p class="text-sm font-medium pt-1 text-zinc-500">Consultá el precio</p>
+            @endif
         </div>
     </a>
 

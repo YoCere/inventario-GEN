@@ -1,6 +1,7 @@
 @php
     use App\Models\Setting;
     $currencySymbol = \App\Shop\ShopSettings::currencySymbol();
+    $showPrices = \App\Shop\ShopSettings::showPrices();
 @endphp
 
 {{-- Backdrop --}}
@@ -61,9 +62,11 @@
                      class="w-16 h-16 object-cover rounded-lg bg-zinc-100 shrink-0">
                 <div class="flex-1 min-w-0">
                     <a :href="`/tienda/producto/${item.slug}`" class="font-medium text-sm text-zinc-900 line-clamp-2 hover:underline" x-text="item.name"></a>
-                    <p class="text-xs text-zinc-500 mt-0.5">
-                        {{ $currencySymbol }} <span x-text="(item.price/100).toFixed(2)"></span> c/u
-                    </p>
+                    @if($showPrices)
+                        <p class="text-xs text-zinc-500 mt-0.5">
+                            {{ $currencySymbol }} <span x-text="(item.price/100).toFixed(2)"></span> c/u
+                        </p>
+                    @endif
 
                     <div class="flex items-center justify-between mt-2 gap-2">
                         <div class="inline-flex items-center border border-zinc-200 rounded-lg">
@@ -74,21 +77,27 @@
                         <button @click="$store.cart.remove(item.id)" class="text-xs text-zinc-400 hover:text-red-600">Eliminar</button>
                     </div>
                 </div>
-                <div class="font-semibold text-sm shrink-0" :style="`color: var(--shop-primary)`">
-                    {{ $currencySymbol }} <span x-text="((item.price * item.qty)/100).toFixed(2)"></span>
-                </div>
+                @if($showPrices)
+                    <div class="font-semibold text-sm shrink-0" :style="`color: var(--shop-primary)`">
+                        {{ $currencySymbol }} <span x-text="((item.price * item.qty)/100).toFixed(2)"></span>
+                    </div>
+                @endif
             </div>
         </template>
     </div>
 
     {{-- Footer con total + checkout --}}
     <footer x-show="$store.cart.items.length > 0" x-cloak class="border-t border-zinc-200 px-5 py-4 space-y-3 bg-white">
-        <div class="flex items-center justify-between">
-            <span class="text-zinc-600 text-sm">Total estimado</span>
-            <span class="text-xl font-bold" :style="`color: var(--shop-primary)`">
-                {{ $currencySymbol }} <span x-text="$store.cart.totalFormatted()"></span>
-            </span>
-        </div>
+        @if($showPrices)
+            <div class="flex items-center justify-between">
+                <span class="text-zinc-600 text-sm">Total estimado</span>
+                <span class="text-xl font-bold" :style="`color: var(--shop-primary)`">
+                    {{ $currencySymbol }} <span x-text="$store.cart.totalFormatted()"></span>
+                </span>
+            </div>
+        @else
+            <p class="text-sm text-zinc-500">Te pasamos el precio al confirmar el pedido.</p>
+        @endif
         <a href="{{ route('shop.checkout') }}" class="shop-btn-primary w-full">
             Reservar pedido →
         </a>
