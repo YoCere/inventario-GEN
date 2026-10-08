@@ -36,7 +36,7 @@ class FinanceHubsTest extends TestCase
 
         $this->actingAs($admin)->get(route('finance.hub.modules'))
             ->assertOk()
-            ->assertSee('Módulos')
+            ->assertSee('Activos y operaciones')
             ->assertSee('Activos Fijos')
             ->assertSee('Categorías de activo')
             ->assertSee('Préstamos')
