@@ -6,6 +6,7 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Services\Agent\AgentContext;
 use App\Services\Agent\BaseTool;
+use App\Support\BusinessTime;
 use Illuminate\Support\Facades\DB;
 
 class GetSalesTodayTool extends BaseTool
@@ -61,11 +62,12 @@ class GetSalesTodayTool extends BaseTool
             $sales   = Sale::whereDate('sale_date', $dateStr)->where('status', 'completed')->get();
         } elseif (isset($input['days_ago']) && (int) $input['days_ago'] > 0) {
             $daysAgo = min((int) $input['days_ago'], 365);
-            $from    = now()->subDays($daysAgo)->toDateString();
+            $from    = BusinessTime::now()->subDays($daysAgo)->toDateString();
             $label   = "últimos {$daysAgo} días";
             $sales   = Sale::where('sale_date', '>=', $from)->where('status', 'completed')->get();
         } else {
-            $dateStr = now()->toDateString();
+            // "Hoy" es el día local del negocio, no el día UTC.
+            $dateStr = BusinessTime::todayString();
             $label   = $dateStr;
             $sales   = Sale::whereDate('sale_date', $dateStr)->where('status', 'completed')->get();
         }

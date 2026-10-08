@@ -13,6 +13,7 @@ use App\Models\TelegramConversation;
 use App\Models\Warehouse;
 use App\Services\Messaging\TelegramService;
 use Carbon\Carbon;
+use App\Support\BusinessTime;
 use Illuminate\Support\Facades\DB;
 
 class BotReportHandler
@@ -84,7 +85,9 @@ class BotReportHandler
 
     protected function resumenDelDia(string $chatId): void
     {
-        $today = now()->toDateString();
+        // Día local del negocio: con now() (UTC) el resumen saltaba al día siguiente
+        // a las 20:00 locales, justo en el horario de cierre de caja.
+        $today = BusinessTime::todayString();
 
         $sales = Sale::whereDate('sale_date', $today)
             ->where('status', 'completed')
@@ -115,7 +118,7 @@ class BotReportHandler
 
     protected function topProductosVendidos(string $chatId): void
     {
-        $start = now()->startOfMonth();
+        $start = BusinessTime::now()->startOfMonth();
 
         $top = SaleItem::query()
             ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
@@ -173,7 +176,7 @@ class BotReportHandler
 
     protected function stockMuerto(string $chatId): void
     {
-        $thirtyDaysAgo = now()->subDays(30);
+        $thirtyDaysAgo = BusinessTime::now()->subDays(30);
 
         // Products with stock > 0 but no sales in last 30 days
         $soldProductIds = SaleItem::query()
@@ -208,8 +211,8 @@ class BotReportHandler
 
     protected function gananciaDelMes(string $chatId): void
     {
-        $start = now()->startOfMonth();
-        $end = now()->endOfMonth();
+        $start = BusinessTime::now()->startOfMonth();
+        $end = BusinessTime::now()->endOfMonth();
 
         $sales = Sale::where('status', 'completed')
             ->whereBetween('sale_date', [$start, $end])
@@ -257,7 +260,7 @@ class BotReportHandler
 
     protected function flujoCajaMes(string $chatId): void
     {
-        $start = now()->startOfMonth();
+        $start = BusinessTime::now()->startOfMonth();
 
         $ingresos = Sale::where('status', 'completed')
             ->where('sale_date', '>=', $start)

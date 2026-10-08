@@ -7,6 +7,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Str;
 use App\Models\FinanceCategory;
 use App\Models\FinanceTransaction;
+use App\Support\BusinessTime;
 use Illuminate\Database\Eloquent\Builder;
 use App\Services\FinanceTransactionService;
 use PowerComponents\LivewirePowerGrid\Button;
@@ -151,27 +152,10 @@ final class FinanceTransactionTable extends PowerGridComponent
                 ->optionLabel('name')
                 ->optionValue('value')
                 ->builder(function (Builder $query, string $value) {
-                    switch ($value) {
-                        case 'today':
-                            $query->whereDate('transaction_date', now());
-                            break;
-                        case 'yesterday':
-                            $query->whereDate('transaction_date', now()->subDay());
-                            break;
-                        case 'this_week':
-                            $query->whereBetween('transaction_date', [now()->startOfWeek(), now()->endOfWeek()]);
-                            break;
-                        case 'last_week':
-                            $query->whereBetween('transaction_date', [now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek()]);
-                            break;
-                        case 'this_month':
-                            $query->whereMonth('transaction_date', now()->month)
-                                ->whereYear('transaction_date', now()->year);
-                            break;
-                        case 'last_month':
-                            $query->whereMonth('transaction_date', now()->subMonth()->month)
-                                ->whereYear('transaction_date', now()->subMonth()->year);
-                            break;
+                    // El rango sale de BusinessTime: now() es UTC y a partir de las 20:00
+                    // locales "Hoy" ya apuntaba al día siguiente.
+                    if ($range = BusinessTime::periodRange($value)) {
+                        $query->whereBetween('transaction_date', $range);
                     }
                 }),
         ];

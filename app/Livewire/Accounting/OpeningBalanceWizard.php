@@ -5,6 +5,7 @@ namespace App\Livewire\Accounting;
 use App\DTOs\OpeningBalanceData;
 use App\Services\Accounting\OpeningBalanceService;
 use Livewire\Component;
+use App\Support\BusinessTime;
 
 class OpeningBalanceWizard extends Component
 {
@@ -15,7 +16,7 @@ class OpeningBalanceWizard extends Component
     public function mount(OpeningBalanceService $service): void
     {
         abort_if(! auth()->user()?->isAdmin(), 403);
-        $this->date = now()->startOfYear()->toDateString();
+        $this->date = BusinessTime::now()->startOfYear()->toDateString();
         $p = $service->propose($this->date);
         $this->inventory = $p->inventory / 100;
         $this->ppe = $p->ppe / 100;

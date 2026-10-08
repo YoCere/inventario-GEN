@@ -6,9 +6,9 @@ use App\Support\Ui\Tone;
 use App\Enums\AccountingPeriodStatus;
 use App\Models\AccountingPeriod;
 use App\Models\Setting;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\Builder;
+use App\Support\BusinessTime;
 use Livewire\Attributes\On;
 use PowerComponents\LivewirePowerGrid\Button;
 use PowerComponents\LivewirePowerGrid\Column;
@@ -130,7 +130,7 @@ final class AccountingPeriodTable extends PowerGridComponent
 
         if ($row->status === AccountingPeriodStatus::Open) {
             $entryCount  = $row->journal_entries_count ?? 0;
-            $today       = Carbon::today();
+            $today       = BusinessTime::todayAsDate();
             $isEarlyClose = $row->end_date->gt($today);
 
             $description = "Este periodo tiene {$entryCount} asiento(s) contable(s). "
@@ -175,7 +175,7 @@ final class AccountingPeriodTable extends PowerGridComponent
         // truncado en closePeriod), no desde la fecha planificada original.
         $suggestedStart = $lastPeriod
             ? $lastPeriod->end_date->addDay()->format('Y-m-d')
-            : now()->startOfMonth()->format('Y-m-d');
+            : BusinessTime::now()->startOfMonth()->format('Y-m-d');
 
         return [
             Button::add('new-period')
@@ -205,7 +205,8 @@ final class AccountingPeriodTable extends PowerGridComponent
             return;
         }
 
-        $today   = Carbon::today();
+        // Hoy local del negocio, comparable con end_date (columna DATE).
+        $today   = BusinessTime::todayAsDate();
         $updates = [
             'status'    => AccountingPeriodStatus::Closed->value,
             'closed_at' => now(),

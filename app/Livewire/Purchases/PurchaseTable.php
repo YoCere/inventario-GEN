@@ -4,6 +4,7 @@ namespace App\Livewire\Purchases;
 
 use Carbon\Carbon;
 use App\Models\Purchase;
+use App\Support\BusinessTime;
 use App\Enums\PurchaseStatus;
 use App\Services\PurchaseService;
 use App\Exceptions\PurchaseException;
@@ -149,27 +150,10 @@ final class PurchaseTable extends PowerGridComponent
                 ->optionLabel('name')
                 ->optionValue('value')
                 ->builder(function (Builder $query, string $value) {
-                    switch ($value) {
-                        case 'today':
-                            $query->whereDate('purchase_date', now());
-                            break;
-                        case 'yesterday':
-                            $query->whereDate('purchase_date', now()->subDay());
-                            break;
-                        case 'this_week':
-                            $query->whereBetween('purchase_date', [now()->startOfWeek(), now()->endOfWeek()]);
-                            break;
-                        case 'last_week':
-                            $query->whereBetween('purchase_date', [now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek()]);
-                            break;
-                        case 'this_month':
-                            $query->whereMonth('purchase_date', now()->month)
-                                ->whereYear('purchase_date', now()->year);
-                            break;
-                        case 'last_month':
-                            $query->whereMonth('purchase_date', now()->subMonth()->month)
-                                ->whereYear('purchase_date', now()->subMonth()->year);
-                            break;
+                    // El rango sale de BusinessTime: now() es UTC y a partir de las 20:00
+                    // locales "Hoy" ya apuntaba al día siguiente.
+                    if ($range = BusinessTime::periodRange($value)) {
+                        $query->whereBetween('purchase_date', $range);
                     }
                 }),
         ];

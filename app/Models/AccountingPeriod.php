@@ -6,6 +6,7 @@ use App\Enums\AccountingPeriodStatus;
 use App\Models\Setting;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
+use App\Support\BusinessTime;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -86,7 +87,7 @@ class AccountingPeriod extends Model
         $type  = Setting::get('default_accounting_period_type', 'monthly');
         $start = $afterPeriod
             ? $afterPeriod->end_date->addDay()->format('Y-m-d')
-            : now()->startOfMonth()->format('Y-m-d');
+            : BusinessTime::now()->startOfMonth()->format('Y-m-d');
 
         $end      = static::calculateEndDate($start, $type);
         $baseName = static::generateName($start, $type);
@@ -160,7 +161,7 @@ class AccountingPeriod extends Model
      */
     public static function dashboardAlert(): ?array
     {
-        $today = now()->toDateString();
+        $today = BusinessTime::todayString();
 
         // ¿Existe periodo abierto que cubra hoy?
         $active = static::query()
@@ -171,7 +172,7 @@ class AccountingPeriod extends Model
             ->first();
 
         if ($active) {
-            $daysLeft = (int) now()->diffInDays($active->end_date, false);
+            $daysLeft = BusinessTime::daysUntil($active->end_date);
 
             if ($daysLeft <= 0) {
                 // end_date = hoy, mañana ya vence

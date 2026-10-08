@@ -3,6 +3,7 @@
 namespace App\Livewire\FinanceTransactions;
 
 use Livewire\Component;
+use App\Support\BusinessTime;
 use Livewire\Attributes\On;
 use Illuminate\Support\Carbon;
 use App\Models\FinanceCategory;
@@ -28,7 +29,7 @@ class FinanceTransactionForm extends Component
 
     public function mount()
     {
-        $this->transaction_date = now()->format('Y-m-d');
+        $this->transaction_date = BusinessTime::todayString();
         $this->loadOptions();
     }
 
@@ -68,7 +69,7 @@ class FinanceTransactionForm extends Component
     {
         $this->reset(['transaction', 'isEditing', 'finance_category_id', 'amount', 'description', 'external_reference']);
         $this->type = 'expense'; // Reiniciar a predeterminado
-        $this->transaction_date = now()->format('Y-m-d');
+        $this->transaction_date = BusinessTime::todayString();
         $this->loadOptions(); // Recargar basado en el tipo predeterminado
         $this->dispatch('open-modal', name: 'finance-transaction-form-modal');
     }

@@ -10,6 +10,7 @@ use App\Services\Agent\VisionService;
 use App\Services\Agent\WhisperService;
 use App\Services\Messaging\TelegramService;
 use App\Services\Messaging\ProductSearchService;
+use App\Support\BusinessTime;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -534,8 +535,9 @@ class BotHandler
 
     protected function cmdSales(string $chatId): void
     {
-        $today = today();
-        $sales = \App\Models\Sale::whereDate('created_at', $today)
+        // created_at es un instante UTC: el "día" local se traduce a un rango UTC.
+        $today = BusinessTime::today();
+        $sales = \App\Models\Sale::whereBetween('created_at', BusinessTime::dayRangeUtc())
             ->where('status', 'completed')
             ->get();
 

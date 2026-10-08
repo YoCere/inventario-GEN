@@ -6,6 +6,7 @@ use App\Models\TelegramConversation;
 use App\Models\Product;
 use App\Services\Messaging\TelegramService;
 use App\Services\SaleService;
+use App\Support\BusinessTime;
 use App\Support\NumberParser;
 use App\DTOs\SaleData;
 use App\DTOs\SaleItemData;
@@ -263,7 +264,9 @@ class BotSaleHandler
         try {
             // Crear venta
             $saleData = SaleData::fromArray([
-                'sale_date' => now(),
+                // Hora local del negocio: con now() (UTC) una venta de las 21:00 se
+                // guardaba con la fecha del día siguiente.
+                'sale_date' => BusinessTime::now(),
                 'payment_method' => $data['metodo_pago'],
                 'created_by' => $this->authHandler->getAuthenticatedUser($chatId)?->id ?? 1,
                 'items' => [

@@ -29,7 +29,9 @@ class FinanceTransactionService
             ],
             [
                 'code' => $this->generateTransactionCode('INC'),
-                'transaction_date' => $sale->sale_date,
+                // Solo la fecha: transaction_date es DATE. MySQL trunca la hora pero
+                // sqlite la guarda entera, y sale_date ahora trae la hora local real.
+                'transaction_date' => $sale->sale_date->toDateString(),
                 'finance_category_id' => $category->id,
                 'amount' => $sale->total,
                 'description' => 'Factura Venta: ' . $sale->invoice_number . ' - ' . ($sale->customer->name ?? 'Invitado'),

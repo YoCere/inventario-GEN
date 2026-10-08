@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\FinanceTransaction;
 use App\Models\Setting;
-use Illuminate\Support\Carbon;
+use App\Support\BusinessTime;
 use App\Enums\FinanceCategoryType;
 
 class FinanceReportController extends Controller
@@ -77,7 +77,7 @@ class FinanceReportController extends Controller
         $periodText = '';
 
         if ($periodKey) {
-            $now = Carbon::now();
+            $now = BusinessTime::now();
             switch ($periodKey) {
                 case 'today':
                     $periodText = 'Today (' . $now->translatedFormat('d F Y') . ')';

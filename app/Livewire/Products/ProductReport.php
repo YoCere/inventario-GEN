@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use App\Models\Product;
 use App\Models\SaleItem;
 use App\Models\Setting;
+use App\Support\BusinessTime;
 use Livewire\Component;
 use Livewire\Attributes\Computed;
 use Illuminate\Support\Facades\DB;
@@ -19,15 +20,15 @@ class ProductReport extends Component
 
     public function mount(): void
     {
-        $this->dateTo   = now()->format('Y-m-d');
-        $this->dateFrom = now()->subDays(30)->format('Y-m-d');
+        $this->dateTo   = BusinessTime::todayString();
+        $this->dateFrom = BusinessTime::now()->subDays(30)->toDateString();
     }
 
     public function updatedPeriod(): void
     {
         if ($this->period !== 'custom') {
-            $this->dateFrom = now()->subDays((int) $this->period)->format('Y-m-d');
-            $this->dateTo   = now()->format('Y-m-d');
+            $this->dateFrom = BusinessTime::now()->subDays((int) $this->period)->toDateString();
+            $this->dateTo   = BusinessTime::todayString();
         }
     }
 
@@ -35,9 +36,11 @@ class ProductReport extends Component
 
     private function range(): array
     {
+        // Las fechas vienen de inputs del usuario (sin zona) y sale_date guarda hora
+        // local: interpretarlas con Carbon::parse (UTC) corría el rango 4 horas.
         return [
-            Carbon::parse($this->dateFrom)->startOfDay(),
-            Carbon::parse($this->dateTo)->endOfDay(),
+            BusinessTime::startOfDay($this->dateFrom),
+            BusinessTime::endOfDay($this->dateTo),
         ];
     }
 

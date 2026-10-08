@@ -3,6 +3,7 @@
 namespace App\Livewire\Production;
 
 use Livewire\Component;
+use App\Support\BusinessTime;
 use App\Models\BillOfMaterial;
 use App\Models\Location;
 use App\Services\Accounting\ProductionCostCalculator;
@@ -18,7 +19,7 @@ class ProduceForm extends Component
 
     public function mount(): void
     {
-        $this->production_date = now()->toDateString();
+        $this->production_date = BusinessTime::todayString();
         try {
             $this->location_id = app(StockService::class)->defaultLocationId();
         } catch (\RuntimeException) {
@@ -97,7 +98,7 @@ class ProduceForm extends Component
             $this->dispatch('pg:eventRefresh-production-order-table');
             $this->reset(['bomId', 'quantity', 'production_date']);
             $this->quantity = 1;
-            $this->production_date = now()->toDateString();
+            $this->production_date = BusinessTime::todayString();
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', message: $e->getMessage(), type: 'error');
             session()->flash('error', $e->getMessage());

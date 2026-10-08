@@ -82,7 +82,8 @@ class Dashboard extends Component
         $this->lowStockCount = $service->getLowStockCount();
         $this->recentSales = $service->getRecentSales(4);
 
-        $today = Carbon::now();
+        // Los 7 días son días locales del negocio, no días UTC.
+        $today = BusinessTime::now();
         $this->weekSales = $service->getSalesTrend(
             $today->copy()->subDays(6)->startOfDay(),
             $today->copy()->endOfDay()
@@ -105,21 +106,23 @@ class Dashboard extends Component
         return $sales > 0 ? (int) round(((float) $this->stats['gross_profit']) / $sales * 100) : null;
     }
 
+    /**
+     * Rango del período seleccionado, en hora local del negocio.
+     *
+     * Con app.timezone=UTC, now() ya cambió de día a las 20:00 locales: "Hoy" dejaba
+     * fuera las ventas de la noche y las sumaba al día siguiente.
+     */
     protected function getDateRange(): array
     {
-        $now = Carbon::now();
+        $period = DatePeriod::tryFrom($this->dateFilter);
 
-        return match(DatePeriod::tryFrom($this->dateFilter)) {
-            DatePeriod::TODAY => [$now->copy()->startOfDay(), $now->copy()->endOfDay()],
-            DatePeriod::YESTERDAY => [$now->copy()->subDay()->startOfDay(), $now->copy()->subDay()->endOfDay()],
-            DatePeriod::THIS_WEEK => [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()],
-            DatePeriod::THIS_MONTH => [$now->copy()->startOfMonth(), $now->copy()->endOfMonth()],
-            DatePeriod::LAST_MONTH => [$now->copy()->subMonth()->startOfMonth(), $now->copy()->subMonth()->endOfMonth()],
-            DatePeriod::CUSTOM => $this->customStartDate && $this->customEndDate
-                ? [Carbon::parse($this->customStartDate)->startOfDay(), Carbon::parse($this->customEndDate)->endOfDay()]
-                : [$now->copy()->startOfDay(), $now->copy()->endOfDay()],
-            default => [$now->copy()->startOfDay(), $now->copy()->endOfDay()],
-        };
+        if ($period === DatePeriod::CUSTOM) {
+            return $this->customStartDate && $this->customEndDate
+                ? [BusinessTime::startOfDay($this->customStartDate), BusinessTime::endOfDay($this->customEndDate)]
+                : BusinessTime::dayRange();
+        }
+
+        return BusinessTime::periodRange($period?->value ?? '') ?? BusinessTime::dayRange();
     }
 
     public function render()
@@ -151,7 +154,7 @@ class Dashboard extends Component
     protected function buildWeekBars(): array
     {
         $max = max(array_map('floatval', $this->weekSales) ?: [0]);
-        $todayKey = Carbon::now()->format('Y-m-d');
+        $todayKey = BusinessTime::todayString();
 
         $bars = [];
         foreach ($this->weekSales as $date => $total) {

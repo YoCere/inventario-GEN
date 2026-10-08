@@ -26,7 +26,10 @@ class StoreSaleRequest extends FormRequest
     {
         return [
             'customer_id' => ['nullable', 'exists:customers,id'],
-            'sale_date' => ['required', 'date'],
+            // Opcional a propósito: el POS ya no manda la fecha. El navegador podía estar
+            // en otra zona (o la pestaña abierta desde ayer), así que el "hoy" válido es
+            // el del negocio y lo pone el servidor (SaleData::fromArray).
+            'sale_date' => ['nullable', 'date'],
             'payment_method' => ['required', Rule::enum(PaymentMethod::class)],
             'status' => ['nullable', Rule::enum(SaleStatus::class)],
             'notes' => ['nullable', 'string'],

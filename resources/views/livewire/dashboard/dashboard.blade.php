@@ -287,7 +287,12 @@
             <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 @foreach($recentSales as $sale)
                     @php
-                        $saleDate = \Carbon\Carbon::parse($sale['created_at'] ?? $sale['sale_date'])->timezone($businessTz);
+                        // created_at es un instante UTC, por eso se traslada a la zona del
+                        // negocio. sale_date NO: ya viene en hora local del negocio y
+                        // convertirla la correría 4 horas.
+                        $saleDate = isset($sale['created_at'])
+                            ? \Carbon\Carbon::parse($sale['created_at'])->timezone($businessTz)
+                            : \App\Support\BusinessTime::parse($sale['sale_date']);
                         $when = $saleDate->isSameDay(\Carbon\Carbon::now($businessTz)) ? $saleDate->format('H:i') : $saleDate->format('d/m H:i');
                     @endphp
                     <a href="{{ $user?->can('sales.view') ? route('sales.show', $sale['id']) : '#' }}"

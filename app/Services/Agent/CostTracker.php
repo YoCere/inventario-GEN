@@ -4,6 +4,7 @@ namespace App\Services\Agent;
 
 use App\Models\AiUsageLog;
 use App\Models\Setting;
+use App\Support\BusinessTime;
 use Illuminate\Support\Facades\Cache;
 
 class CostTracker
@@ -73,7 +74,7 @@ class CostTracker
 
     private function todayCostCacheKey(): string
     {
-        return 'ai_cost_total_' . today()->format('Y-m-d');
+        return 'ai_cost_total_' . BusinessTime::todayString();
     }
 
     public function calculateCost(
@@ -122,10 +123,12 @@ class CostTracker
 
         // Cachear el total diario: cada record() invalida la clave, así que
         // sólo se reconsulta cuando hay una nueva inserción.
+        // El presupuesto diario de IA se corta con el día local del negocio, y
+        // created_at es un instante UTC: de ahí el rango en UTC.
         $todayCost = Cache::remember(
             $this->todayCostCacheKey(),
-            now()->endOfDay(),
-            fn () => (float) AiUsageLog::whereDate('created_at', today())->sum('cost_usd'),
+            BusinessTime::endOfDay(),
+            fn () => (float) AiUsageLog::whereBetween('created_at', BusinessTime::dayRangeUtc())->sum('cost_usd'),
         );
 
         return $todayCost < $maxDaily;
@@ -136,7 +139,7 @@ class CostTracker
      */
     public function todaySpend(): array
     {
-        $rows = AiUsageLog::whereDate('created_at', today())
+        $rows = AiUsageLog::whereBetween('created_at', BusinessTime::dayRangeUtc())
             ->selectRaw('action, SUM(cost_usd) as cost, COUNT(*) as count')
             ->groupBy('action')
             ->get();

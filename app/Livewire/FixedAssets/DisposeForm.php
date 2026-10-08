@@ -3,6 +3,7 @@
 namespace App\Livewire\FixedAssets;
 
 use Livewire\Component;
+use App\Support\BusinessTime;
 use Livewire\Attributes\On;
 use App\Models\FixedAsset;
 use App\Models\ChartOfAccount;
@@ -50,7 +51,7 @@ class DisposeForm extends Component
     {
         abort_unless(auth()->user()->isAdmin(), 403);
         $this->assetId = $assetId;
-        $this->disposal_date = now()->toDateString();
+        $this->disposal_date = BusinessTime::todayString();
         $this->sale_amount = 0;
         $this->cash_account_code = '';
         $this->result_account_code = '';

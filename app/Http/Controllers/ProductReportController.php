@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
 use App\Models\Product;
 use App\Models\SaleItem;
 use App\Models\Setting;
+use App\Support\BusinessTime;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -15,8 +15,10 @@ class ProductReportController extends Controller
     {
         abort_if(! auth()->user()?->isAdmin(), 403);
 
-        $from = Carbon::parse($request->input('from', now()->subDays(30)))->startOfDay();
-        $to   = Carbon::parse($request->input('to', now()))->endOfDay();
+        // BusinessTime::startOfDay interpreta el input del usuario (sin zona) como
+        // fecha local; Carbon::parse lo leía como UTC y corría el rango 4 horas.
+        $from = BusinessTime::startOfDay($request->input('from') ?: BusinessTime::now()->subDays(30));
+        $to   = BusinessTime::endOfDay($request->input('to'));
         $days = max(1, $from->diffInDays($to));
 
         // ----------------------------------------------------------------
@@ -114,7 +116,7 @@ class ProductReportController extends Controller
         $logoUrl  = $logoPath ? \Illuminate\Support\Facades\Storage::url($logoPath) : null;
 
         $periodLabel = $from->format('d/m/Y') . ' — ' . $to->format('d/m/Y');
-        $printedAt   = now()->translatedFormat('d F Y, H:i');
+        $printedAt   = BusinessTime::now()->translatedFormat('d F Y, H:i');
         $printedBy   = auth()->user()?->name ?? 'Administrador';
 
         return view('products.print', compact(
