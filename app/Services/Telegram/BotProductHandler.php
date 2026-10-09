@@ -9,12 +9,38 @@ use App\Services\CategoryService;
 use App\Services\Messaging\TelegramService;
 use App\Services\ProductService;
 use App\Support\NumberParser;
+use App\Support\TelegramKeyboard;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 
 class BotProductHandler
 {
+    /** Resumen con botones, previo a guardar (solo altas dictadas por audio). */
+    private const STEP_REVISAR = 'nuevo:revisar';
+
+    /** Menú de "qué dato quiero corregir". */
+    private const STEP_EDITAR = 'nuevo:editar';
+
+    /** Prefijo de los pasos de corrección: 'nuevo:editar:<campo>'. */
+    private const STEP_EDITAR_CAMPO = 'nuevo:editar:';
+
+    /** Prefijo de los botones de este flujo, tal como los rutea BotHandler. */
+    private const BOTON = 'prod:';
+
+    /**
+     * Datos corregibles desde el resumen, en el orden en que se muestran.
+     * La clave es el campo guardado; el valor, el nombre que lee la persona.
+     */
+    private const CAMPOS_EDITABLES = [
+        'nombre'        => 'Nombre',
+        'categoria'     => 'Categoría',
+        'precio_compra' => 'Precio de compra',
+        'precio_venta'  => 'Precio de venta',
+        'cantidad'      => 'Cantidad',
+        'foto'          => 'Foto',
+    ];
+
     public function __construct(
         protected TelegramService $telegram,
         protected ProductService $productService,
@@ -60,7 +86,21 @@ class BotProductHandler
     {
         $step = $conversation->step;
 
+        // Los pasos de corrección llevan el campo en el propio nombre del paso
+        // ('nuevo:editar:precio_venta'), así que no entran en el match de abajo.
+        if (str_starts_with($step, self::STEP_EDITAR_CAMPO)) {
+            $this->aplicarCorreccion(
+                $chatId,
+                $conversation,
+                substr($step, strlen(self::STEP_EDITAR_CAMPO)),
+                $text
+            );
+            return;
+        }
+
         match ($step) {
+            self::STEP_REVISAR => $this->textoEnRevision($chatId, $conversation, $text),
+            self::STEP_EDITAR  => $this->textoEnMenuEdicion($chatId, $conversation, $text),
             'nuevo:nombre' => $this->askNombre($chatId, $conversation, $text),
             'nuevo:categoria' => $this->askCategoria($chatId, $conversation, $text),
             'nuevo:precio_compra' => $this->askPrecioCompra($chatId, $conversation, $text),
@@ -400,6 +440,13 @@ class BotProductHandler
 
     private function showConfirm(string $chatId, TelegramConversation $conversation, array $data): void
     {
+        // El alta dictada se revisa con botones: la transcripción pudo escribir
+        // mal cualquier dato y hay que poder corregirlo sin repetir el audio.
+        if (!empty($data['origen_audio'])) {
+            $this->showReview($chatId, $conversation, $data);
+            return;
+        }
+
         $conversation->update([
             'step' => 'nuevo:confirmar',
             'data' => $data,
@@ -430,8 +477,15 @@ class BotProductHandler
             return;
         }
 
-        $data = $conversation->data ?? [];
+        $this->crearProducto($chatId, $conversation, $conversation->data ?? []);
+    }
 
+    /**
+     * Único punto donde el alta se escribe en la base. Lo comparten la
+     * confirmación escrita ("sí") y el botón Guardar del resumen.
+     */
+    private function crearProducto(string $chatId, TelegramConversation $conversation, array $data): void
+    {
         try {
             $productData = ProductData::fromArray([
                 'category_id' => $data['categoria_id'],
@@ -462,7 +516,349 @@ class BotProductHandler
         } catch (\Exception $e) {
             Log::error('Product creation error', ['error' => $e->getMessage()]);
             $this->telegram->sendMessage($chatId, "❌ Error al crear el producto. Intenta de nuevo o /cancelar.");
+
+            // El alta con botones ya se quedó sin ellos al tocar Guardar; si el
+            // guardado falló hay que devolverlos o la persona queda sin salida.
+            if (!empty($data['origen_audio'])) {
+                $this->showReview($chatId, $conversation, $data);
+            }
         }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    //  Revisión con botones (altas dictadas por audio)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Muestra todo lo entendido y espera que la persona decida: Guardar o
+     * Editar. Mientras está en este paso NADA se escribió en la base.
+     */
+    private function showReview(string $chatId, TelegramConversation $conversation, array $data): void
+    {
+        $conversation->update([
+            'step'       => self::STEP_REVISAR,
+            'data'       => $data,
+            'expires_at' => now()->addMinutes(30),
+        ]);
+
+        $message  = "📋 <b>Revisá antes de guardar</b>\n\n";
+        $message .= "Nombre: <b>" . ($data['nombre'] ?? '—') . "</b>\n";
+        $message .= "Categoría: " . ($data['categoria_nombre'] ?? '—') . "\n";
+        $message .= "Precio de compra: " . $this->formatBs($data['precio_compra'] ?? null) . "\n";
+        $message .= "Precio de venta: " . $this->formatBs($data['precio_venta'] ?? null) . "\n";
+        $message .= "Cantidad: " . ($data['cantidad'] ?? '—') . "\n";
+        $message .= "Foto: " . (!empty($data['foto_path']) ? "sí" : "no") . "\n\n";
+        $message .= "Si algo está mal, tocá <b>Editar</b>.\n";
+        $message .= "Nada se guarda hasta que toques <b>Guardar</b>.";
+
+        $keyboard = TelegramKeyboard::make()->row([
+            '✅ Guardar' => self::BOTON . 'guardar',
+            '✏️ Editar'  => self::BOTON . 'editar',
+        ]);
+
+        $this->telegram->sendMessage($chatId, $message, 'HTML', $keyboard->toArray());
+    }
+
+    /** Un botón por dato corregible, más la vuelta al resumen. */
+    private function showEditMenu(string $chatId, TelegramConversation $conversation, array $data): void
+    {
+        $conversation->update([
+            'step'       => self::STEP_EDITAR,
+            'data'       => $data,
+            'expires_at' => now()->addMinutes(30),
+        ]);
+
+        $keyboard = TelegramKeyboard::make();
+        foreach (self::CAMPOS_EDITABLES as $campo => $etiqueta) {
+            $keyboard->button($etiqueta, self::BOTON . 'campo:' . $campo);
+        }
+        $keyboard->button('◀️ Volver al resumen', self::BOTON . 'volver');
+
+        $this->telegram->sendMessage(
+            $chatId,
+            "✏️ <b>¿Qué dato querés corregir?</b>\n\nTocá el que está mal.",
+            'HTML',
+            $keyboard->toArray()
+        );
+    }
+
+    /** Pide el valor nuevo de un solo campo y deja el paso esperándolo. */
+    private function askFieldEdit(string $chatId, TelegramConversation $conversation, array $data, string $campo): void
+    {
+        if (!isset(self::CAMPOS_EDITABLES[$campo])) {
+            $this->showEditMenu($chatId, $conversation, $data);
+            return;
+        }
+
+        // La foto reutiliza el paso normal de foto: al recibirla, el flujo
+        // vuelve solo al resumen por showConfirm().
+        $step = $campo === 'foto' ? 'nuevo:foto' : self::STEP_EDITAR_CAMPO . $campo;
+
+        $conversation->update([
+            'step'       => $step,
+            'data'       => $data,
+            'expires_at' => now()->addMinutes(30),
+        ]);
+
+        $prompt = match ($campo) {
+            'nombre'        => "✏️ Escribí el <b>nombre</b> correcto del producto.",
+            'categoria'     => "✏️ ¿Cuál es la <b>categoría</b> correcta?\n\n" . $this->buildCategoryPrompt(),
+            'precio_compra' => "✏️ Escribí el <b>precio de compra</b> correcto (ej: 350).",
+            'precio_venta'  => "✏️ Escribí el <b>precio de venta</b> correcto (ej: 450).",
+            'cantidad'      => "✏️ Escribí la <b>cantidad</b> correcta (ej: 30).",
+            'foto'          => "📸 Enviá la <b>foto</b> del producto.\nEscribí <b>omitir</b> si no querés foto.",
+        };
+
+        $this->telegram->sendMessage($chatId, $prompt);
+    }
+
+    /** Guarda el valor corregido y vuelve al resumen. */
+    private function aplicarCorreccion(string $chatId, TelegramConversation $conversation, string $campo, string $text): void
+    {
+        $data = $conversation->data ?? [];
+        $text = trim($text);
+
+        switch ($campo) {
+            case 'nombre':
+                if (mb_strlen($text) < 3) {
+                    $this->telegram->sendMessage($chatId, "❌ El nombre debe tener al menos 3 letras. Escribilo otra vez.");
+                    return;
+                }
+                $data['nombre'] = $text;
+                break;
+
+            case 'precio_compra':
+            case 'precio_venta':
+                $price = $this->parsePrice($text);
+                if ($price === null) {
+                    $this->telegram->sendMessage($chatId, "❌ No entendí ese precio. Escribí un número (ej: 350).");
+                    return;
+                }
+                $data[$campo] = $price;
+                break;
+
+            case 'cantidad':
+                $qty = NumberParser::extractInt($text);
+                if ($qty === null || $qty < 0) {
+                    $this->telegram->sendMessage($chatId, "❌ No entendí esa cantidad. Escribí un número (ej: 30).");
+                    return;
+                }
+                $data['cantidad'] = $qty;
+                break;
+
+            case 'categoria':
+                // Puede abrir un ida y vuelta (crear la categoría o no), así que
+                // decide ella misma si ya corresponde volver al resumen.
+                $this->corregirCategoria($chatId, $conversation, $data, $text);
+                return;
+
+            default:
+                $this->showReview($chatId, $conversation, $data);
+                return;
+        }
+
+        $this->showReview($chatId, $conversation, $data);
+    }
+
+    /**
+     * Corrección de categoría: número de la lista, nombre existente, o nombre
+     * nuevo (en ese caso se pregunta antes de crearla).
+     */
+    private function corregirCategoria(string $chatId, TelegramConversation $conversation, array $data, string $input): void
+    {
+        $inputLow = mb_strtolower(trim($input));
+
+        if (!empty($data['editar_categoria_pendiente'])) {
+            $pendiente = $data['editar_categoria_pendiente'];
+
+            if (\in_array($inputLow, ['si', 'sí', 's', 'yes', '1'], true)) {
+                unset($data['editar_categoria_pendiente']);
+                try {
+                    $category = $this->categoryService->findOrCreateByName($pendiente);
+                } catch (\Exception $e) {
+                    Log::error('Category creation failed while editing bot product', ['error' => $e->getMessage()]);
+                    $this->telegram->sendMessage($chatId, "❌ No pude crear esa categoría. Probá con otro nombre.");
+                    return;
+                }
+                $this->telegram->sendMessage($chatId, "✅ Categoría creada: <b>{$category->name}</b>");
+                $this->setCategoriaYRevisar($chatId, $conversation, $data, $category);
+                return;
+            }
+
+            if (\in_array($inputLow, ['no', 'n', '2'], true)) {
+                unset($data['editar_categoria_pendiente']);
+                $conversation->update(['data' => $data, 'expires_at' => now()->addMinutes(30)]);
+                $this->telegram->sendMessage($chatId, "Entonces, ¿cuál es la categoría?\n\n" . $this->buildCategoryPrompt());
+                return;
+            }
+
+            // Escribió otro nombre en lugar de responder: seguimos buscando ese.
+            unset($data['editar_categoria_pendiente']);
+        }
+
+        if (ctype_digit(trim($input))) {
+            $category = Category::orderBy('name')->offset((int) $input - 1)->limit(1)->first();
+            if ($category) {
+                $this->setCategoriaYRevisar($chatId, $conversation, $data, $category);
+                return;
+            }
+        }
+
+        $category = $this->findCategoryByText($input);
+        if ($category) {
+            $this->setCategoriaYRevisar($chatId, $conversation, $data, $category);
+            return;
+        }
+
+        $data['editar_categoria_pendiente'] = trim($input);
+        $conversation->update(['data' => $data, 'expires_at' => now()->addMinutes(30)]);
+
+        $this->telegram->sendMessage(
+            $chatId,
+            "❓ No encontré la categoría \"<b>{$input}</b>\".\n\n" .
+            "¿La creo? Respondé <b>sí</b> o <b>no</b>, o escribí otro nombre."
+        );
+    }
+
+    private function setCategoriaYRevisar(string $chatId, TelegramConversation $conversation, array $data, Category $category): void
+    {
+        $data['categoria_id']     = $category->id;
+        $data['categoria_nombre'] = $category->name;
+        unset($data['categoria_pending'], $data['editar_categoria_pendiente']);
+
+        $this->showReview($chatId, $conversation, $data);
+    }
+
+    /**
+     * Toque de un botón de este flujo. BotHandler ya validó quién lo tocó y
+     * que tenga acceso al bot; acá solo importa que el registro siga vivo.
+     */
+    public function handleButton(string $chatId, string $action, ?int $messageId = null): void
+    {
+        $conversation = TelegramConversation::where('chat_id', $chatId)
+            ->where(function ($q) {
+                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
+            ->first();
+
+        // Alta ya guardada, cancelada o vencida: el botón viejo sigue visible en
+        // el chat, pero no puede revivir ni duplicar nada.
+        if (!$conversation || !$this->enRevision($conversation->step)) {
+            $this->telegram->sendMessage(
+                $chatId,
+                "Este registro ya no está disponible. Si querés cargar un producto, usá /nuevo."
+            );
+            return;
+        }
+
+        $data = $conversation->data ?? [];
+
+        if ($action === 'guardar') {
+            $faltantes = $this->datosFaltantes($data);
+            if ($faltantes !== []) {
+                $this->telegram->sendMessage(
+                    $chatId,
+                    "Todavía falta: <b>" . implode('</b>, <b>', $faltantes) . "</b>. Tocá Editar para completarlo."
+                );
+                return;
+            }
+
+            // Apagamos los botones del resumen antes de guardar: así un segundo
+            // toque sobre el mismo mensaje ya no ofrece la acción.
+            if ($messageId !== null) {
+                $this->telegram->editMessageReplyMarkup($chatId, $messageId, null);
+            }
+
+            $this->crearProducto($chatId, $conversation, $data);
+            return;
+        }
+
+        if ($action === 'editar') {
+            $this->showEditMenu($chatId, $conversation, $data);
+            return;
+        }
+
+        if ($action === 'volver') {
+            $this->showReview($chatId, $conversation, $data);
+            return;
+        }
+
+        if (str_starts_with($action, 'campo:')) {
+            $this->askFieldEdit($chatId, $conversation, $data, substr($action, strlen('campo:')));
+            return;
+        }
+
+        Log::warning('Botón de alta de producto no reconocido', ['action' => $action]);
+        $this->showReview($chatId, $conversation, $data);
+    }
+
+    /** Pasos en los que los botones del resumen tienen sentido. */
+    private function enRevision(string $step): bool
+    {
+        return $step === self::STEP_REVISAR
+            || $step === self::STEP_EDITAR
+            || str_starts_with($step, self::STEP_EDITAR_CAMPO)
+            || $step === 'nuevo:foto'; // corrección de foto en curso
+    }
+
+    /** @return array<int, string> nombres legibles de lo que falta para guardar */
+    private function datosFaltantes(array $data): array
+    {
+        $faltan = [];
+        if (empty($data['nombre']))        { $faltan[] = 'el nombre'; }
+        if (empty($data['categoria_id']))  { $faltan[] = 'la categoría'; }
+        if (empty($data['precio_compra'])) { $faltan[] = 'el precio de compra'; }
+        if (empty($data['precio_venta']))  { $faltan[] = 'el precio de venta'; }
+        if (!isset($data['cantidad']))     { $faltan[] = 'la cantidad'; }
+        return $faltan;
+    }
+
+    /** Si escribe en vez de tocar: aceptamos las dos palabras y, si no, guiamos. */
+    private function textoEnRevision(string $chatId, TelegramConversation $conversation, string $text): void
+    {
+        $lower = mb_strtolower(trim($text));
+
+        if (\in_array($lower, ['guardar', 'guarda', 'sí', 'si', 'listo'], true)) {
+            $this->handleButton($chatId, 'guardar');
+            return;
+        }
+
+        if (\in_array($lower, ['editar', 'edita', 'corregir'], true)) {
+            $this->showEditMenu($chatId, $conversation, $conversation->data ?? []);
+            return;
+        }
+
+        $this->telegram->sendMessage(
+            $chatId,
+            "Tocá <b>Guardar</b> o <b>Editar</b> en el mensaje de arriba.\n\n" .
+            "(O escribí /cancelar para dejarlo)"
+        );
+    }
+
+    private function textoEnMenuEdicion(string $chatId, TelegramConversation $conversation, string $text): void
+    {
+        $lower = mb_strtolower(trim($text));
+        $data  = $conversation->data ?? [];
+
+        // Escribir el nombre del dato también sirve: es lo natural si viene de
+        // dictar y no de tocar botones.
+        foreach (self::CAMPOS_EDITABLES as $campo => $etiqueta) {
+            if ($lower === mb_strtolower($etiqueta) || $lower === $campo) {
+                $this->askFieldEdit($chatId, $conversation, $data, $campo);
+                return;
+            }
+        }
+
+        $this->telegram->sendMessage($chatId, "Tocá el dato que querés corregir en el mensaje de arriba.");
+    }
+
+    private function formatBs(?int $centavos): string
+    {
+        if ($centavos === null) {
+            return '—';
+        }
+
+        return number_format($centavos / 100, 2) . ' Bs';
     }
 
     private function parsePrice(string $input): ?int

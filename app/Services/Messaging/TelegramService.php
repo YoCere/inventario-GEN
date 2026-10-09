@@ -30,19 +30,82 @@ class TelegramService
         return $response->json() ?? [];
     }
 
-    public function sendMessage(string $chatId, string $text, string $parseMode = 'HTML'): array
+    /**
+     * $inlineKeyboard son las filas de botones (ver App\Support\TelegramKeyboard).
+     * Va como último parámetro opcional a propósito: así las decenas de llamadas
+     * que ya existen siguen funcionando sin tocarlas.
+     */
+    public function sendMessage(string $chatId, string $text, string $parseMode = 'HTML', ?array $inlineKeyboard = null): array
     {
         if (!$this->botToken) {
             throw new \Exception('Telegram bot token not configured');
         }
 
-        $response = Http::post("{$this->apiUrl}{$this->botToken}/sendMessage", [
+        $payload = [
             'chat_id' => $chatId,
             'text' => $text,
             'parse_mode' => $parseMode,
-        ]);
+        ];
+
+        if (!empty($inlineKeyboard)) {
+            // Telegram espera el teclado como JSON dentro de reply_markup.
+            $payload['reply_markup'] = json_encode(['inline_keyboard' => $inlineKeyboard]);
+        }
+
+        $response = Http::post("{$this->apiUrl}{$this->botToken}/sendMessage", $payload);
 
         return $response->json();
+    }
+
+    /**
+     * Confirma a Telegram que se recibió el toque de un botón. Sin esto el
+     * botón queda "girando" en el celular de la persona hasta que vence.
+     * Best-effort: es solo señal visual, nunca debe tumbar el flujo.
+     */
+    public function answerCallbackQuery(string $callbackQueryId, string $text = '', bool $showAlert = false): array
+    {
+        if (!$this->botToken) {
+            return [];
+        }
+
+        $payload = ['callback_query_id' => $callbackQueryId];
+
+        if ($text !== '') {
+            $payload['text'] = $text;
+            $payload['show_alert'] = $showAlert;
+        }
+
+        try {
+            $response = Http::post("{$this->apiUrl}{$this->botToken}/answerCallbackQuery", $payload);
+            return $response->json() ?? [];
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Cambia (o quita, pasando null) los botones de un mensaje ya enviado.
+     * Se usa para apagar los botones de una acción que ya se ejecutó, de modo
+     * que el mensaje viejo no invite a tocarla de nuevo.
+     */
+    public function editMessageReplyMarkup(string $chatId, int $messageId, ?array $inlineKeyboard = null): array
+    {
+        if (!$this->botToken) {
+            return [];
+        }
+
+        $payload = [
+            'chat_id' => $chatId,
+            'message_id' => $messageId,
+            'reply_markup' => json_encode(['inline_keyboard' => $inlineKeyboard ?? []]),
+        ];
+
+        try {
+            $response = Http::post("{$this->apiUrl}{$this->botToken}/editMessageReplyMarkup", $payload);
+            return $response->json() ?? [];
+        } catch (\Throwable $e) {
+            return [];
+        }
     }
 
     public function sendPhoto(string $chatId, string $filePath, string $caption = ''): array

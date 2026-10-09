@@ -77,6 +77,14 @@ DESC;
         $existing = is_array($conversation->data) ? $conversation->data : [];
         $data = $existing;
 
+        // El alta dictada por voz termina en una revisión con botones: la
+        // transcripción puede escribir mal el nombre o cambiar una cantidad, y
+        // la persona tiene que poder corregirlo sin repetir todo el audio.
+        // El alta escrita paso a paso sigue confirmándose como siempre.
+        if ($context->source === 'audio') {
+            $data['origen_audio'] = true;
+        }
+
         // ── Extracción INDEPENDIENTE por campo (sin cascade). Cualquier campo
         //    detectado por la IA se persiste, aunque otros no estén presentes. ─
 
