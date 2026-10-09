@@ -310,7 +310,12 @@ class ProductSearchService
             return '';
         }
 
-        $baseUrl = rtrim(\App\Models\Setting::get('ai_api_base_url', 'https://api.openai.com/v1'), '/');
+        // ai_api_base_url se guarda como string vacío (no null) cuando el proveedor
+        // es OpenAI directo, así que el default de Setting::get NO aplica: quedaba
+        // una URL "chat/completions" sin host y el log se llenaba de
+        // "Could not resolve host: chat". Mismo manejo que VisionService.
+        $rawBase = trim((string) \App\Models\Setting::get('ai_api_base_url', ''));
+        $baseUrl = rtrim($rawBase !== '' ? $rawBase : 'https://api.openai.com/v1', '/');
         $model = \App\Models\Setting::get('ai_model', 'gpt-4o-mini');
 
         $response = Http::withHeaders([

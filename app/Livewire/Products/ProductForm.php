@@ -363,31 +363,39 @@ class ProductForm extends Component
             }
 
             // 2. Procesar uploads nuevos → generar variantes WebP → crear ProductImage rows.
-           
-$existingCount = $product->images()->count();
-foreach ($this->gallery as $idx => $upload) {
-    try {
-        $paths = $imageProcessor->processForProduct($upload, $product->id);
-        ProductImage::create([
-            'product_id' => $product->id,
-            'path' => $paths['path'],
-            'path_thumb' => $paths['path_thumb'],
-            'path_card' => $paths['path_card'],
-            'path_full' => $paths['path_full'],
-            'sort_order' => $existingCount + $idx,
-            'is_primary' => false,
-        ]);
-    } catch (\RuntimeException $e) {
-        // Error específico de procesamiento de imagen
-        \Log::warning('Image processing failed', [
-            'product_id' => $product->id,
-            'error' => $e->getMessage(),
-            'file_name' => $upload->getClientOriginalName(),
-        ]);
-        $this->dispatch('toast', message: 'Error con la imagen "' . $upload->getClientOriginalName() . '": ' . $e->getMessage(), type: 'error');
-        return; // Detener el proceso, no guardar el producto con imágenes incompletas
-    }
-}
+            //
+            // Si una foto falla, el producto NO se pierde: se guarda igual y se
+            // avisa cuál foto quedó afuera. Antes se abortaba acá y la persona
+            // tenía que volver a cargar todo el producto por una sola foto mala
+            // (y, si el error no era RuntimeException, se iba en un 500).
+            $existingCount = $product->images()->count();
+            $fotosFallidas = [];
+
+            foreach ($this->gallery as $idx => $upload) {
+                try {
+                    $paths = $imageProcessor->processForProduct($upload, $product->id);
+                    ProductImage::create([
+                        'product_id' => $product->id,
+                        'path' => $paths['path'],
+                        'path_thumb' => $paths['path_thumb'],
+                        'path_card' => $paths['path_card'],
+                        'path_full' => $paths['path_full'],
+                        'sort_order' => $existingCount + $idx,
+                        'is_primary' => false,
+                    ]);
+                } catch (\Throwable $e) {
+                    \Log::error('Image processing failed', [
+                        'product_id' => $product->id,
+                        'file_name' => $upload->getClientOriginalName(),
+                        'error' => $e->getMessage(),
+                        'excepcion' => $e::class,
+                    ]);
+
+                    $fotosFallidas[] = $e instanceof \RuntimeException
+                        ? $e->getMessage()
+                        : 'No se pudo procesar la foto «' . $upload->getClientOriginalName() . '».';
+                }
+            }
 
             // 3. Asegurar que exactamente UNA imagen sea primary.
             //    Reglas:
@@ -395,9 +403,16 @@ foreach ($this->gallery as $idx => $upload) {
             //    - Si no hay primary asignado pero hay imágenes → primera por sort_order.
             $this->normalizePrimary($product);
 
+            $this->gallery = [];
+            $this->imagesToDelete = [];
+
             $this->dispatch('close-modal', name: 'product-form-modal');
             $this->dispatch('pg:eventRefresh-product-table');
             $this->dispatch('toast', message: $message, type: 'success');
+
+            foreach ($fotosFallidas as $aviso) {
+                $this->dispatch('toast', message: $aviso, type: 'error');
+            }
         } catch (ProductException $e) {
             $this->dispatch('toast', message: $e->getMessage(), type: 'error');
         } catch (\Throwable $e) {
