@@ -192,6 +192,23 @@ pantalla sin redeploy. Al escribirlas, la pantalla muestra solo los últimos 4 c
 
 Si el cliente no usa bot ni asistente, dejá todo apagado: el sistema funciona igual.
 
+## 6b. El bot de Telegram arranca solo
+
+Desde 2026-10-09 el contenedor levanta el bot en cada despliegue (`docker/supervisord.conf`, programa
+`telegram-bot`). No hay que arrancarlo a mano.
+
+Cómo se comporta:
+- Si el bot está apagado o sin token en **Ajustes → Sistema**, el proceso sale solo y se reintenta cada
+  30 segundos. O sea: cargás el token en la pantalla y el bot empieza a responder en menos de un minuto,
+  **sin redeploy**.
+- Si lo apagás desde Ajustes, deja de escuchar también en menos de un minuto.
+- Los mensajes del bot van a los logs del contenedor (Coolify → Logs) y a `storage/logs/laravel.log`.
+
+Dos cosas para tener en cuenta:
+- **Telegram no permite escuchar y tener webhook al mismo tiempo.** Si alguna vez configuraste un webhook
+  para ese bot, el log lo va a decir con todas las letras; hay que elegir una de las dos formas.
+- **Un solo contenedor puede escuchar.** Si algún día esa instancia corre con varias copias, el bot va en
+  una sola o se pasa a webhook.
 ## 7. Respaldos
 
 ```bash
