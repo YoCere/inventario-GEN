@@ -135,6 +135,8 @@ revisá el punto de montaje antes de seguir.
 | `APP_LOCALE` | `es` | |
 | `DB_CONNECTION` | `mysql` | |
 | `DB_HOST` / `DB_PORT` / `DB_DATABASE` / `DB_USERNAME` / `DB_PASSWORD` | de la base creada en el paso 1 | |
+| `LOG_CHANNEL` | `stack` | Sin esto los errores de la web van **solo** a stderr (Coolify → Logs) y no quedan en ningún archivo |
+| `LOG_STACK` | `single,stderr` | Deja el mismo error en los dos lados: la UI de Coolify y `storage/logs/laravel.log`, que se puede leer desde el contenedor. Ahorra horas cuando hay que diagnosticar algo que solo pasa en producción |
 | `PHP_MEMORY_LIMIT` | `512M` | Solo si tu plantilla de Coolify lo usa: la imagen ya fija 2G en `Dockerfile`. Verificá dentro del contenedor con `php -r 'echo ini_get("memory_limit");'`; con 128M las fotos de celular revientan al procesarse |
 | `B2_KEY_ID`, `B2_APPLICATION_KEY`, `B2_REGION`, `B2_BUCKET`, `B2_ENDPOINT`, `BACKUP_ARCHIVE_PASSWORD` | los genera `provision-client-backup.sh` | Respaldos fuera del servidor |
 
