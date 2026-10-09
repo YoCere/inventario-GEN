@@ -2,7 +2,10 @@
 
 namespace App\Services\Telegram;
 
+use App\Models\Product;
 use App\Models\TelegramConversation;
+use App\Shop\Models\ProductImage;
+use App\Shop\Services\ImageProcessor;
 use App\Models\Category;
 use App\DTOs\ProductData;
 use App\Services\CategoryService;
@@ -29,6 +32,15 @@ class BotProductHandler
     private const BOTON = 'prod:';
 
     /**
+     * Tope de fotos por producto.
+     *
+     * Cinco alcanza para mostrar los colores de un mismo artículo y mantiene
+     * acotado el trabajo de procesar variantes y el peso del catálogo público,
+     * que se ve desde el celular de los clientes.
+     */
+    private const MAX_FOTOS = 5;
+
+    /**
      * Datos corregibles desde el resumen, en el orden en que se muestran.
      * La clave es el campo guardado; el valor, el nombre que lee la persona.
      */
@@ -38,7 +50,7 @@ class BotProductHandler
         'precio_compra' => 'Precio de compra',
         'precio_venta'  => 'Precio de venta',
         'cantidad'      => 'Cantidad',
-        'foto'          => 'Foto',
+        'foto'          => 'Fotos',
     ];
 
     public function __construct(
@@ -287,12 +299,17 @@ class BotProductHandler
             'nuevo:precio_compra' => "¿Cuál es el <b>precio de compra</b>? (número, ej: 25.50)",
             'nuevo:precio_venta'  => "¿Cuál es el <b>precio de venta</b>?",
             'nuevo:cantidad'      => "¿Cuál es la <b>cantidad inicial en stock</b>?",
-            'nuevo:foto'          => "Envía una <b>foto del producto</b> (opcional).\nEscribe '<b>omitir</b>' si no tienes foto.",
+            'nuevo:foto'          => '',
             default               => '',
         };
 
         if ($prompt !== '') {
             $this->telegram->sendMessage($chatId, $prompt);
+        }
+
+        // El paso de fotos se abre con sus botones en vez de un texto.
+        if ($nextStep === 'nuevo:foto') {
+            $this->pedirMasFotos($chatId, count($this->fotosDe($data)));
         }
     }
 
@@ -369,75 +386,140 @@ class BotProductHandler
         $this->advanceToNextMissingStep($chatId, $conversation, $data);
     }
 
-    private function askFoto(string $chatId, TelegramConversation $conversation, array $message): void
+    /**
+     * Fotos ya cargadas en esta alta.
+     *
+     * Una conversación empezada antes de que existieran varias fotos guarda una
+     * sola en 'foto_path'; se la trata como lista de un elemento para no dejar a
+     * nadie a medio camino tras el despliegue.
+     *
+     * @return array<int, string>
+     */
+    private function fotosDe(array $data): array
     {
-        $data = $conversation->data ?? [];
-
-        // Check if text message (omitir)
-        if (isset($message['text'])) {
-            if (strtolower(trim($message['text'])) === 'omitir') {
-                $data['foto_path'] = null;
-                $this->showConfirm($chatId, $conversation, $data);
-                return;
-            }
-            $this->telegram->sendMessage($chatId, "❌ Envía una foto o escribe 'omitir'.");
-            return;
+        if (! empty($data['fotos']) && is_array($data['fotos'])) {
+            return array_values($data['fotos']);
         }
 
-        // Handle photo
-        if (isset($message['photo'])) {
-            try {
-                $photo = end($message['photo']); // Get best quality
-                $fileId = $photo['file_id'];
-
-                Log::info('Processing photo upload', ['file_id' => $fileId]);
-
-                // Download photo from Telegram
-                $filePath = $this->telegram->getFile($fileId);
-                $content = $this->telegram->downloadFile($filePath);
-
-                if (empty($content)) {
-                    throw new \Exception('Downloaded content is empty');
-                }
-
-                // Detect MIME type
-                $finfo = finfo_open(FILEINFO_MIME_TYPE);
-                $mimeType = finfo_buffer($finfo, $content);
-                finfo_close($finfo);
-
-                $extension = match($mimeType) {
-                    'image/jpeg' => 'jpg',
-                    'image/png' => 'png',
-                    'image/webp' => 'webp',
-                    default => 'jpg',
-                };
-
-                // Ensure directory exists
-                Storage::disk('public')->makeDirectory('products');
-
-                // Store in storage
-                $storagePath = 'products/' . Str::uuid() . '.' . $extension;
-                Storage::disk('public')->put($storagePath, $content);
-
-                Log::info('Photo stored successfully', ['path' => $storagePath, 'mime' => $mimeType]);
-
-                $data['foto_path'] = $storagePath;
-                $this->showConfirm($chatId, $conversation, $data);
-            } catch (\Exception $e) {
-                Log::error('Photo download/storage error', [
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
-                ]);
-                $data['foto_path'] = null;
-                $this->telegram->sendMessage($chatId, "⚠️ Error: " . $e->getMessage() . "\n\nContinuando sin imagen...");
-                $this->showConfirm($chatId, $conversation, $data);
-            }
-            return;
-        }
-
-        $this->telegram->sendMessage($chatId, "❌ Envía una foto o escribe 'omitir'.");
+        return ! empty($data['foto_path']) ? [$data['foto_path']] : [];
     }
 
+    private function askFoto(string $chatId, TelegramConversation $conversation, array $message): void
+    {
+        $data  = $conversation->data ?? [];
+        $fotos = $this->fotosDe($data);
+
+        // "omitir" se mantiene: hay gente que ya lo tiene aprendido y escribe
+        // más rápido de lo que encuentra el botón.
+        if (isset($message['text'])) {
+            if (in_array(mb_strtolower(trim($message['text'])), ['omitir', 'listo', 'ya', 'no'], true)) {
+                $this->terminarFotos($chatId, $conversation, $data);
+                return;
+            }
+
+            $this->telegram->sendMessage($chatId, "Mandá una foto, o tocá <b>Listo</b> si ya está.");
+            $this->pedirMasFotos($chatId, count($fotos));
+            return;
+        }
+
+        if (! isset($message['photo'])) {
+            $this->telegram->sendMessage(
+                $chatId,
+                "Eso no es una foto. Mandala como imagen (no como archivo), o tocá <b>Listo</b>."
+            );
+            $this->pedirMasFotos($chatId, count($fotos));
+            return;
+        }
+
+        if (count($fotos) >= self::MAX_FOTOS) {
+            $this->telegram->sendMessage(
+                $chatId,
+                "Ya cargaste " . self::MAX_FOTOS . " fotos, que es el máximo por producto. Tocá <b>Listo</b> para seguir."
+            );
+            $this->pedirMasFotos($chatId, count($fotos));
+            return;
+        }
+
+        try {
+            $photo   = end($message['photo']); // la última es la de mejor calidad
+            $content = $this->telegram->downloadFile($this->telegram->getFile($photo['file_id']));
+
+            if (empty($content)) {
+                throw new \Exception('La descarga vino vacía');
+            }
+
+            $finfo    = finfo_open(FILEINFO_MIME_TYPE);
+            $mimeType = finfo_buffer($finfo, $content);
+            finfo_close($finfo);
+
+            // El procesamiento posterior (variantes para la tienda) solo entiende
+            // imágenes: cualquier otra cosa se rechaza acá y no rompe el alta.
+            $extension = match ($mimeType) {
+                'image/jpeg' => 'jpg',
+                'image/png'  => 'png',
+                'image/webp' => 'webp',
+                default      => null,
+            };
+
+            if ($extension === null) {
+                $this->telegram->sendMessage($chatId, "Ese archivo no es una imagen que pueda usar. Probá con una foto normal.");
+                $this->pedirMasFotos($chatId, count($fotos));
+                return;
+            }
+
+            Storage::disk('public')->makeDirectory('products');
+            $storagePath = 'products/' . Str::uuid() . '.' . $extension;
+            Storage::disk('public')->put($storagePath, $content);
+
+            $fotos[] = $storagePath;
+            $data['fotos'] = $fotos;
+            // Se mantiene para el resto del flujo y para los datos ya guardados.
+            $data['foto_path'] = $fotos[0];
+
+            $conversation->update([
+                'data'       => $data,
+                'expires_at' => now()->addMinutes(30),
+            ]);
+
+            $this->telegram->sendMessage($chatId, "📷 Foto " . count($fotos) . " guardada.");
+            $this->pedirMasFotos($chatId, count($fotos));
+        } catch (\Exception $e) {
+            Log::error('Photo download/storage error', ['error' => $e->getMessage()]);
+            $this->telegram->sendMessage($chatId, "No pude guardar esa foto. Probá de nuevo, o tocá <b>Listo</b> para seguir sin ella.");
+            $this->pedirMasFotos($chatId, count($fotos));
+        }
+    }
+
+    /** Botones para seguir cargando fotos o dar por terminado el paso. */
+    private function pedirMasFotos(string $chatId, int $cargadas): void
+    {
+        if ($cargadas >= self::MAX_FOTOS) {
+            $keyboard = TelegramKeyboard::make()->button('✅ Listo', self::BOTON . 'fotos:listo');
+            $this->telegram->sendMessage($chatId, "Llegaste al máximo de fotos.", 'HTML', $keyboard->toArray());
+            return;
+        }
+
+        $keyboard = TelegramKeyboard::make()->row([
+            '📷 Agregar otra' => self::BOTON . 'fotos:otra',
+            '✅ Listo'        => self::BOTON . 'fotos:listo',
+        ]);
+
+        $texto = $cargadas === 0
+            ? "Mandá una <b>foto del producto</b>. Si no tenés, tocá <b>Listo</b>."
+            : "¿Querés mandar otra foto del mismo producto? (por ejemplo, otro color)";
+
+        $this->telegram->sendMessage($chatId, $texto, 'HTML', $keyboard->toArray());
+    }
+
+    /** Cierra el paso de fotos y sigue el camino de siempre. */
+    private function terminarFotos(string $chatId, TelegramConversation $conversation, array $data): void
+    {
+        $fotos = $this->fotosDe($data);
+        $data['fotos'] = $fotos;
+        $data['foto_path'] = $fotos[0] ?? null;
+
+        $this->showConfirm($chatId, $conversation, $data);
+    }
     private function showConfirm(string $chatId, TelegramConversation $conversation, array $data): void
     {
         // El alta dictada se revisa con botones: la transcripción pudo escribir
@@ -505,6 +587,8 @@ class BotProductHandler
 
             $product = $this->productService->createProduct($productData);
 
+            $this->guardarGaleria($product, $this->fotosDe($data));
+
             $conversation->delete();
             $this->telegram->sendMessage(
                 $chatId,
@@ -547,7 +631,12 @@ class BotProductHandler
         $message .= "Precio de compra: " . $this->formatBs($data['precio_compra'] ?? null) . "\n";
         $message .= "Precio de venta: " . $this->formatBs($data['precio_venta'] ?? null) . "\n";
         $message .= "Cantidad: " . ($data['cantidad'] ?? '—') . "\n";
-        $message .= "Foto: " . (!empty($data['foto_path']) ? "sí" : "no") . "\n\n";
+        $cantidadFotos = count($this->fotosDe($data));
+        $message .= "Fotos: " . match (true) {
+            $cantidadFotos === 0 => 'ninguna',
+            $cantidadFotos === 1 => '1',
+            default              => $cantidadFotos . ' fotos',
+        } . "\n\n";
         $message .= "Si algo está mal, tocá <b>Editar</b>.\n";
         $message .= "Nada se guarda hasta que toques <b>Guardar</b>.";
 
@@ -606,8 +695,15 @@ class BotProductHandler
             'precio_compra' => "✏️ Escribí el <b>precio de compra</b> correcto (ej: 350).",
             'precio_venta'  => "✏️ Escribí el <b>precio de venta</b> correcto (ej: 450).",
             'cantidad'      => "✏️ Escribí la <b>cantidad</b> correcta (ej: 30).",
-            'foto'          => "📸 Enviá la <b>foto</b> del producto.\nEscribí <b>omitir</b> si no querés foto.",
+            'foto'          => '',
         };
+
+        // Las fotos se piden con botones, no con un texto suelto.
+        if ($campo === 'foto') {
+            $this->pedirMasFotos($chatId, count($this->fotosDe($data)));
+
+            return;
+        }
 
         $this->telegram->sendMessage($chatId, $prompt);
     }
@@ -741,6 +837,26 @@ class BotProductHandler
             })
             ->first();
 
+        // Botones del paso de fotos: ese paso no es "revisión", así que se
+        // atienden antes del guard de más abajo.
+        if (str_starts_with($action, 'fotos:')) {
+            if (! $conversation || $conversation->step !== 'nuevo:foto') {
+                $this->telegram->sendMessage($chatId, "Este registro ya no está disponible. Si querés cargar un producto, usá /nuevo.");
+                return;
+            }
+
+            $datosFoto = $conversation->data ?? [];
+
+            if ($action === 'fotos:listo') {
+                $this->terminarFotos($chatId, $conversation, $datosFoto);
+                return;
+            }
+
+            // 'fotos:otra': solo recordamos qué esperamos; la foto llega como mensaje.
+            $this->telegram->sendMessage($chatId, "Mandá la siguiente foto.");
+            return;
+        }
+
         // Alta ya guardada, cancelada o vencida: el botón viejo sigue visible en
         // el chat, pero no puede revivir ni duplicar nada.
         if (!$conversation || !$this->enRevision($conversation->step)) {
@@ -792,6 +908,39 @@ class BotProductHandler
         $this->showReview($chatId, $conversation, $data);
     }
 
+    /**
+     * Guarda las fotos como galería del producto, igual que el formulario web:
+     * variantes para la tienda y la primera marcada como principal.
+     *
+     * Una foto que falle al procesarse no tumba el alta: el producto ya existe y
+     * perder una imagen es mucho menos grave que perder la carga entera.
+     *
+     * @param array<int, string> $rutas
+     */
+    private function guardarGaleria(Product $product, array $rutas): void
+    {
+        foreach (array_values($rutas) as $indice => $ruta) {
+            try {
+                $paths = app(ImageProcessor::class)->processExisting($ruta, $product->id);
+
+                ProductImage::create([
+                    'product_id' => $product->id,
+                    'path'       => $paths['path'],
+                    'path_thumb' => $paths['path_thumb'],
+                    'path_card'  => $paths['path_card'],
+                    'path_full'  => $paths['path_full'],
+                    'sort_order' => $indice,
+                    'is_primary' => $indice === 0,
+                ]);
+            } catch (\Throwable $e) {
+                Log::warning('No se pudo procesar una foto del bot', [
+                    'product_id' => $product->id,
+                    'ruta'       => $ruta,
+                    'error'      => $e->getMessage(),
+                ]);
+            }
+        }
+    }
     /** Pasos en los que los botones del resumen tienen sentido. */
     private function enRevision(string $step): bool
     {
