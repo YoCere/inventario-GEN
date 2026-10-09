@@ -165,6 +165,25 @@
     @apply bg-yellow-100 font-bold rounded-sm;
 }
 
+/* Opción de alta rápida ("Crear «cintos»"), ver createAction en x-tom-select.
+   Ámbar porque hoy solo la usa Productos; separada del listado con un borde
+   para que se lea como una acción y no como otro resultado más. */
+.ts-dropdown .create {
+    @apply bg-amber-50 border-t border-amber-200 rounded-none;
+}
+
+.ts-dropdown .create.active {
+    @apply bg-amber-100 text-amber-900 !important;
+}
+
+.dark .ts-dropdown .create {
+    @apply bg-amber-950/40 border-amber-900;
+}
+
+.dark .ts-dropdown .create.active {
+    @apply bg-amber-900/60 text-amber-200 !important;
+}
+
 /* Spinner Adjustments */
 .ts-wrapper.loading .ts-control {
     background-image: none !important; /* Remove default spinner if needed, or customize */

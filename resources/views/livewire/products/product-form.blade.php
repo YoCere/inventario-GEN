@@ -70,8 +70,15 @@
                             method="POST"
                             placeholder="Seleccionar categoría"
                             data-initial-label="{{ $categoryName }}"
+                            :create-action="auth()->user()?->can('categories.manage') ? 'createCategory' : null"
+                            create-label="Crear categoría"
                         />
                     </div>
+                    @can('categories.manage')
+                        <p class="text-xs text-muted-foreground">
+                            ¿No está en la lista? Escribí el nombre y creala desde acá.
+                        </p>
+                    @endcan
                     <x-input-error :messages="$errors->get('category_id')" />
                 </div>
 

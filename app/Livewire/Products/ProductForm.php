@@ -9,6 +9,7 @@ use App\Models\Location;
 use App\Models\Product;
 use App\Models\Unit;
 use App\Models\Warehouse;
+use App\Services\CategoryService;
 use App\Services\ProductService;
 use App\Shop\Models\ProductImage;
 use App\Shop\Services\ImageProcessor;
@@ -138,6 +139,64 @@ class ProductForm extends Component
         $this->isEditing = true;
 
         $this->dispatch('open-modal', name: 'product-form-modal');
+    }
+
+    /**
+     * Crea (o reutiliza) una categoría con el nombre que el usuario escribió en
+     * el selector, sin cerrar ni vaciar el formulario.
+     *
+     * Por qué acá y no en un endpoint AJAX: la llamada viaja como acción
+     * Livewire, así que lo que el usuario ya tenía tecleado llega al servidor en
+     * el mismo request y vuelve intacto en la respuesta. Lo único que cambia es
+     * `category_id`; el resto de las propiedades ni se tocan.
+     *
+     * Devuelve el par que Tom Select necesita para dejar la categoría
+     * seleccionada en el desplegable, o null si no se pudo crear.
+     *
+     * @return array{value: int, text: string}|null
+     */
+    public function createCategory(string $name): ?array
+    {
+        abort_if(! auth()->user()?->can('categories.manage'), 403);
+
+        $name = CategoryService::cleanName($name);
+
+        if (mb_strlen($name) < 2) {
+            $this->dispatch('toast', message: 'Escribí al menos dos letras para la categoría.', type: 'warning');
+
+            return null;
+        }
+
+        if (mb_strlen($name) > 100) {
+            $this->dispatch('toast', message: 'El nombre de la categoría no puede pasar de 100 caracteres.', type: 'warning');
+
+            return null;
+        }
+
+        try {
+            $category = app(CategoryService::class)->findOrCreateByName($name);
+        } catch (\Throwable $e) {
+            \Log::error('Category quick-create from product form failed', [
+                'name' => $name,
+                'error' => $e->getMessage(),
+            ]);
+            $this->dispatch('toast', message: 'No se pudo crear la categoría. Intentá de nuevo.', type: 'error');
+
+            return null;
+        }
+
+        $this->category_id = $category->id;
+        $this->categoryName = $category->name;
+
+        $this->dispatch(
+            'toast',
+            message: $category->wasRecentlyCreated
+                ? "Categoría «{$category->name}» creada y seleccionada."
+                : "Ya tenías la categoría «{$category->name}»: la dejamos seleccionada.",
+            type: 'success',
+        );
+
+        return ['value' => $category->id, 'text' => $category->name];
     }
 
     public function rules()

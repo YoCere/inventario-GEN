@@ -4,7 +4,6 @@ namespace App\Services\Telegram;
 
 use App\Models\TelegramConversation;
 use App\Models\Category;
-use App\DTOs\CategoryData;
 use App\DTOs\ProductData;
 use App\Services\CategoryService;
 use App\Services\Messaging\TelegramService;
@@ -260,21 +259,17 @@ class BotProductHandler
     private function createAndAdvanceCategory(string $chatId, TelegramConversation $conversation, array $data, string $name): void
     {
         try {
-            $name = trim($name);
-            $slug = Str::slug($name);
+            // Mismo camino que el selector del formulario web: reutiliza la
+            // categoría si ya existe (ignorando mayúsculas y tildes) y
+            // desambigua el slug cuando hace falta.
+            $category = $this->categoryService->findOrCreateByName($name);
 
-            // Ensure unique slug
-            $base = $slug;
-            $n    = 1;
-            while (Category::where('slug', $slug)->exists()) {
-                $slug = $base . '-' . $n++;
-            }
-
-            $category = $this->categoryService->createCategory(
-                CategoryData::fromArray(['name' => $name, 'slug' => $slug])
+            $this->telegram->sendMessage(
+                $chatId,
+                $category->wasRecentlyCreated
+                    ? "✅ Categoría creada: <b>{$category->name}</b>"
+                    : "ℹ️ Ya tenías la categoría <b>{$category->name}</b>, uso esa."
             );
-
-            $this->telegram->sendMessage($chatId, "✅ Categoría creada: <b>{$name}</b>");
             $this->setCategoryAndAdvance($chatId, $conversation, $data, $category);
         } catch (\Exception $e) {
             Log::error('Category creation failed in bot', ['error' => $e->getMessage()]);
