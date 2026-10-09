@@ -17,128 +17,48 @@
     'createLabel' => 'Crear',
 ])
 
-<div wire:ignore class="w-full">
-    <select
-        x-data="{
-            tom: null,
-            @if($attributes->has('wire:model'))
-                value: @entangle($attributes->wire('model')),
-            @elseif($attributes->has('x-model'))
-                value: {{ $attributes->get('x-model') }},
-            @else
-                value: null,
-            @endif
+@php
+    /**
+     * REGLA DE ORO DE ESTE ARCHIVO: nada de @if / @foreach dentro del x-data.
+     *
+     * Livewire inserta marcadores HTML (`<!--[if BLOCK]><![endif]-->`) donde hay
+     * un bloque condicional. Dentro de un atributo de JavaScript eso es veneno:
+     * en JS `<!--` comenta HASTA EL FINAL DE LA LÍNEA, así que se traga lo que
+     * venga detrás en esa misma línea — la apertura de un `/* ... *\/`, o la
+     * propia línea del `value:` — y lo que sigue se ejecuta como código suelto.
+     * Resultado: SyntaxError, el selector nunca se inicializa y queda un
+     * `<select>` pelado, sin búsqueda y sin opciones (se cargan por AJAX).
+     *
+     * Por eso todo lo condicional se arma acá, en PHP, y se imprime de una sola
+     * vez. Si alguien vuelve a poner un @if adentro del x-data, el test
+     * TomSelectExpressionTest se cae.
+     */
 
-            init() {
-                if (this.tom || this.$el.tomselect) return;
+    // Enlace con la propiedad de Livewire. $wire.entangle hace lo mismo que la
+    // directiva @entangle, pero sin necesitar un bloque condicional.
+    $valueExpression = 'null';
 
-                this.$nextTick(() => {
-                    if (this.tom || this.$el.tomselect) return;
+    if ($attributes->has('wire:model')) {
+        $wireModel = $attributes->wire('model');
+        $valueExpression = "\$wire.entangle('{$wireModel->value()}')";
 
-                    // Handle Initial Search (Unresolved Items) - Prepare Data
-                    const initialSearch = this.$el.getAttribute('data-initial-search');
+        if ($wireModel->hasModifier('live')) {
+            $valueExpression .= '.live';
+        }
+    } elseif ($attributes->has('x-model')) {
+        $valueExpression = $attributes->get('x-model');
+    }
 
-                    let config = {
-                        items: this.value ? [this.value] : [],
-                        placeholder: (initialSearch && !this.value) ? initialSearch : '{{ $placeholder }}',
-                        valueField: 'value',
-                        labelField: 'text',
-                        searchField: ['text'],
-                        preload: 'focus',
-                        plugins: ['clear_button'],
-                        create: false,
-                        sortField: {
-                            field: 'text',
-                            direction: 'asc'
-                        },
-                        onItemAdd: (value, item) => {
-                            this.value = value;
-                            if (this.tom.options[value]) {
-                                this.$dispatch('option-selected', { name: '{{ $attributes->get("name") }}', value: value, item: this.tom.options[value] });
-                            }
-                        },
-                        onItemRemove: (value) => {
-                            this.value = null;
-                            /* If removed, revert placeholder to the initial product name */
-                        },
-                        onClear: () => {
-                            this.value = null;
-                        }
-                    };
+    // Alta rápida desde el propio desplegable: el usuario escribe un nombre que
+    // todavía no existe y lo crea sin salir del formulario. La llamada va por
+    // Livewire, así que lo que ya tenía cargado viaja y vuelve en el mismo
+    // request: no se pierde nada.
+    $createSnippet = '';
 
-                    /* Pre-load initial option if label is provided */
-                    let initialLabel = this.$el.getAttribute('data-initial-label');
-                    if (this.value && initialLabel) {
-                        config.options = [{value: this.value, text: initialLabel, type: 'unknown'}];
-                        config.items = [this.value];
-                    }
-
-                    if ('{{ $url }}') {
-                        config.load = (query, callback) => {
-                            let url = '{{ $url }}';
-                            const method = '{{ strtoupper($method) }}';
-                            let body = null;
-
-                            if (method === 'GET') {
-                                url += (url.includes('?') ? '&' : '?') + 'q=' + encodeURIComponent(query);
-                            } else {
-                                body = JSON.stringify({ q: query });
-                            }
-
-                            /* Check for dynamic params */
-                            const dataParams = this.$el.getAttribute('data-params');
-                            if (dataParams) {
-                                try {
-                                    const params = JSON.parse(dataParams);
-                                    if (method === 'GET') {
-                                        const queryString = new URLSearchParams(params).toString();
-                                        url += '&' + queryString;
-                                    } else {
-                                        body = JSON.stringify({ ...JSON.parse(body || '{}'), ...params });
-                                    }
-                                } catch (e) {
-                                    console.error('Invalid data-params JSON', e);
-                                }
-                            }
-
-                            /* Get CSRF Token from Meta Tag */
-                            const csrfToken = document.querySelector('meta[name=\'csrf-token\']')?.getAttribute('content');
-
-                            fetch(url, {
-                                method: method,
-                                body: body,
-                                credentials: 'include',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'Accept': 'application/json',
-                                    'X-Requested-With': 'XMLHttpRequest',
-                                    'X-CSRF-TOKEN': csrfToken || ''
-                                }
-                            })
-                                .then(response => {
-                                    if (!response.ok) throw new Error('Network response was not ok');
-                                    return response.json();
-                                })
-                                .then(json => {
-                                    if (Array.isArray(json)) {
-                                        callback(json);
-                                    } else {
-                                        console.warn('TomSelect load: Expected array, got', json);
-                                        callback();
-                                    }
-                                })
-                                .catch((error) => {
-                                    console.error('TomSelect load error:', error);
-                                    callback();
-                                });
-                        };
-                    }
-
-@if($createAction)
-                    /* Alta rápida desde el propio desplegable: el usuario escribe un
-                       nombre que todavía no existe y lo crea sin salir del formulario.
-                       La llamada va por Livewire, así que lo que ya tenía cargado viaja
-                       y vuelve en el mismo request: no se pierde nada. */
+    if ($createAction) {
+        // Nowdoc (no heredoc) a propósito: adentro hay ${...} de plantillas de
+        // JavaScript que PHP intentaría interpolar.
+        $createSnippet = <<<'JS'
                     const normalizar = (texto) => (texto || '').toString()
                         .normalize('NFD').replace(/[̀-ͯ]/g, '')
                         .toLowerCase().replace(/\s+/g, ' ').trim();
@@ -155,7 +75,7 @@
                            se vea que algo está pasando durante el alta. */
                         this.tom.wrapper.classList.add('loading');
 
-                        this.$wire.call('{{ $createAction }}', nombre)
+                        this.$wire.call('__CREATE_ACTION__', nombre)
                             .then((creado) => {
                                 if (creado && creado.value) {
                                     callback({ value: String(creado.value), text: creado.text });
@@ -183,18 +103,148 @@
                         option_create: (data, escape) =>
                             `<div class='create flex items-center gap-2 px-3 py-2 text-sm font-medium text-amber-800 dark:text-amber-300 cursor-pointer'>`
                             + `<span class='flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-200'>+</span>`
-                            + `<span>{{ $createLabel }} «${escape(data.input)}»</span>`
+                            + `<span>__CREATE_LABEL__ «${escape(data.input)}»</span>`
                             + `</div>`,
                     });
-@endif
+JS;
+
+        $createSnippet = str_replace(
+            ['__CREATE_ACTION__', '__CREATE_LABEL__'],
+            [$createAction, $createLabel],
+            $createSnippet
+        );
+    }
+
+    // Carga de opciones por AJAX. Sin url, el selector trabaja con las opciones
+    // que ya vienen en el HTML.
+    $loadSnippet = '';
+
+    if ($url) {
+        $loadSnippet = <<<'JS'
+                    config.load = (query, callback) => {
+                        let url = '__URL__';
+                        const method = '__METHOD__';
+                        let body = null;
+
+                        if (method === 'GET') {
+                            url += (url.includes('?') ? '&' : '?') + 'q=' + encodeURIComponent(query);
+                        } else {
+                            body = JSON.stringify({ q: query });
+                        }
+
+                        /* Parámetros extra que el formulario pueda agregar en caliente. */
+                        const dataParams = this.$el.getAttribute('data-params');
+                        if (dataParams) {
+                            try {
+                                const params = JSON.parse(dataParams);
+                                if (method === 'GET') {
+                                    url += '&' + new URLSearchParams(params).toString();
+                                } else {
+                                    body = JSON.stringify({ ...JSON.parse(body || '{}'), ...params });
+                                }
+                            } catch (e) {
+                                console.error('Invalid data-params JSON', e);
+                            }
+                        }
+
+                        const csrfToken = document.querySelector('meta[name=\'csrf-token\']')?.getAttribute('content');
+
+                        fetch(url, {
+                            method: method,
+                            body: body,
+                            credentials: 'include',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRF-TOKEN': csrfToken || ''
+                            }
+                        })
+                            .then(response => {
+                                if (!response.ok) throw new Error('Network response was not ok');
+                                return response.json();
+                            })
+                            .then(json => {
+                                if (Array.isArray(json)) {
+                                    callback(json);
+                                } else {
+                                    console.warn('TomSelect load: Expected array, got', json);
+                                    callback();
+                                }
+                            })
+                            .catch((error) => {
+                                console.error('TomSelect load error:', error);
+                                callback();
+                            });
+                    };
+JS;
+
+        $loadSnippet = str_replace(
+            ['__URL__', '__METHOD__'],
+            [$url, strtoupper($method)],
+            $loadSnippet
+        );
+    }
+@endphp
+
+<div wire:ignore class="w-full">
+    <select
+        x-data="{
+            tom: null,
+            value: {!! $valueExpression !!},
+
+            init() {
+                if (this.tom || this.$el.tomselect) return;
+
+                this.$nextTick(() => {
+                    if (this.tom || this.$el.tomselect) return;
+
+                    const initialSearch = this.$el.getAttribute('data-initial-search');
+
+                    let config = {
+                        items: this.value ? [this.value] : [],
+                        placeholder: (initialSearch && !this.value) ? initialSearch : '{{ $placeholder }}',
+                        valueField: 'value',
+                        labelField: 'text',
+                        searchField: ['text'],
+                        preload: 'focus',
+                        plugins: ['clear_button'],
+                        create: false,
+                        sortField: {
+                            field: 'text',
+                            direction: 'asc'
+                        },
+                        onItemAdd: (value, item) => {
+                            this.value = value;
+                            if (this.tom.options[value]) {
+                                this.$dispatch('option-selected', { name: '{{ $attributes->get("name") }}', value: value, item: this.tom.options[value] });
+                            }
+                        },
+                        onItemRemove: (value) => {
+                            this.value = null;
+                        },
+                        onClear: () => {
+                            this.value = null;
+                        }
+                    };
+
+                    /* Opción ya elegida: se precarga para que se vea la etiqueta
+                       sin esperar a la búsqueda. */
+                    let initialLabel = this.$el.getAttribute('data-initial-label');
+                    if (this.value && initialLabel) {
+                        config.options = [{value: this.value, text: initialLabel, type: 'unknown'}];
+                        config.items = [this.value];
+                    }
+
+{!! $loadSnippet !!}
+
+{!! $createSnippet !!}
 
                     this.tom = new TomSelect(this.$el, config);
 
-                    /* Handle Initial Search - Search on Focus */
+                    /* Búsqueda inicial sugerida: se dispara al enfocar. */
                     this.tom.on('focus', () => {
-                        /* Only trigger if no value selected and search box is empty */
                         if (initialSearch && !this.value && this.tom.getValue() === '') {
-                             /* Use setTimeout to ensure focus is fully handled */
                             setTimeout(() => {
                                 if (!this.tom) return;
                                 this.tom.setTextboxValue(initialSearch);

@@ -29,7 +29,10 @@ class ReceiptImportTest extends TestCase
     public function test_analyze_populates_rows_and_marks_existing(): void
     {
         $this->actingAs(User::factory()->admin()->create());
-        Product::factory()->create(['name' => 'Vidrio Templado A10', 'sku' => 'VTA10']);
+        // is_active explícito: la factory lo pone al azar (90% activo) y la
+        // búsqueda solo mira productos activos, así que sin esto el test fallaba
+        // una de cada diez corridas.
+        Product::factory()->create(['name' => 'Vidrio Templado A10', 'sku' => 'VTA10', 'is_active' => true]);
         Setting::set('ai_provider', 'anthropic');
         Setting::set('anthropic_api_key', 'sk-test');
 
