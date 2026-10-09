@@ -6,12 +6,14 @@ use Illuminate\Console\Command;
 use App\Services\Messaging\TelegramService;
 use App\Services\Telegram\BotHandler;
 use App\Models\TelegramConversation;
+use App\Models\Setting;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class TelegramPollingCommand extends Command
 {
     protected $signature = 'telegram:poll';
-    protected $description = 'Start Telegram bot polling (development only)';
+    protected $description = 'Escucha los mensajes del bot de Telegram (lo levanta supervisor en el servidor).';
 
     private static function pidFile(): string
     {
@@ -32,8 +34,31 @@ class TelegramPollingCommand extends Command
         return file_exists("/proc/{$pid}");
     }
 
+    /**
+     * ¿El bot está configurado y encendido?
+     *
+     * Se consulta al arrancar y cada tanto durante la escucha: el proceso es
+     * largo y el token se carga desde Ajustes, así que si saliéramos a esperar
+     * para siempre nunca tomaríamos un token cargado después. Salir y dejar que
+     * supervisor nos vuelva a levantar es lo que hace que funcione sin redeploy.
+     */
+    private function botConfigurado(): bool
+    {
+        Cache::forget('settings.telegram_enabled');
+        Cache::forget('settings.telegram_bot_token');
+
+        return Setting::get('telegram_enabled', '0') === '1'
+            && trim((string) Setting::get('telegram_bot_token', '')) !== '';
+    }
+
     public function handle(TelegramService $telegram, BotHandler $handler): int
     {
+        if (! $this->botConfigurado()) {
+            $this->warn('El bot de Telegram está apagado o sin token (Ajustes → Sistema). No hay nada que escuchar.');
+
+            return Command::SUCCESS;
+        }
+
         $pidFile = self::pidFile();
 
         if (file_exists($pidFile)) {
@@ -65,6 +90,14 @@ class TelegramPollingCommand extends Command
             if (file_exists(self::stopFile())) {
                 $this->info('Stop signal received. Exiting.');
                 return Command::SUCCESS; // shutdown function cleans files
+            }
+
+            // Apagado desde Ajustes o token cambiado: salimos prolijo. Supervisor
+            // nos vuelve a levantar y, si corresponde, arrancamos con el token nuevo.
+            if (! $this->botConfigurado()) {
+                $this->warn('El bot quedó apagado o sin token en Ajustes. Dejo de escuchar.');
+
+                return Command::SUCCESS;
             }
 
             try {
@@ -106,6 +139,12 @@ class TelegramPollingCommand extends Command
                     Log::info('Telegram polling timeout (transient, retrying)', ['error' => $msg]);
                     sleep(2);
                     continue;
+                }
+
+                // Telegram no deja escuchar y tener webhook al mismo tiempo.
+                if (str_contains($msg, '409') || str_contains(mb_strtolower($msg), 'conflict')) {
+                    $this->error('Hay un webhook configurado en este bot: Telegram no permite las dos formas a la vez.');
+                    Log::error('Telegram polling en conflicto con un webhook activo', ['error' => $msg]);
                 }
 
                 $this->error('Polling error: ' . $msg);
