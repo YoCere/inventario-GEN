@@ -34,6 +34,13 @@ class BotHandler
     public function dispatch(array $update): void
     {
         try {
+            // Toque de un botón en línea. Llega con otra forma que un mensaje,
+            // así que se atiende antes de cualquier lectura de 'message'.
+            if (isset($update['callback_query'])) {
+                $this->dispatchButton($update['callback_query']);
+                return;
+            }
+
             $message = $update['message'] ?? null;
 
             if (!$message) {
@@ -866,6 +873,72 @@ class BotHandler
         }
     }
 
+    /**
+     * Entrada única de los botones en línea del bot.
+     *
+     * Acá vive todo lo que vale para CUALQUIER flujo con botones, para que un
+     * flujo nuevo solo tenga que agregar su prefijo al ruteo del final:
+     *  - el que toca el botón tiene que ser el dueño del chat donde vive ese
+     *    botón (nadie opera el registro de otra persona reenviando un mensaje);
+     *  - pasa por el mismo portón de acceso y la misma pausa del bot que los
+     *    mensajes de texto, sin abrir una puerta nueva;
+     *  - el toque siempre se confirma antes de trabajar, así el botón no queda
+     *    girando en el celular aunque después algo falle.
+     */
+    protected function dispatchButton(array $callbackQuery): void
+    {
+        $touchId = (string) ($callbackQuery['id'] ?? '');
+        $actorId = $callbackQuery['from']['id'] ?? null;
+        // Chat donde el bot mandó el mensaje con botones = dueño de ese registro.
+        $ownerId = $callbackQuery['message']['chat']['id'] ?? null;
+        $payload = trim((string) ($callbackQuery['data'] ?? ''));
+
+        if ($touchId === '' || $actorId === null || $ownerId === null || $payload === '') {
+            return;
+        }
+
+        $actorChatId = (string) $actorId;
+        $ownerChatId = (string) $ownerId;
+
+        if ($actorChatId !== $ownerChatId) {
+            Log::warning('Botón de Telegram tocado por un chat ajeno', [
+                'actor' => $actorChatId,
+                'owner' => $ownerChatId,
+            ]);
+            $this->telegram->answerCallbackQuery($touchId, 'Este botón no es tuyo.', true);
+            return;
+        }
+
+        if (!$this->authHandler->isAuthenticated($actorChatId)) {
+            $this->telegram->answerCallbackQuery(
+                $touchId,
+                'Tu sesión venció. Escribí un mensaje para entrar de nuevo.',
+                true
+            );
+            return;
+        }
+
+        $adminChatId = Setting::get('telegram_admin_chat_id', '');
+        if (Setting::get('telegram_bot_paused', '0') === '1' && $actorChatId !== $adminChatId) {
+            $this->telegram->answerCallbackQuery($touchId, 'El bot está detenido por ahora.', true);
+            return;
+        }
+
+        $this->telegram->answerCallbackQuery($touchId);
+
+        $messageId = isset($callbackQuery['message']['message_id'])
+            ? (int) $callbackQuery['message']['message_id']
+            : null;
+
+        // Primer tramo del dato = flujo dueño del botón.
+        [$flow, $action] = array_pad(explode(':', $payload, 2), 2, '');
+
+        match ($flow) {
+            'prod'  => $this->productHandler->handleButton($actorChatId, $action, $messageId),
+            default => Log::warning('Botón de Telegram de un flujo desconocido', ['data' => $payload]),
+        };
+    }
+
     protected function handleVoiceMessage(string $chatId, array $message): void
     {
         if (Setting::get('ai_voice_enabled', '0') !== '1') {
@@ -1011,6 +1084,8 @@ class BotHandler
             'nuevo:cantidad'         => 'cantidad inicial',
             'nuevo:foto'             => 'foto (o escribe omitir)',
             'nuevo:confirmar'        => 'confirmación (sí/no)',
+            'nuevo:revisar'          => 'que toques Guardar o Editar',
+            'nuevo:editar'           => 'que elijas qué dato corregir',
             'venta_rapida:cantidad'  => 'cantidad a vender',
             'venta_rapida:descuento' => 'descuento (número, %, o no)',
             'venta_rapida:metodo_pago' => 'método de pago (1=efectivo, 2=transferencia)',

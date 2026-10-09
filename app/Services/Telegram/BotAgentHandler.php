@@ -24,7 +24,7 @@ class BotAgentHandler
         protected TtsService $tts,
     ) {}
 
-    public function handle(string $chatId, string $userText, bool $withVoiceReply = false): void
+    public function handle(string $chatId, string $userText, bool $withVoiceReply = false, string $source = 'texto'): void
     {
         try {
             $telegramUser = TelegramUser::find($chatId);
@@ -34,6 +34,7 @@ class BotAgentHandler
                 user: $user,
                 chatId: $chatId,
                 channel: 'telegram',
+                source: $source,
             );
 
             // Load conversation memory (last N turns)
@@ -109,7 +110,9 @@ class BotAgentHandler
     public function handleVoice(string $chatId, string $transcript): void
     {
         $withVoiceReply = \App\Models\Setting::get('ai_voice_reply', '0') === '1';
-        $this->handle($chatId, $transcript, $withVoiceReply);
+        // 'audio' viaja hasta las herramientas: el alta dictada se revisa antes
+        // de guardarse, porque la transcripción pudo equivocar cualquier dato.
+        $this->handle($chatId, $transcript, $withVoiceReply, source: 'audio');
     }
 
     private function loadHistory(TelegramConversation $conversation): array
