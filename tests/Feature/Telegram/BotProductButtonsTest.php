@@ -245,7 +245,13 @@ class BotProductButtonsTest extends TestCase
         );
     }
 
-    public function test_el_alta_escrita_paso_a_paso_sigue_confirmando_por_texto_sin_botones(): void
+    /**
+     * Esta regla cambió: antes el resumen con botones era SOLO para las altas
+     * dictadas, porque se asumía que lo único que se equivoca es la transcripción.
+     * La dueña pidió los botones también en el alta escrita (2026-10-12): escribir
+     * mal un precio pasa igual, y corregirlo con un botón evita rehacer todo.
+     */
+    public function test_el_alta_escrita_paso_a_paso_tambien_se_revisa_con_botones(): void
     {
         $this->texto('/nuevo');
         $this->texto('Cinturón de cuero');
@@ -256,12 +262,12 @@ class BotProductButtonsTest extends TestCase
         $this->texto('omitir');
 
         $resumen = $this->ultimoMensaje();
-        $this->assertStringContainsString('Resumen del producto', $resumen['text']);
-        $this->assertStringContainsString('¿Confirmar crear producto?', $resumen['text']);
-        $this->assertNull($resumen['keyboard'], 'El alta escrita no cambia: se confirma escribiendo sí.');
-        $this->assertSame('nuevo:confirmar', TelegramConversation::where('chat_id', self::CHAT)->value('step'));
-        $this->assertSame(0, Product::count());
+        $this->assertStringContainsString('Cinturón de cuero', $resumen['text']);
+        $this->assertNotNull($resumen['keyboard'], 'El alta escrita ahora también trae botones.');
+        $this->assertSame('nuevo:revisar', TelegramConversation::where('chat_id', self::CHAT)->value('step'));
+        $this->assertSame(0, Product::count(), 'Nada se guarda hasta tocar Guardar.');
 
+        // Escribir "sí" sigue valiendo para quien no toca botones.
         $this->texto('sí');
 
         $this->assertSame(1, Product::count());

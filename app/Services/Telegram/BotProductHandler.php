@@ -57,6 +57,7 @@ class BotProductHandler
         protected TelegramService $telegram,
         protected ProductService $productService,
         protected CategoryService $categoryService,
+        protected RespuestaNatural $respuesta,
     ) {}
 
     public function handle(string $chatId, array $message): void
@@ -126,6 +127,10 @@ class BotProductHandler
 
     private function askNombre(string $chatId, TelegramConversation $conversation, string $nombre): void
     {
+        // "el nombre es mate imperial" → "mate imperial". Si la limpieza se lleva
+        // todo (respuesta de una sola palabra, tipo "cinto"), vale el original.
+        $nombre = $this->respuesta->valor($nombre, ['nombre', 'llama', 'titulo']) ?: trim($nombre);
+
         if (empty($nombre) || strlen($nombre) < 3) {
             $this->telegram->sendMessage($chatId, "❌ El nombre debe tener al menos 3 caracteres.");
             return;
@@ -202,8 +207,25 @@ class BotProductHandler
             }
         }
 
+        // ── Lo que dijo, sin la cáscara ──────────────────────────────────────
+        // "ponele mates" → "mates". Antes la frase entera se buscaba tal cual y
+        // terminaba ofreciendo crear una categoría llamada "ponele mates".
+        $valor = $this->respuesta->valor($input, ['categoria', 'rubro', 'seccion']);
+
+        if ($valor === '') {
+            // Puro relleno: no hay dato que buscar. Volver a preguntar es correcto;
+            // ofrecer crear algo con esa frase, no.
+            $this->telegram->sendMessage(
+                $chatId,
+                "🤔 No te entendí la categoría.\n\n" . $this->buildCategoryPrompt()
+            );
+            return;
+        }
+
+        $inputLow = mb_strtolower($valor);
+
         // ── Text search (fuzzy) ──────────────────────────────────────────────
-        $category = $this->findCategoryByText($input);
+        $category = $this->findCategoryByText($valor);
         if ($category) {
             $this->setCategoryAndAdvance($chatId, $conversation, $data, $category);
             return;
@@ -215,9 +237,10 @@ class BotProductHandler
             ->limit(3)
             ->get();
 
-        $data['categoria_pending'] = $input;
+        $data['categoria_pending'] = $valor;
         $conversation->update(['data' => $data, 'expires_at' => now()->addMinutes(30)]);
 
+        $input = $valor; // lo que se ofrece crear es el dato limpio, no la frase
         $msg = "❓ No encontré \"<b>{$input}</b>\".\n\n";
         if ($similar->isNotEmpty()) {
             $msg .= "¿Quisiste decir?\n";
@@ -237,6 +260,15 @@ class BotProductHandler
         $cat = Category::whereRaw('LOWER(name) = LOWER(?)', [$input])->first();
         if ($cat) {
             return $cat;
+        }
+
+        // Singular y plural: dice "mates" y la categoría guardada es "Mate", o al
+        // revés. Sin esto se crean "Mate" y "Mates" como categorías distintas.
+        foreach ($this->respuesta->variantes($input) as $variante) {
+            $cat = Category::whereRaw('LOWER(name) = LOWER(?)', [$variante])->first();
+            if ($cat) {
+                return $cat;
+            }
         }
 
         // Contains match
@@ -522,13 +554,19 @@ class BotProductHandler
     }
     private function showConfirm(string $chatId, TelegramConversation $conversation, array $data): void
     {
-        // El alta dictada se revisa con botones: la transcripción pudo escribir
-        // mal cualquier dato y hay que poder corregirlo sin repetir el audio.
-        if (!empty($data['origen_audio'])) {
-            $this->showReview($chatId, $conversation, $data);
-            return;
-        }
+        // Toda alta se revisa con botones, haya venido dictada o escrita. Empezó
+        // siendo solo para las dictadas, porque la transcripción se equivoca; en
+        // el uso real la gente también se equivoca escribiendo, y corregir con un
+        // botón es mucho más fácil que volver a empezar el alta entera.
+        $this->showReview($chatId, $conversation, $data);
+    }
 
+    /**
+     * Resumen viejo, en texto plano, sin botones. Queda para las conversaciones
+     * que ya estaban en el paso 'nuevo:confirmar' cuando se desplegó el cambio.
+     */
+    private function showConfirmPlano(string $chatId, TelegramConversation $conversation, array $data): void
+    {
         $conversation->update([
             'step' => 'nuevo:confirmar',
             'data' => $data,

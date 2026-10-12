@@ -29,6 +29,7 @@ class BotHandler
         protected VisionService $visionService,
         protected ReminderHandler $reminderHandler,
         protected \App\Services\QuickSaleService $quickSale,
+        protected IntentDetector $intents,
     ) {}
 
     public function dispatch(array $update): void
@@ -242,6 +243,11 @@ class BotHandler
             // Free text routing
             // Interceptor de venta directa (determinista) antes del agente IA.
             if ($this->saleHandler->tryQuickSell($chatId, $text)) {
+                return;
+            }
+
+            // Qué quiere hacer, antes de asumir que escribió el nombre de un producto.
+            if ($this->tryIntent($chatId, $text)) {
                 return;
             }
 
@@ -1014,6 +1020,11 @@ class BotHandler
                 return;
             }
 
+            // Mismo criterio que por texto: primero qué quiere hacer, después buscar.
+            if ($this->tryIntent($chatId, $transcript)) {
+                return;
+            }
+
             // Same routing as text — product search first, agent only for conversational queries
             if ($this->isConversationalQuery($transcript)) {
                 $this->agentHandler->handleVoice($chatId, $transcript);
@@ -1029,6 +1040,46 @@ class BotHandler
             Log::error('Voice message error', ['chat_id' => $chatId, 'error' => $e->getMessage()]);
             $this->telegram->sendMessage($chatId, "❌ Error al procesar el audio: " . $e->getMessage());
         }
+    }
+
+    /**
+     * Atiende el mensaje si lo que pide es empezar algo (hoy: dar de alta un
+     * producto). Devuelve true cuando ya lo atendió.
+     *
+     * Por qué antes de buscar: "crear un producto" no es el nombre de nada, y la
+     * búsqueda difusa igual encontraba parecidos y mostraba una ficha ajena.
+     */
+    protected function tryIntent(string $chatId, string $text): bool
+    {
+        $intencion = $this->intents->detect($text);
+
+        if (! $intencion || $intencion['intent'] !== IntentDetector::ALTA_PRODUCTO) {
+            return false;
+        }
+
+        $this->startProductCreation($chatId, $text, $intencion['resto']);
+
+        return true;
+    }
+
+    /**
+     * Abre el alta. Si el mensaje además trae datos ("crear producto mate
+     * imperial 250 350 20") y el asistente está encendido, se los pasa al
+     * agente, que sabe repartirlos en los campos; si no, arranca el paso a paso.
+     */
+    protected function startProductCreation(string $chatId, string $textoOriginal, string $resto): void
+    {
+        $traeDatos = $resto !== '' && str_word_count($resto) >= 2;
+
+        if ($traeDatos && Setting::get('ai_chatbot_enabled') === '1') {
+            Log::info('Intención de alta con datos → agente', ['chatId' => $chatId]);
+            $this->agentHandler->handle($chatId, $textoOriginal);
+
+            return;
+        }
+
+        Log::info('Intención de alta → paso a paso', ['chatId' => $chatId]);
+        $this->productHandler->start($chatId);
     }
 
     /**
@@ -1049,23 +1100,36 @@ class BotHandler
 
         $lower = mb_strtolower(trim($text));
 
-        // 1. Restart intent → auto-cancel and route to agent / show menu
-        $restartKeywords = ['crear producto', 'registrar producto', 'nuevo producto', 'agregar producto',
-                            'empezar de nuevo', 'cancelar todo', 'salir del proceso'];
-        foreach ($restartKeywords as $kw) {
-            if (str_contains($lower, $kw)) {
-                $conv->delete();
-                if (Setting::get('ai_chatbot_enabled') === '1') {
-                    $this->telegram->sendMessage($chatId, "🔄 Proceso anterior cancelado.");
-                    $this->agentHandler->handle($chatId, $text);
-                } else {
-                    $this->telegram->sendMessage(
-                        $chatId,
-                        "🔄 Proceso anterior cancelado. Usa /nuevo, /devolver, o escribe un nombre para buscar."
-                    );
-                }
-                return true;
+        // 1. Pidió empezar de nuevo → se cancela lo anterior y se arranca lo pedido.
+        //    La intención sale del mismo detector que usa el ruteo principal: una
+        //    sola lista de frases, no dos que hay que acordarse de sincronizar.
+        $intencion = $this->intents->detect($text);
+        $frasesDeSalida = ['empezar de nuevo', 'cancelar todo', 'salir del proceso'];
+        $quiereSalir = false;
+
+        foreach ($frasesDeSalida as $frase) {
+            if (str_contains($lower, $frase)) {
+                $quiereSalir = true;
+                break;
             }
+        }
+
+        if ($intencion || $quiereSalir) {
+            $conv->delete();
+            $this->telegram->sendMessage($chatId, "🔄 Proceso anterior cancelado.");
+
+            if ($intencion && $intencion['intent'] === IntentDetector::ALTA_PRODUCTO) {
+                $this->startProductCreation($chatId, $text, $intencion['resto']);
+            } elseif (Setting::get('ai_chatbot_enabled') === '1') {
+                $this->agentHandler->handle($chatId, $text);
+            } else {
+                $this->telegram->sendMessage(
+                    $chatId,
+                    "Usa /nuevo, /devolver, o escribe un nombre para buscar."
+                );
+            }
+
+            return true;
         }
 
         // 2. Only block clearly out-of-context input (very long sentences, > 15 words).
