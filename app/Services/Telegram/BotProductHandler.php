@@ -58,6 +58,7 @@ class BotProductHandler
         protected ProductService $productService,
         protected CategoryService $categoryService,
         protected RespuestaNatural $respuesta,
+        protected InterpretePaso $interprete,
     ) {}
 
     public function handle(string $chatId, array $message): void
@@ -220,6 +221,17 @@ class BotProductHandler
             return;
         }
 
+        // ── Por letras no coincidió: que lo piense ───────────────────────────
+        // "las cosas para tomar mate" no comparte una sola letra útil con
+        // "Mates", y cualquier persona sabe que es eso. Se consulta acá y no
+        // antes a propósito: solo cuando lo barato ya falló.
+        $category = $this->interpretarCategoriaConIa($input);
+
+        if ($category) {
+            $this->setCategoryAndAdvance($chatId, $conversation, $data, $category);
+            return;
+        }
+
         // ── No se entendió: la segunda vez hay que preguntar DISTINTO ────────
         // Repetir el mismo texto es lo que hace que la persona crea que el bot se
         // colgó y abandone. Al segundo fallo seguido se pasa a botones.
@@ -274,6 +286,46 @@ class BotProductHandler
         $msg .= "¿Crear la categoría <b>\"{$input}\"</b>?\n<i>Responde sí/no o escribe otro nombre.</i>";
 
         $this->telegram->sendMessage($chatId, $msg);
+    }
+
+    /**
+     * Le pregunta al modelo a cuál de las categorías existentes se refería.
+     *
+     * Se le manda la frase ENTERA, no la limpia: el contexto ("las cosas para
+     * tomar mate") es justamente lo que le permite acertar. Lo que conteste se
+     * verifica contra la base, así que nunca puede inventar una categoría nueva
+     * ni escribir mal una que existe.
+     *
+     * Elegida la categoría, el flujo sigue sin pedir confirmación. Es a
+     * propósito: sumar un "¿te referís a Mates?" devolvería justo lo que
+     * veníamos a sacar, una pregunta de más. La red por si el modelo se
+     * equivoca es el resumen final, que muestra la categoría y tiene botón
+     * Editar; además el bot avisa en el momento con "✅ Categoría: Mates".
+     */
+    private function interpretarCategoriaConIa(string $frase): ?Category
+    {
+        $nombres = Category::orderBy('name')->pluck('name')->all();
+
+        if ($nombres === []) {
+            return null;
+        }
+
+        $elegida = $this->interprete->elegirOpcion($frase, '¿Cuál es la categoría?', $nombres);
+
+        if ($elegida === null) {
+            return null;
+        }
+
+        $categoria = Category::whereRaw('LOWER(name) = LOWER(?)', [$elegida])->first();
+
+        if ($categoria) {
+            Log::info('Categoría resuelta por la IA', [
+                'dijo' => mb_substr($frase, 0, 60),
+                'entendio' => $categoria->name,
+            ]);
+        }
+
+        return $categoria;
     }
 
     /**
