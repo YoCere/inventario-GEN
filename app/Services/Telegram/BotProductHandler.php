@@ -57,6 +57,8 @@ class BotProductHandler
         protected TelegramService $telegram,
         protected ProductService $productService,
         protected CategoryService $categoryService,
+        protected RespuestaNatural $respuesta,
+        protected InterpretePaso $interprete,
     ) {}
 
     public function handle(string $chatId, array $message): void
@@ -126,6 +128,10 @@ class BotProductHandler
 
     private function askNombre(string $chatId, TelegramConversation $conversation, string $nombre): void
     {
+        // "el nombre es mate imperial" → "mate imperial". Si la limpieza se lleva
+        // todo (respuesta de una sola palabra, tipo "cinto"), vale el original.
+        $nombre = $this->respuesta->valor($nombre, ['nombre', 'llama', 'titulo']) ?: trim($nombre);
+
         if (empty($nombre) || strlen($nombre) < 3) {
             $this->telegram->sendMessage($chatId, "❌ El nombre debe tener al menos 3 caracteres.");
             return;
@@ -202,22 +208,73 @@ class BotProductHandler
             }
         }
 
-        // ── Text search (fuzzy) ──────────────────────────────────────────────
-        $category = $this->findCategoryByText($input);
+        // ── Lo que dijo, sin la cáscara ──────────────────────────────────────
+        // "ponele mates" → "mates". Antes la frase entera se buscaba tal cual y
+        // terminaba ofreciendo crear una categoría llamada "ponele mates".
+        $valor = $this->respuesta->valor($input, ['categoria', 'rubro', 'seccion']);
+
+        // ── Lo encontrado, si se entendió algo ───────────────────────────────
+        $category = $valor !== '' ? $this->findCategoryByText($valor) : null;
+
         if ($category) {
             $this->setCategoryAndAdvance($chatId, $conversation, $data, $category);
             return;
         }
 
-        // ── Not found → ask to create ────────────────────────────────────────
+        // ── Por letras no coincidió: que lo piense ───────────────────────────
+        // "las cosas para tomar mate" no comparte una sola letra útil con
+        // "Mates", y cualquier persona sabe que es eso. Se consulta acá y no
+        // antes a propósito: solo cuando lo barato ya falló.
+        $category = $this->interpretarCategoriaConIa($input);
+
+        if ($category) {
+            $this->setCategoryAndAdvance($chatId, $conversation, $data, $category);
+            return;
+        }
+
+        // ── No se entendió: la segunda vez hay que preguntar DISTINTO ────────
+        // Repetir el mismo texto es lo que hace que la persona crea que el bot se
+        // colgó y abandone. Al segundo fallo seguido se pasa a botones.
+        $data['categoria_fallos'] = ($data['categoria_fallos'] ?? 0) + 1;
+
+        if ($valor !== '') {
+            $intentos = $data['categoria_intentos'] ?? [];
+            $intentos[] = $valor;
+            $data['categoria_intentos'] = array_slice($intentos, -4);
+        }
+
+        if ($data['categoria_fallos'] >= 2) {
+            unset($data['categoria_pending']);
+            $conversation->update(['data' => $data, 'expires_at' => now()->addMinutes(30)]);
+            $this->ofrecerCategoriasConBotones($chatId, $data);
+
+            return;
+        }
+
+        if ($valor === '') {
+            // Puro relleno: no hay dato que buscar. Volver a preguntar es correcto;
+            // ofrecer crear algo con esa frase, no.
+            $conversation->update(['data' => $data, 'expires_at' => now()->addMinutes(30)]);
+            $this->telegram->sendMessage(
+                $chatId,
+                "🤔 No te entendí la categoría.\n\n" . $this->buildCategoryPrompt()
+            );
+
+            return;
+        }
+
+        // ── Primer fallo con un nombre concreto → ofrecer crearla ────────────
+        $inputLow = mb_strtolower($valor);
+
         $similar = Category::whereRaw('LOWER(name) LIKE ?', ['%' . $inputLow . '%'])
             ->orderBy('name')
             ->limit(3)
             ->get();
 
-        $data['categoria_pending'] = $input;
+        $data['categoria_pending'] = $valor;
         $conversation->update(['data' => $data, 'expires_at' => now()->addMinutes(30)]);
 
+        $input = $valor; // lo que se ofrece crear es el dato limpio, no la frase
         $msg = "❓ No encontré \"<b>{$input}</b>\".\n\n";
         if ($similar->isNotEmpty()) {
             $msg .= "¿Quisiste decir?\n";
@@ -231,12 +288,140 @@ class BotProductHandler
         $this->telegram->sendMessage($chatId, $msg);
     }
 
+    /**
+     * Le pregunta al modelo a cuál de las categorías existentes se refería.
+     *
+     * Se le manda la frase ENTERA, no la limpia: el contexto ("las cosas para
+     * tomar mate") es justamente lo que le permite acertar. Lo que conteste se
+     * verifica contra la base, así que nunca puede inventar una categoría nueva
+     * ni escribir mal una que existe.
+     *
+     * Elegida la categoría, el flujo sigue sin pedir confirmación. Es a
+     * propósito: sumar un "¿te referís a Mates?" devolvería justo lo que
+     * veníamos a sacar, una pregunta de más. La red por si el modelo se
+     * equivoca es el resumen final, que muestra la categoría y tiene botón
+     * Editar; además el bot avisa en el momento con "✅ Categoría: Mates".
+     */
+    private function interpretarCategoriaConIa(string $frase): ?Category
+    {
+        $nombres = Category::orderBy('name')->pluck('name')->all();
+
+        if ($nombres === []) {
+            return null;
+        }
+
+        $elegida = $this->interprete->elegirOpcion($frase, '¿Cuál es la categoría?', $nombres);
+
+        if ($elegida === null) {
+            return null;
+        }
+
+        $categoria = Category::whereRaw('LOWER(name) = LOWER(?)', [$elegida])->first();
+
+        if ($categoria) {
+            Log::info('Categoría resuelta por la IA', [
+                'dijo' => mb_substr($frase, 0, 60),
+                'entendio' => $categoria->name,
+            ]);
+        }
+
+        return $categoria;
+    }
+
+    /**
+     * Segunda vez que no se entiende: en vez de repetir la pregunta, se muestran
+     * las categorías que ya existen como botones, ordenadas por parecido con lo
+     * que la persona venía intentando decir.
+     *
+     * @param array<string, mixed> $data
+     */
+    private function ofrecerCategoriasConBotones(string $chatId, array $data): void
+    {
+        $intentos = $data['categoria_intentos'] ?? [];
+        $sugeridas = $this->categoriasParecidas($intentos);
+
+        if ($sugeridas->isEmpty()) {
+            // Sin categorías cargadas todavía: no hay nada que ofrecer.
+            $this->telegram->sendMessage(
+                $chatId,
+                "🤔 Seguimos sin entendernos.\n\n" .
+                "Escribí solo el nombre de la categoría, por ejemplo: <b>Cintos</b>."
+            );
+
+            return;
+        }
+
+        $teclado = TelegramKeyboard::make();
+
+        foreach ($sugeridas as $categoria) {
+            $teclado->button($categoria->name, self::BOTON . 'cat:' . $categoria->id);
+        }
+
+        $ultimoIntento = $intentos !== [] ? (string) end($intentos) : '';
+
+        if ($ultimoIntento !== '') {
+            $teclado->button("➕ Crear «{$ultimoIntento}»", self::BOTON . 'catnueva');
+        }
+
+        $teclado->button('✖️ Dejarlo por ahora', self::BOTON . 'cancelar');
+
+        $this->telegram->sendMessage(
+            $chatId,
+            "Mejor elegí tocando. ¿En cuál va este producto?",
+            'HTML',
+            $teclado->toArray()
+        );
+    }
+
+    /**
+     * Las categorías más parecidas a lo que la persona intentó decir. Sin
+     * intentos legibles, las primeras por orden alfabético: algo hay que ofrecer.
+     *
+     * @param  array<int, string>  $intentos
+     * @return \Illuminate\Support\Collection<int, Category>
+     */
+    private function categoriasParecidas(array $intentos): \Illuminate\Support\Collection
+    {
+        $categorias = Category::orderBy('name')->get();
+
+        if ($categorias->isEmpty() || $intentos === []) {
+            return $categorias->take(3);
+        }
+
+        return $categorias
+            ->sortByDesc(function (Category $categoria) use ($intentos) {
+                $mejor = 0.0;
+
+                foreach ($intentos as $intento) {
+                    similar_text(
+                        mb_strtolower($categoria->name),
+                        mb_strtolower((string) $intento),
+                        $porcentaje
+                    );
+                    $mejor = max($mejor, $porcentaje);
+                }
+
+                return $mejor;
+            })
+            ->take(3)
+            ->values();
+    }
+
     private function findCategoryByText(string $input): ?Category
     {
         // Exact match (case-insensitive)
         $cat = Category::whereRaw('LOWER(name) = LOWER(?)', [$input])->first();
         if ($cat) {
             return $cat;
+        }
+
+        // Singular y plural: dice "mates" y la categoría guardada es "Mate", o al
+        // revés. Sin esto se crean "Mate" y "Mates" como categorías distintas.
+        foreach ($this->respuesta->variantes($input) as $variante) {
+            $cat = Category::whereRaw('LOWER(name) = LOWER(?)', [$variante])->first();
+            if ($cat) {
+                return $cat;
+            }
         }
 
         // Contains match
@@ -264,7 +449,9 @@ class BotProductHandler
     {
         $data['categoria_id']     = $category->id;
         $data['categoria_nombre'] = $category->name;
-        unset($data['categoria_pending']);
+        // Acertó: la cuenta de intentos fallidos arranca de cero si más adelante
+        // vuelve a este paso desde el menú de corrección.
+        unset($data['categoria_pending'], $data['categoria_fallos'], $data['categoria_intentos']);
 
         $this->telegram->sendMessage($chatId, "✅ Categoría: <b>{$category->name}</b>");
 
@@ -522,13 +709,19 @@ class BotProductHandler
     }
     private function showConfirm(string $chatId, TelegramConversation $conversation, array $data): void
     {
-        // El alta dictada se revisa con botones: la transcripción pudo escribir
-        // mal cualquier dato y hay que poder corregirlo sin repetir el audio.
-        if (!empty($data['origen_audio'])) {
-            $this->showReview($chatId, $conversation, $data);
-            return;
-        }
+        // Toda alta se revisa con botones, haya venido dictada o escrita. Empezó
+        // siendo solo para las dictadas, porque la transcripción se equivoca; en
+        // el uso real la gente también se equivoca escribiendo, y corregir con un
+        // botón es mucho más fácil que volver a empezar el alta entera.
+        $this->showReview($chatId, $conversation, $data);
+    }
 
+    /**
+     * Resumen viejo, en texto plano, sin botones. Queda para las conversaciones
+     * que ya estaban en el paso 'nuevo:confirmar' cuando se desplegó el cambio.
+     */
+    private function showConfirmPlano(string $chatId, TelegramConversation $conversation, array $data): void
+    {
         $conversation->update([
             'step' => 'nuevo:confirmar',
             'data' => $data,
@@ -854,6 +1047,50 @@ class BotProductHandler
 
             // 'fotos:otra': solo recordamos qué esperamos; la foto llega como mensaje.
             $this->telegram->sendMessage($chatId, "Mandá la siguiente foto.");
+            return;
+        }
+
+        // Botones del paso de categoría: elegir una existente, crear la que se
+        // intentó decir, o dejarlo. Viven en 'nuevo:categoria', que no es un paso
+        // de revisión, así que se atienden antes del guard de abajo.
+        if ($action === 'cancelar' || str_starts_with($action, 'cat:') || $action === 'catnueva') {
+            if (! $conversation || $conversation->step !== 'nuevo:categoria') {
+                $this->telegram->sendMessage($chatId, "Este registro ya no está disponible. Si querés cargar un producto, usá /nuevo.");
+                return;
+            }
+
+            $datosCat = $conversation->data ?? [];
+
+            if ($action === 'cancelar') {
+                $conversation->delete();
+                $this->telegram->sendMessage(
+                    $chatId,
+                    "Listo, lo dejamos acá. Cuando quieras, escribí <b>crear un producto</b> y lo retomamos."
+                );
+                return;
+            }
+
+            if ($action === 'catnueva') {
+                $intentos = $datosCat['categoria_intentos'] ?? [];
+                $nombre = $intentos !== [] ? (string) end($intentos) : '';
+
+                if ($nombre === '') {
+                    $this->telegram->sendMessage($chatId, "Escribime el nombre de la categoría que querés crear.");
+                    return;
+                }
+
+                $this->createAndAdvanceCategory($chatId, $conversation, $datosCat, $nombre);
+                return;
+            }
+
+            $categoria = Category::find((int) substr($action, strlen('cat:')));
+
+            if (! $categoria) {
+                $this->telegram->sendMessage($chatId, "Esa categoría ya no existe. Elegí otra.");
+                return;
+            }
+
+            $this->setCategoryAndAdvance($chatId, $conversation, $datosCat, $categoria);
             return;
         }
 
