@@ -11,6 +11,7 @@ use App\Models\Unit;
 use App\Models\Warehouse;
 use App\Services\CategoryService;
 use App\Services\ProductService;
+use App\Settings\ProductIntakeFields;
 use App\Shop\Models\ProductImage;
 use App\Shop\Services\ImageProcessor;
 use Illuminate\Support\Facades\Storage;
@@ -91,6 +92,10 @@ class ProductForm extends Component
             'categoryName', 'unitName', 'photo', 'location_id', 'hasMultiLocationStock',
             'is_public', 'featured', 'gallery', 'newUpload', 'imagesToDelete', 'primaryImageId',
         ]);
+        // El aviso de stock arranca con lo configurado en Ajustes → Alta de
+        // productos, el mismo valor que usa el bot. Antes arrancaba en 0, así que
+        // según por dónde se cargara el producto el aviso quedaba distinto.
+        $this->min_stock = (int) ProductIntakeFields::porDefecto('stock_minimo');
         $this->is_active = true;
         // Default público=true: queremos que productos creados aparezcan en el
         // catálogo /tienda sin acción extra del admin. Si no quiere mostrarlo,

@@ -68,7 +68,15 @@ class SettingsPage extends Component
 
     public function save(): void
     {
-        $fields = $this->currentFields();
+        // Los campos bloqueados (el nombre y los precios del alta de productos)
+        // quedan fuera de la validación y del guardado: lo que llegue del
+        // navegador para esas claves se descarta sin más. Deshabilitar la
+        // casilla en pantalla no es una defensa; esto sí.
+        $fields = array_values(array_filter(
+            $this->currentFields(),
+            fn (array $field) => empty($field['locked'])
+        ));
+
         $stored = [];
         $rules = [];
 
@@ -260,8 +268,14 @@ class SettingsPage extends Component
     {
         $this->values = [];
         foreach ($this->currentFields() as $field) {
-            // Los secretos nunca viajan al navegador: el input arranca vacío.
-            $this->values[$field['key']] = $field['type'] === 'secret' ? '' : $this->storedValue($field);
+            $this->values[$field['key']] = match (true) {
+                // Los secretos nunca viajan al navegador: el input arranca vacío.
+                $field['type'] === 'secret' => '',
+                // Un dato imprescindible se muestra marcado sin mirar la base:
+                // aunque alguien haya escrito un '0' ahí, se sigue pidiendo.
+                ! empty($field['locked']) => '1',
+                default => $this->storedValue($field),
+            };
         }
     }
 
