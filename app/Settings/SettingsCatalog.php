@@ -24,6 +24,8 @@ use Illuminate\Validation\Rule;
  *  - suffix     texto a la derecha del input (%, Bs, USD)
  *  - wide       ocupa las dos columnas
  *  - confirm    exige contraseña del usuario para cambiarlo
+ *  - locked     se muestra marcado y no se puede tocar; el guardado descarta
+ *               cualquier valor que llegue para esa clave
  */
 final class SettingsCatalog
 {
@@ -64,6 +66,44 @@ final class SettingsCatalog
     ];
 
     /**
+     * Cómo se muestra, para cada dato del alta de productos, el valor que se
+     * usa cuando ese dato no se pregunta.
+     *
+     * La lista de datos NO vive acá: sale de ProductIntakeFields, que es la
+     * fuente única que también usa el bot. Acá solo está lo de pantalla, que es
+     * asunto de Ajustes. Un dato nuevo sin entrada acá sigue funcionando: su
+     * valor por defecto se muestra como texto.
+     *
+     * @var array<string, array<string, mixed>>
+     */
+    private const INTAKE_PRESENTACION = [
+        'categoria' => [
+            'defecto_label' => 'Categoría que se usa si no se pregunta',
+            'defecto_type' => 'text',
+        ],
+        'unidad' => [
+            'defecto_label' => 'Cómo se vende si no se pregunta',
+            'defecto_type' => 'text',
+        ],
+        'cantidad' => [
+            'defecto_label' => 'Cantidad con la que entra si no se pregunta',
+            'defecto_type' => 'number',
+        ],
+        'stock_minimo' => [
+            'defecto_label' => 'Con cuántas unidades avisar si no se pregunta',
+            'defecto_type' => 'number',
+            'defecto_suffix' => 'unidades',
+        ],
+        'publicar' => [
+            // El texto del catálogo daba por hecho que los productos nuevos
+            // siempre salen a la tienda; ahora eso también se elige acá.
+            'toggle_help' => 'Se ve en la tienda en línea. Si no se pregunta, entra como elijas abajo.',
+            'defecto_label' => 'Publicar en la tienda los productos nuevos',
+            'defecto_type' => 'toggle',
+        ],
+    ];
+
+    /**
      * @return array<string, array<string, mixed>>
      */
     public static function all(): array
@@ -96,6 +136,8 @@ final class SettingsCatalog
                     ['key' => 'currency_decimal_separator', 'label' => 'Separador de decimales', 'type' => 'select', 'default' => ',', 'options' => ['.' => 'Punto (0.50)', ',' => 'Coma (0,50)']],
                 ],
             ],
+
+            'productos' => self::altaDeProductos(),
 
             'facturacion' => [
                 'title' => 'Facturación e impuestos',
@@ -239,6 +281,84 @@ final class SettingsCatalog
                     ['key' => 'backup_schedule_enabled', 'label' => 'Respaldo automático diario (02:00)', 'type' => 'toggle', 'default' => '1', 'group' => 'Respaldos', 'wide' => true],
                 ],
             ],
+        ];
+    }
+
+    /**
+     * Sección "Alta de productos": una casilla por dato que el sistema puede
+     * preguntar y, para los que se pueden apagar, el valor que se usará en su
+     * lugar. Así el sistema nunca adivina a escondidas.
+     *
+     * Los imprescindibles (nombre y los dos precios) van con 'locked': se ven
+     * marcados y no se pueden tocar, y además el guardado descarta lo que
+     * llegue para esas claves. Lo segundo es lo que importa: una casilla
+     * deshabilitada en pantalla se saltea desde el navegador en diez segundos.
+     *
+     * @return array<string, mixed>
+     */
+    private static function altaDeProductos(): array
+    {
+        $fields = [];
+
+        foreach (ProductIntakeFields::catalogo() as $campo => $dato) {
+            $presentacion = self::INTAKE_PRESENTACION[$campo] ?? [];
+
+            $toggle = [
+                'key' => ProductIntakeFields::clave($campo),
+                'label' => $dato['label'],
+                'type' => 'toggle',
+                'default' => '1',
+                'wide' => true,
+                'help' => $presentacion['toggle_help'] ?? $dato['help'],
+            ];
+
+            if (ProductIntakeFields::esObligatorio($campo)) {
+                $toggle['locked'] = true;
+                $fields[] = $toggle;
+
+                continue;
+            }
+
+            $fields[] = $toggle;
+
+            // No todo lo que se apaga necesita un valor de reemplazo (la foto
+            // simplemente no se pide).
+            if ($dato['defecto_key'] === null) {
+                continue;
+            }
+
+            $tipo = $presentacion['defecto_type'] ?? 'text';
+            $defecto = (string) $dato['defecto'];
+
+            $campoDefecto = [
+                'key' => $dato['defecto_key'],
+                'label' => $presentacion['defecto_label'] ?? ('Valor que se usa si no se pregunta «' . $dato['label'] . '»'),
+                'type' => $tipo,
+                'default' => $defecto,
+            ];
+
+            if ($tipo === 'toggle') {
+                $campoDefecto['wide'] = true;
+            } else {
+                // Dejarlo vacío no es un error: se vuelve al valor de fábrica,
+                // que está escrito en la ayuda para que no haya sorpresas.
+                $campoDefecto['optional'] = true;
+                $campoDefecto['help'] = 'Si lo dejas vacío se usa «' . $defecto . '».';
+            }
+
+            if (isset($presentacion['defecto_suffix'])) {
+                $campoDefecto['suffix'] = $presentacion['defecto_suffix'];
+            }
+
+            $fields[] = $campoDefecto;
+        }
+
+        return [
+            'title' => 'Alta de productos',
+            'description' => 'Qué te pregunta el sistema cuando cargas un producto nuevo, desde el bot o desde la web. Lo que apagues no se pregunta: entra con el valor que elijas acá.',
+            'icon' => 'cube',
+            'ability' => 'settings.edit-business',
+            'fields' => $fields,
         ];
     }
 

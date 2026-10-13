@@ -139,6 +139,10 @@ class BotProductButtonsTest extends TestCase
             'quantity'       => 30,
         ]);
 
+        // El audio no dijo con cuántas avisar: el bot lo pregunta (ya no lo
+        // calcula como el 20% de la cantidad) y ella contesta hablando.
+        $this->texto('avisame cuando queden 5');
+
         // El audio trajo todo menos la foto: el flujo la pide y ella la saltea.
         $this->texto('omitir');
     }
@@ -259,6 +263,7 @@ class BotProductButtonsTest extends TestCase
         $this->texto('120');
         $this->texto('200');
         $this->texto('8');
+        $this->texto('2');
         $this->texto('omitir');
 
         $resumen = $this->ultimoMensaje();

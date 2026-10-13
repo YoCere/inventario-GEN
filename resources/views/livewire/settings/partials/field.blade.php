@@ -10,7 +10,25 @@
     $selectClass = 'flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
 @endphp
 
-@if($type === 'toggle')
+@if($type === 'toggle' && ! empty($field['locked']))
+    {{-- Dato imprescindible: se ve marcado y no se puede apagar. La ayuda dice por qué. --}}
+    <div class="flex items-start justify-between gap-4 rounded-lg border border-border bg-muted/40 px-4 py-3.5 sm:col-span-2">
+        <div class="min-w-0">
+            <p class="text-sm font-medium text-foreground">{{ $field['label'] }}</p>
+            @isset($field['help'])
+                <p class="mt-0.5 text-sm text-muted-foreground">{{ $field['help'] }}</p>
+            @endisset
+        </div>
+        <div class="flex shrink-0 items-center gap-2">
+            <x-heroicon-o-lock-closed class="h-4 w-4 text-muted-foreground" />
+            <span role="switch" aria-checked="true" aria-disabled="true"
+                  aria-label="{{ $field['label'] }}: siempre se pregunta"
+                  class="relative mt-0.5 inline-flex h-6 w-11 cursor-not-allowed items-center justify-end rounded-full bg-emerald-600/60">
+                <span class="mr-1 inline-block h-4 w-4 rounded-full bg-white shadow"></span>
+            </span>
+        </div>
+    </div>
+@elseif($type === 'toggle')
     <div class="flex items-start justify-between gap-6 rounded-lg border border-border px-4 py-3.5 sm:col-span-2"
          x-data="{ on: $wire.entangle('{{ $model }}') }">
         <div class="min-w-0">

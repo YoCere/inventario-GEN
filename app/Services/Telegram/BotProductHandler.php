@@ -4,6 +4,8 @@ namespace App\Services\Telegram;
 
 use App\Models\Product;
 use App\Models\TelegramConversation;
+use App\Models\Unit;
+use App\Settings\ProductIntakeFields;
 use App\Shop\Models\ProductImage;
 use App\Shop\Services\ImageProcessor;
 use App\Models\Category;
@@ -47,11 +49,19 @@ class BotProductHandler
     private const CAMPOS_EDITABLES = [
         'nombre'        => 'Nombre',
         'categoria'     => 'Categoría',
+        'unidad'        => 'Cómo se vende',
         'precio_compra' => 'Precio de compra',
         'precio_venta'  => 'Precio de venta',
         'cantidad'      => 'Cantidad',
+        'stock_minimo'  => 'Avisar cuando queden',
         'foto'          => 'Fotos',
     ];
+
+    /**
+     * Stock mínimo ofrecido con botones. Son los números que la gente contesta
+     * de verdad; escribir otro sigue valiendo.
+     */
+    private const STOCK_MINIMO_SUGERIDO = [1, 3, 5, 10];
 
     public function __construct(
         protected TelegramService $telegram,
@@ -59,6 +69,8 @@ class BotProductHandler
         protected CategoryService $categoryService,
         protected RespuestaNatural $respuesta,
         protected InterpretePaso $interprete,
+        protected UnidadDeVenta $unidades,
+        protected PasosDelAlta $pasos,
     ) {}
 
     public function handle(string $chatId, array $message): void
@@ -117,9 +129,11 @@ class BotProductHandler
             self::STEP_EDITAR  => $this->textoEnMenuEdicion($chatId, $conversation, $text),
             'nuevo:nombre' => $this->askNombre($chatId, $conversation, $text),
             'nuevo:categoria' => $this->askCategoria($chatId, $conversation, $text),
+            'nuevo:unidad' => $this->askUnidad($chatId, $conversation, $text),
             'nuevo:precio_compra' => $this->askPrecioCompra($chatId, $conversation, $text),
             'nuevo:precio_venta' => $this->askPrecioVenta($chatId, $conversation, $text),
             'nuevo:cantidad' => $this->askCantidad($chatId, $conversation, $text),
+            'nuevo:stock_minimo' => $this->askStockMinimo($chatId, $conversation, $text),
             'nuevo:foto' => $this->askFoto($chatId, $conversation, $message),
             'nuevo:confirmar' => $this->confirm($chatId, $conversation, $text),
             default => $this->telegram->sendMessage($chatId, "❓ Estado desconocido. /cancelar y reintenta."),
@@ -140,13 +154,11 @@ class BotProductHandler
         $data = $conversation->data ?? [];
         $data['nombre'] = $nombre;
 
-        $conversation->update([
-            'step' => 'nuevo:categoria',
-            'data' => $data,
-            'expires_at' => now()->addMinutes(30),
-        ]);
+        $this->telegram->sendMessage($chatId, "📦 Nombre: <b>{$nombre}</b>");
 
-        $this->telegram->sendMessage($chatId, "📦 Nombre: <b>{$nombre}</b>\n\n" . $this->buildCategoryPrompt());
+        // Qué se pregunta después no se decide acá: lo dice ProductIntakeFields,
+        // que es lo que la dueña configura en Ajustes.
+        $this->advanceToNextMissingStep($chatId, $conversation, $data);
     }
 
     private function buildCategoryPrompt(): string
@@ -459,21 +471,25 @@ class BotProductHandler
     }
 
     /**
-     * Determina cuál es el siguiente campo faltante y avanza ahí.
-     * Usado tras llenar cualquier campo (categoría, precios, cantidad) cuando
-     * el flujo viene pre-poblado desde la herramienta de IA (audio multi-campo)
-     * y NO debemos volver a preguntar lo que ya tenemos.
+     * Determina cuál es el siguiente dato faltante y avanza ahí.
+     *
+     * Único camino para pasar de un paso al otro. Lo usan tanto el alta escrita
+     * como el audio (que llega con varios datos ya cargados), así que lo que la
+     * persona ya dijo nunca se vuelve a preguntar.
      */
     private function advanceToNextMissingStep(string $chatId, TelegramConversation $conversation, array $data): void
     {
-        $nextStep = match (true) {
-            empty($data['nombre'])         => 'nuevo:nombre',
-            empty($data['categoria_id'])   => 'nuevo:categoria',
-            empty($data['precio_compra'])  => 'nuevo:precio_compra',
-            empty($data['precio_venta'])   => 'nuevo:precio_venta',
-            !isset($data['cantidad'])      => 'nuevo:cantidad',
-            default                        => 'nuevo:foto',
-        };
+        // Lo que no se pregunta se completa ACÁ, con el valor por defecto que la
+        // dueña ve en Ajustes. Así nunca queda un dato a medio llenar que después
+        // alguien complete con una cuenta inventada al momento de guardar.
+        $data     = $this->pasos->conDefectos($data);
+        $nextStep = $this->pasos->siguiente($data);
+
+        if ($nextStep === 'nuevo:revisar') {
+            $this->showConfirm($chatId, $conversation, $data);
+
+            return;
+        }
 
         $conversation->update([
             'step'       => $nextStep,
@@ -481,12 +497,13 @@ class BotProductHandler
             'expires_at' => now()->addMinutes(30),
         ]);
 
-        // Si ya teníamos TODOS los datos numéricos, saltamos directo a foto.
+        // Pasos que se contestan escribiendo o dictando.
         $prompt = match ($nextStep) {
+            'nuevo:nombre'        => "¿Cuál es el <b>nombre del producto</b>?",
+            'nuevo:categoria'     => $this->buildCategoryPrompt(),
             'nuevo:precio_compra' => "¿Cuál es el <b>precio de compra</b>? (número, ej: 25.50)",
             'nuevo:precio_venta'  => "¿Cuál es el <b>precio de venta</b>?",
             'nuevo:cantidad'      => "¿Cuál es la <b>cantidad inicial en stock</b>?",
-            'nuevo:foto'          => '',
             default               => '',
         };
 
@@ -494,10 +511,251 @@ class BotProductHandler
             $this->telegram->sendMessage($chatId, $prompt);
         }
 
-        // El paso de fotos se abre con sus botones en vez de un texto.
-        if ($nextStep === 'nuevo:foto') {
-            $this->pedirMasFotos($chatId, count($this->fotosDe($data)));
+        // Estos pasos se abren con botones en vez de un texto suelto: tocar es
+        // más fácil que dictar, sobre todo para elegir de una lista corta.
+        match ($nextStep) {
+            'nuevo:unidad'       => $this->preguntarUnidad($chatId),
+            'nuevo:stock_minimo' => $this->preguntarStockMinimo($chatId, $data),
+            'nuevo:foto'         => $this->pedirMasFotos($chatId, count($this->fotosDe($data))),
+            default              => null,
+        };
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    //  Cómo se vende (unidad)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Pregunta cómo se vende, con la lista numerada y además botones.
+     *
+     * Acá los botones van de entrada, no al segundo fallo como en la categoría:
+     * las unidades son una lista cerrada y corta, y no se pueden crear desde el
+     * chat, así que mostrar las que hay es la forma más rápida de acertar.
+     */
+    private function preguntarUnidad(string $chatId, string $encabezado = ''): void
+    {
+        $unidades = $this->unidades->disponibles();
+
+        $msg = $encabezado !== '' ? $encabezado . "\n\n" : '';
+        $msg .= "¿<b>Cómo se vende</b> este producto?\n\n";
+
+        foreach ($unidades as $idx => $unidad) {
+            $msg .= ($idx + 1) . ". {$unidad->name}\n";
         }
+
+        $msg .= "\nTocá una, o decime cómo se vende (por caja, por unidad…).";
+
+        $teclado = TelegramKeyboard::make();
+
+        foreach ($unidades->take(8) as $unidad) {
+            $teclado->button($unidad->name, self::BOTON . 'uni:' . $unidad->id);
+        }
+
+        $this->telegram->sendMessage($chatId, $msg, 'HTML', $teclado->toArray());
+    }
+
+    private function askUnidad(string $chatId, TelegramConversation $conversation, string $input): void
+    {
+        $data = $conversation->data ?? [];
+
+        $unidad = $this->resolverUnidad($input);
+
+        if ($unidad) {
+            $this->setUnidadAndAdvance($chatId, $conversation, $data, $unidad);
+
+            return;
+        }
+
+        // No se entendió: preguntar otra vez igual es lo que hace que la persona
+        // crea que el bot se colgó. Se repregunta reconociendo el fallo y con los
+        // botones, que ya venían desde la primera vez.
+        $data['unidad_fallos'] = ($data['unidad_fallos'] ?? 0) + 1;
+
+        $conversation->update(['data' => $data, 'expires_at' => now()->addMinutes(30)]);
+
+        $this->preguntarUnidad(
+            $chatId,
+            $data['unidad_fallos'] >= 2
+                ? "🤔 Seguimos sin entendernos. Mejor elegí tocando."
+                : "🤔 No te entendí cómo se vende."
+        );
+    }
+
+    /**
+     * Lo determinista primero; la IA solo si eso falló.
+     *
+     * El número de la lista se acepta igual que en la categoría, porque la lista
+     * va numerada en el mensaje y hay gente que contesta así.
+     */
+    private function resolverUnidad(string $input): ?Unit
+    {
+        $limpio = trim($input);
+
+        if (ctype_digit($limpio)) {
+            $elegida = $this->unidades->disponibles()->get((int) $limpio - 1);
+
+            if ($elegida) {
+                return $elegida;
+            }
+        }
+
+        if ($unidad = $this->unidades->buscar($limpio)) {
+            return $unidad;
+        }
+
+        return $this->interpretarUnidadConIa($limpio);
+    }
+
+    /**
+     * Le pregunta al modelo cuál de las unidades que existen quiso decir.
+     *
+     * Mismo trato que la categoría: se manda la frase entera (el contexto es lo
+     * que hace acertar), el modelo elige de una lista cerrada y lo que conteste
+     * se verifica contra la base. Con la IA apagada devuelve null y el paso
+     * sigue con sus botones.
+     */
+    private function interpretarUnidadConIa(string $frase): ?Unit
+    {
+        $nombres = $this->unidades->disponibles()->pluck('name')->all();
+
+        if ($nombres === [] || $frase === '') {
+            return null;
+        }
+
+        $elegida = $this->interprete->elegirOpcion($frase, '¿Cómo se vende este producto?', $nombres);
+
+        if ($elegida === null) {
+            return null;
+        }
+
+        $unidad = Unit::whereRaw('LOWER(name) = LOWER(?)', [$elegida])->first();
+
+        if ($unidad) {
+            Log::info('Forma de venta resuelta por la IA', [
+                'dijo'     => mb_substr($frase, 0, 60),
+                'entendio' => $unidad->name,
+            ]);
+        }
+
+        return $unidad;
+    }
+
+    /** @param array<string, mixed> $data */
+    private function setUnidadAndAdvance(string $chatId, TelegramConversation $conversation, array $data, Unit $unidad): void
+    {
+        $data = $this->guardarUnidad($data, $unidad);
+
+        $this->telegram->sendMessage($chatId, "✅ Se vende por: <b>{$unidad->name}</b>");
+
+        $this->advanceToNextMissingStep($chatId, $conversation, $data);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function guardarUnidad(array $data, Unit $unidad): array
+    {
+        $data['unidad_id']     = $unidad->id;
+        $data['unidad_nombre'] = $unidad->name;
+        // Acertó: si más adelante vuelve a este paso desde el menú de corrección,
+        // la cuenta de intentos fallidos arranca de cero.
+        unset($data['unidad_fallos']);
+
+        return $data;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    //  Avisar cuando queden pocos (stock mínimo)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Pregunta el stock mínimo. Existe porque la dueña lo pidió con esas
+     * palabras: "que pida stock mínimo, para evitar que adivine el sistema".
+     * Antes se calculaba como el 20% de la cantidad inicial.
+     *
+     * @param array<string, mixed> $data
+     */
+    private function preguntarStockMinimo(string $chatId, array $data, string $encabezado = ''): void
+    {
+        $msg = $encabezado !== '' ? $encabezado . "\n\n" : '';
+        $msg .= "🔔 ¿Con <b>cuántas unidades</b> querés que te avise para reponer?\n\n";
+
+        // Al corregir ya hay un valor: mostrarlo evita que lo cambie a ciegas.
+        if (isset($data['stock_minimo'])) {
+            $msg .= (int) $data['stock_minimo'] === 0
+                ? "Ahora está en <b>no avisar</b>.\n\n"
+                : "Ahora está en <b>{$data['stock_minimo']}</b>.\n\n";
+        }
+
+        $msg .= "Tocá un número, o decime el que quieras (por ejemplo: <i>avisame cuando queden 5</i>).";
+
+        $teclado = TelegramKeyboard::make()->row(
+            array_combine(
+                array_map(fn (int $n) => (string) $n, self::STOCK_MINIMO_SUGERIDO),
+                array_map(fn (int $n) => self::BOTON . 'min:' . $n, self::STOCK_MINIMO_SUGERIDO)
+            )
+        );
+        $teclado->button('No me avises', self::BOTON . 'min:0');
+
+        $this->telegram->sendMessage($chatId, $msg, 'HTML', $teclado->toArray());
+    }
+
+    private function askStockMinimo(string $chatId, TelegramConversation $conversation, string $input): void
+    {
+        $minimo = $this->leerStockMinimo($input);
+
+        if ($minimo === null) {
+            $this->preguntarStockMinimo(
+                $chatId,
+                $conversation->data ?? [],
+                "🤔 No entendí con cuántas te aviso."
+            );
+
+            return;
+        }
+
+        $data = $conversation->data ?? [];
+        $data['stock_minimo'] = $minimo;
+
+        $this->telegram->sendMessage(
+            $chatId,
+            $minimo === 0
+                ? "🔔 Listo, de este producto no te aviso."
+                : "🔔 Te aviso cuando queden <b>{$minimo}</b>."
+        );
+
+        $this->advanceToNextMissingStep($chatId, $conversation, $data);
+    }
+
+    /**
+     * "avisame cuando queden 5" → 5. "no me avises" → 0.
+     *
+     * Todo determinista: es un número dicho de cualquier manera, no hace falta
+     * gastar una llamada a la IA para sacarlo.
+     */
+    private function leerStockMinimo(string $input): ?int
+    {
+        $texto = mb_strtolower(trim($input));
+
+        if ($texto === '') {
+            return null;
+        }
+
+        // El número manda: "no quiero que me avise antes de 3" tiene un 3.
+        $minimo = NumberParser::extractInt($texto);
+
+        if ($minimo !== null) {
+            return $minimo < 0 ? null : $minimo;
+        }
+
+        // Pedir que no se avise es un cero explícito, no un valor inventado. Se
+        // exige que nombre el aviso (o que sea un "no" solo): si no, un "no sé"
+        // terminaría configurando "nunca me avises", que no es lo que dijo.
+        $noQuiereAviso = preg_match('/\b(no|nunca|sin)\b[^\d]*avis/u', $texto) === 1
+            || preg_match('/^(no|nada|ninguno|ninguna|ningun)$/u', $texto) === 1;
+
+        return $noQuiereAviso ? 0 : null;
     }
 
     private function createAndAdvanceCategory(string $chatId, TelegramConversation $conversation, array $data, string $name): void
@@ -761,18 +1019,38 @@ class BotProductHandler
      */
     private function crearProducto(string $chatId, TelegramConversation $conversation, array $data): void
     {
+        // Cómo se vende: lo dijo la persona, lo eligió en el paso, o es el valor
+        // por defecto configurado. Nunca un id fijo: el id 1 del catálogo que
+        // trae el sistema es "Pieza", y así una caja de velas terminaba
+        // vendiéndose por pieza y descontando mal el stock desde el primer día.
+        $unidadId = $data['unidad_id'] ?? $this->unidades->porDefecto()?->id;
+
+        if (! $unidadId) {
+            $this->telegram->sendMessage(
+                $chatId,
+                "No tenés cargada ninguna forma de venta (unidad, caja, par…).\n\n" .
+                "Agregá al menos una desde el sistema y volvemos a intentar este producto."
+            );
+
+            return;
+        }
+
         try {
             $productData = ProductData::fromArray([
                 'category_id' => $data['categoria_id'],
-                'unit_id' => 1, // Default unit for MVP - TODO: allow unit selection
+                'unit_id' => $unidadId,
                 'sku' => null, // Auto-generate
                 'name' => $data['nombre'],
                 'purchase_price' => $data['precio_compra'],
                 'selling_price' => $data['precio_venta'],
                 'quantity' => $data['cantidad'],
-                'min_stock' => max(1, intval($data['cantidad'] * 0.2)), // 20% of initial qty
+                // Lo que la persona contestó. Si este alta venía de antes de que
+                // el paso existiera, el valor por defecto de Ajustes; nunca una
+                // cuenta sobre la cantidad inicial, que es lo que había que sacar.
+                'min_stock' => (int) ($data['stock_minimo'] ?? ProductIntakeFields::porDefecto('stock_minimo')),
                 'is_active' => true,
-                'is_public' => true, // productos de Telegram salen al catálogo público automáticamente
+                'is_public' => (bool) ($data['publicar'] ?? ProductIntakeFields::porDefecto('publicar')),
+                'featured' => (bool) ($data['destacado'] ?? false),
                 'description' => null,
                 'notes' => "Creado vía Telegram",
                 'image_path' => $data['foto_path'] ?? null,
@@ -807,6 +1085,18 @@ class BotProductHandler
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
+     * Seguir el alta desde afuera. La usa la herramienta del audio: ella guarda
+     * lo que entendió del dictado y acá se decide qué falta y cómo se pregunta,
+     * así los pasos con botones (y el resumen final) se arman en un solo lado.
+     *
+     * @param array<string, mixed> $data
+     */
+    public function continuar(string $chatId, TelegramConversation $conversation, array $data): void
+    {
+        $this->advanceToNextMissingStep($chatId, $conversation, $data);
+    }
+
+    /**
      * Muestra todo lo entendido y espera que la persona decida: Guardar o
      * Editar. Mientras está en este paso NADA se escribió en la base.
      */
@@ -821,15 +1111,27 @@ class BotProductHandler
         $message  = "📋 <b>Revisá antes de guardar</b>\n\n";
         $message .= "Nombre: <b>" . ($data['nombre'] ?? '—') . "</b>\n";
         $message .= "Categoría: " . ($data['categoria_nombre'] ?? '—') . "\n";
+        $message .= "Se vende por: " . ($data['unidad_nombre'] ?? '—') . "\n";
         $message .= "Precio de compra: " . $this->formatBs($data['precio_compra'] ?? null) . "\n";
         $message .= "Precio de venta: " . $this->formatBs($data['precio_venta'] ?? null) . "\n";
         $message .= "Cantidad: " . ($data['cantidad'] ?? '—') . "\n";
+        $message .= "Avisar cuando queden: " . match (true) {
+            ! isset($data['stock_minimo'])   => '—',
+            (int) $data['stock_minimo'] === 0 => 'no avisar',
+            default                          => (string) $data['stock_minimo'],
+        } . "\n";
         $cantidadFotos = count($this->fotosDe($data));
         $message .= "Fotos: " . match (true) {
             $cantidadFotos === 0 => 'ninguna',
             $cantidadFotos === 1 => '1',
             default              => $cantidadFotos . ' fotos',
-        } . "\n\n";
+        } . "\n";
+        // Solo cuando está destacado: una línea que dice "no" en todas las altas
+        // es ruido para alguien que mira el resumen en el celular.
+        if (! empty($data['destacado'])) {
+            $message .= "⭐ Destacado en la tienda\n";
+        }
+        $message .= "\n";
         $message .= "Si algo está mal, tocá <b>Editar</b>.\n";
         $message .= "Nada se guarda hasta que toques <b>Guardar</b>.";
 
@@ -852,8 +1154,17 @@ class BotProductHandler
 
         $keyboard = TelegramKeyboard::make();
         foreach (self::CAMPOS_EDITABLES as $campo => $etiqueta) {
-            $keyboard->button($etiqueta, self::BOTON . 'campo:' . $campo);
+            // Un dato que el alta no pide no se ofrece corregir: sería prometer
+            // algo que después no se usa en ningún lado.
+            if ($this->seCorrige($campo)) {
+                $keyboard->button($etiqueta, self::BOTON . 'campo:' . $campo);
+            }
         }
+        // Destacar es un sí/no: se resuelve con el toque, sin pedir texto.
+        $keyboard->button(
+            empty($data['destacado']) ? '⭐ Destacar en la tienda' : '⭐ Quitar de destacados',
+            self::BOTON . 'destacar'
+        );
         $keyboard->button('◀️ Volver al resumen', self::BOTON . 'volver');
 
         $this->telegram->sendMessage(
@@ -864,10 +1175,20 @@ class BotProductHandler
         );
     }
 
+    /** ¿Este dato se puede corregir hoy? Depende de si el alta lo pide. */
+    private function seCorrige(string $campo): bool
+    {
+        if ($campo === 'unidad') {
+            return $this->unidades->hayQueElegir();
+        }
+
+        return ProductIntakeFields::pide($campo);
+    }
+
     /** Pide el valor nuevo de un solo campo y deja el paso esperándolo. */
     private function askFieldEdit(string $chatId, TelegramConversation $conversation, array $data, string $campo): void
     {
-        if (!isset(self::CAMPOS_EDITABLES[$campo])) {
+        if (!isset(self::CAMPOS_EDITABLES[$campo]) || !$this->seCorrige($campo)) {
             $this->showEditMenu($chatId, $conversation, $data);
             return;
         }
@@ -882,21 +1203,25 @@ class BotProductHandler
             'expires_at' => now()->addMinutes(30),
         ]);
 
+        // Estos tres se piden con botones, no con un texto suelto.
+        if (in_array($campo, ['foto', 'unidad', 'stock_minimo'], true)) {
+            match ($campo) {
+                'foto'         => $this->pedirMasFotos($chatId, count($this->fotosDe($data))),
+                'unidad'       => $this->preguntarUnidad($chatId, '✏️ A ver, corrijamos.'),
+                'stock_minimo' => $this->preguntarStockMinimo($chatId, $data, '✏️ A ver, corrijamos.'),
+            };
+
+            return;
+        }
+
         $prompt = match ($campo) {
             'nombre'        => "✏️ Escribí el <b>nombre</b> correcto del producto.",
             'categoria'     => "✏️ ¿Cuál es la <b>categoría</b> correcta?\n\n" . $this->buildCategoryPrompt(),
             'precio_compra' => "✏️ Escribí el <b>precio de compra</b> correcto (ej: 350).",
             'precio_venta'  => "✏️ Escribí el <b>precio de venta</b> correcto (ej: 450).",
             'cantidad'      => "✏️ Escribí la <b>cantidad</b> correcta (ej: 30).",
-            'foto'          => '',
+            default         => '',
         };
-
-        // Las fotos se piden con botones, no con un texto suelto.
-        if ($campo === 'foto') {
-            $this->pedirMasFotos($chatId, count($this->fotosDe($data)));
-
-            return;
-        }
 
         $this->telegram->sendMessage($chatId, $prompt);
     }
@@ -933,6 +1258,24 @@ class BotProductHandler
                     return;
                 }
                 $data['cantidad'] = $qty;
+                break;
+
+            case 'stock_minimo':
+                $minimo = $this->leerStockMinimo($text);
+                if ($minimo === null) {
+                    $this->preguntarStockMinimo($chatId, $data, "🤔 No entendí con cuántas te aviso.");
+                    return;
+                }
+                $data['stock_minimo'] = $minimo;
+                break;
+
+            case 'unidad':
+                $unidad = $this->resolverUnidad($text);
+                if (! $unidad) {
+                    $this->preguntarUnidad($chatId, "🤔 No te entendí cómo se vende.");
+                    return;
+                }
+                $data = $this->guardarUnidad($data, $unidad);
                 break;
 
             case 'categoria':
@@ -1050,6 +1393,52 @@ class BotProductHandler
             return;
         }
 
+        // Botones de "cómo se vende" y de "avisar cuando queden". Valen tanto en
+        // su paso del alta como cuando se está corrigiendo ese mismo dato desde
+        // el resumen, que es otro paso: por eso no alcanza el guard de abajo.
+        if (str_starts_with($action, 'uni:') || str_starts_with($action, 'min:')) {
+            $esUnidad = str_starts_with($action, 'uni:');
+            $campo    = $esUnidad ? 'unidad' : 'stock_minimo';
+            $validos  = ['nuevo:' . $campo, self::STEP_EDITAR_CAMPO . $campo];
+
+            if (! $conversation || ! in_array($conversation->step, $validos, true)) {
+                $this->telegram->sendMessage($chatId, "Este registro ya no está disponible. Si querés cargar un producto, usá /nuevo.");
+                return;
+            }
+
+            $datos       = $conversation->data ?? [];
+            $corrigiendo = str_starts_with($conversation->step, self::STEP_EDITAR_CAMPO);
+
+            if ($esUnidad) {
+                $unidad = Unit::find((int) substr($action, strlen('uni:')));
+
+                if (! $unidad) {
+                    $this->telegram->sendMessage($chatId, "Esa forma de venta ya no existe. Elegí otra.");
+                    return;
+                }
+
+                $datos = $this->guardarUnidad($datos, $unidad);
+                $this->telegram->sendMessage($chatId, "✅ Se vende por: <b>{$unidad->name}</b>");
+            } else {
+                $minimo = (int) substr($action, strlen('min:'));
+                $datos['stock_minimo'] = max(0, $minimo);
+                $this->telegram->sendMessage(
+                    $chatId,
+                    $minimo === 0
+                        ? "🔔 Listo, de este producto no te aviso."
+                        : "🔔 Te aviso cuando queden <b>{$minimo}</b>."
+                );
+            }
+
+            if ($corrigiendo) {
+                $this->showReview($chatId, $conversation, $datos);
+            } else {
+                $this->advanceToNextMissingStep($chatId, $conversation, $datos);
+            }
+
+            return;
+        }
+
         // Botones del paso de categoría: elegir una existente, crear la que se
         // intentó decir, o dejarlo. Viven en 'nuevo:categoria', que no es un paso
         // de revisión, así que se atienden antes del guard de abajo.
@@ -1136,6 +1525,22 @@ class BotProductHandler
             return;
         }
 
+        // Destacar es un sí/no: el mismo botón prende y apaga, y se vuelve al
+        // resumen para que se vea el cambio antes de guardar.
+        if ($action === 'destacar') {
+            $data['destacado'] = empty($data['destacado']);
+
+            $this->telegram->sendMessage(
+                $chatId,
+                $data['destacado']
+                    ? "⭐ Queda destacado en la tienda."
+                    : "Listo, ya no queda destacado."
+            );
+
+            $this->showReview($chatId, $conversation, $data);
+            return;
+        }
+
         if (str_starts_with($action, 'campo:')) {
             $this->askFieldEdit($chatId, $conversation, $data, substr($action, strlen('campo:')));
             return;
@@ -1193,6 +1598,7 @@ class BotProductHandler
         $faltan = [];
         if (empty($data['nombre']))        { $faltan[] = 'el nombre'; }
         if (empty($data['categoria_id']))  { $faltan[] = 'la categoría'; }
+        if (empty($data['unidad_id']) && $this->unidades->hayQueElegir()) { $faltan[] = 'cómo se vende'; }
         if (empty($data['precio_compra'])) { $faltan[] = 'el precio de compra'; }
         if (empty($data['precio_venta']))  { $faltan[] = 'el precio de venta'; }
         if (!isset($data['cantidad']))     { $faltan[] = 'la cantidad'; }
@@ -1211,6 +1617,14 @@ class BotProductHandler
 
         if (\in_array($lower, ['editar', 'edita', 'corregir'], true)) {
             $this->showEditMenu($chatId, $conversation, $conversation->data ?? []);
+            return;
+        }
+
+        // "marcalo como destacado" dicho sobre el resumen. Es determinista a
+        // propósito: tiene que funcionar también con la IA apagada, que es como
+        // arranca una instancia recién instalada.
+        if (preg_match('/\b(destacad[oa]s?|destacar|resaltad[oa]|resaltar|favorit[oa])\b/u', $lower)) {
+            $this->handleButton($chatId, 'destacar');
             return;
         }
 

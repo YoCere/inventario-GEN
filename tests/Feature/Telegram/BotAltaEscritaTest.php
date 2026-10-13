@@ -125,6 +125,9 @@ class BotAltaEscritaTest extends TestCase
         $this->mandarTexto('250');
         $this->mandarTexto('350');
         $this->mandarTexto('20');
+        // Con cuántas avisar para reponer: el bot lo pregunta y ella lo contesta.
+        // Antes el sistema lo inventaba como el 20% de la cantidad inicial.
+        $this->mandarTexto('5');
         $this->mandarTexto('omitir');
     }
 

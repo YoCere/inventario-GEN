@@ -101,7 +101,7 @@ final class ProductIntakeFields
             ],
             'publicar' => [
                 'label' => 'Mostrar en la tienda en línea',
-                'help' => 'Si está apagado, los productos nuevos salen igual a la tienda.',
+                'help' => 'Si no se pregunta, los productos nuevos entran como diga el valor por defecto.',
                 'defecto' => '1',
                 'defecto_key' => self::PREFIJO_DEFECTO . 'publicar',
             ],
