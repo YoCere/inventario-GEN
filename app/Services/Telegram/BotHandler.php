@@ -11,15 +11,42 @@ use App\Services\Agent\WhisperService;
 use App\Services\Messaging\TelegramService;
 use App\Services\Messaging\ProductSearchService;
 use App\Support\BusinessTime;
+use App\Support\Palabras;
+use App\Support\TelegramKeyboard;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class BotHandler
 {
+    /**
+     * Pasos en los que la persona NO está llenando un formulario: está
+     * charlando con el asistente o mirando resultados de una búsqueda.
+     *
+     * Acá lo que escribe puede ser una orden nueva ("vende 2 mates a 20",
+     * "crear producto"), así que se escucha antes de seguir el camino del paso.
+     * El bug que esto arregla dejaba a la dueña atrapada: una vez abierta la
+     * charla con la IA, todo lo que escribía se lo contestaba la IA y el alta
+     * nunca se abría.
+     */
+    private const PASOS_SIN_FORMULARIO = [
+        'agent:active',
+        'busqueda:multiple',
+        'busqueda:resultado',
+        'busqueda:foto',
+    ];
+
+    /** Cuántos resultados entran en una pantalla de celular sin scrollear de más. */
+    private const RESULTADOS_POR_PAGINA = 8;
+
+    /** Formas de pedir el resto de una lista de resultados. */
+    private const PEDIR_MAS = ['ver mas', 'mas', 'ver todos', 'todos', 'siguiente', 'mostrar mas'];
+
     public function __construct(
         protected TelegramService $telegram,
         protected ProductSearchService $searchService,
         protected BotProductHandler $productHandler,
+        protected BotProductEditHandler $productEditHandler,
         protected BotSaleHandler $saleHandler,
         protected BotRefundHandler $refundHandler,
         protected BotAuthHandler $authHandler,
@@ -102,6 +129,12 @@ class BotHandler
                     return;
                 }
 
+                // Lo mismo si está cambiando la foto de un producto que ya existe.
+                if ($conversation && str_starts_with($conversation->step, 'editar:')) {
+                    $this->productEditHandler->handle($chatId, $message);
+                    return;
+                }
+
                 $caption = trim($message['caption'] ?? '');
 
                 // Vision habilitado + key del provider activo → describir + buscar.
@@ -142,6 +175,7 @@ class BotHandler
             if (str_starts_with($text, '/')) {
                 $isActiveFlow = $conversation && (
                     str_starts_with($conversation->step, 'nuevo:') ||
+                    str_starts_with($conversation->step, 'editar:') ||
                     str_starts_with($conversation->step, 'venta_rapida:') ||
                     str_starts_with($conversation->step, 'devolver:') ||
                     str_starts_with($conversation->step, 'recordar:') ||
@@ -167,9 +201,18 @@ class BotHandler
                     return;
                 }
 
+                // Nadie queda atrapado: mirando resultados o charlando con la IA,
+                // una orden nueva se atiende antes que el paso en curso.
+                if ($this->atiendeOrdenNueva($chatId, $conversation, $text)) {
+                    return;
+                }
+
                 // Route to appropriate handler based on conversation type
                 if (str_starts_with($conversation->step, 'nuevo:')) {
                     $this->productHandler->handle($chatId, $message);
+                    return;
+                } elseif (str_starts_with($conversation->step, 'editar:')) {
+                    $this->productEditHandler->handle($chatId, $message);
                     return;
                 } elseif (str_starts_with($conversation->step, 'venta_rapida:')) {
                     $this->saleHandler->handle($chatId, $message);
@@ -193,14 +236,10 @@ class BotHandler
                     $text = trim($message['text'] ?? '');
                     if ($text === '1' || strtolower($text) === 'vender') {
                         Log::info('User selected option 1: vender', ['chatId' => $chatId]);
-                        // Si el resultado vino de búsqueda visual, el usuario eligió vender
-                        // = confirmación explícita → elevar source a 'user_confirmed' en memoria.
-                        $visionKey = $conversation->data['vision_key'] ?? null;
-                        $productId = $conversation->data['product_id'] ?? null;
-                        if ($visionKey && $productId) {
-                            BotKnowledge::rememberVision($visionKey, (int) $productId, confirmed: true);
-                        }
-                        $this->handleQuickSaleFromSearch($chatId);
+                        $this->venderDesdeFicha($chatId);
+                        return;
+                    } elseif ($this->pideMas($text)) {
+                        $this->verMas($chatId, $conversation);
                         return;
                     } elseif ($text === '2') {
                         Log::info('User selected option 2: buscar otro', ['chatId' => $chatId]);
@@ -212,8 +251,9 @@ class BotHandler
                 } elseif ($conversation->step === 'busqueda:multiple') {
                     // Handle number selection from multiple results
                     $text = trim($message['text'] ?? '');
-                    // Comando de venta completo intercepta antes de la selección numérica.
-                    if ($this->saleHandler->tryQuickSell($chatId, $text)) {
+                    // "ver más" devuelve el resto de la lista en vez de buscar de nuevo.
+                    if ($this->pideMas($text)) {
+                        $this->verMas($chatId, $conversation);
                         return;
                     }
                     $this->handleMultipleResultSelection($chatId, $conversation, $text);
@@ -254,8 +294,8 @@ class BotHandler
             if (strtolower($text) === 'vender') {
                 Log::info('User requested quick sale', ['chatId' => $chatId]);
                 $this->handleQuickSaleFromSearch($chatId);
-            } elseif ($this->isConversationalQuery($text)) {
-                // Looks like a question/sentence → skip product search, go straight to AI
+            } elseif ($this->esPregunta($text)) {
+                // Pregunta → al asistente sin pasar por el catálogo
                 if (Setting::get('ai_chatbot_enabled') === '1') {
                     Log::info('Conversational query → agent', ['chatId' => $chatId]);
                     $this->agentHandler->handle($chatId, $text);
@@ -263,7 +303,8 @@ class BotHandler
                     $this->telegram->sendMessage($chatId, "❓ Escribe el nombre de un producto para buscarlo.");
                 }
             } else {
-                // Short query → product search first, AI fallback if no match
+                // No preguntó nada: primero el catálogo, aunque la frase sea larga.
+                // Recién si no hay ninguna coincidencia interviene el asistente.
                 $searchResults = $this->searchService->search($text);
                 if (!empty($searchResults)) {
                     Log::info('Product search hit', ['chatId' => $chatId]);
@@ -288,60 +329,216 @@ class BotHandler
         }
     }
 
-    protected function handleSearch(string $chatId, string $text, ?array $results = null): void
+    /**
+     * Muestra lo que se encontró.
+     *
+     * @param array<string, mixed> $recuerdos datos que la búsqueda tiene que
+     *        seguir arrastrando: de qué foto salió, qué describió la visión.
+     */
+    protected function handleSearch(string $chatId, string $text, ?array $results = null, array $recuerdos = []): void
     {
         $results ??= $this->searchService->search($text);
 
         if (empty($results)) {
-            $this->telegram->sendMessage($chatId, "❌ No se encontró ningún producto con \"<i>{$text}</i>\"");
+            $this->telegram->sendMessage(
+                $chatId,
+                "❌ No se encontró ningún producto con \"<i>{$text}</i>\"",
+                'HTML',
+                $this->botonesSinResultado($recuerdos)
+            );
             return;
         }
 
+        $recuerdos['busqueda'] = $text;
+
         if (count($results) === 1) {
-            // Single result - store product ID for quick sale
-            $productId = $results[0]['id'] ?? null;
-            Log::info('Single result found', ['productId' => $productId, 'chatId' => $chatId]);
+            Log::info('Single result found', ['productId' => $results[0]['id'] ?? null, 'chatId' => $chatId]);
+            $this->mostrarFicha($chatId, $results[0], $recuerdos);
+            return;
+        }
 
-            if ($productId) {
-                $conversation = TelegramConversation::getOrCreate($chatId);
-                $updated = $conversation->update([
-                    'step' => 'busqueda:resultado',
-                    'data' => ['product_id' => $productId],
-                    'expires_at' => now()->addMinutes(5),
-                ]);
-                Log::info('Conversation updated', [
-                    'updated' => $updated,
-                    'step' => $conversation->step,
-                    'data' => $conversation->data,
-                ]);
-            }
+        $this->mostrarLista($chatId, $results, $recuerdos);
+    }
 
-            $message = $results[0]['message'] . "\n\n";
-            $message .= "<b>Opciones:</b>\n";
-            $message .= "1️⃣ Vender\n";
-            $message .= "2️⃣ Buscar otro producto";
-            $this->sendProductCard($chatId, $results[0], $message);
-        } else {
-            // Multiple results - store in conversation for selection by number
+    /**
+     * La ficha de un producto, con sus salidas a la vista.
+     *
+     * @param array<string, mixed> $result
+     * @param array<string, mixed> $recuerdos
+     */
+    protected function mostrarFicha(string $chatId, array $result, array $recuerdos = []): void
+    {
+        $productId = $result['id'] ?? null;
+
+        if ($productId) {
             $conversation = TelegramConversation::getOrCreate($chatId);
             $conversation->update([
-                'step' => 'busqueda:multiple',
-                'data' => ['results' => $results],
+                'step'       => 'busqueda:resultado',
+                'data'       => array_merge($recuerdos, ['product_id' => $productId]),
                 'expires_at' => now()->addMinutes(5),
             ]);
-
-            $message = "📦 <b>Resultados de búsqueda para: {$text}</b>\n\n";
-            foreach ($results as $idx => $result) {
-                $message .= ($idx + 1) . ". <b>{$result['name']}</b> - {$result['price']}\n";
-            }
-            $message .= "\n<i>Escribe el número para vender rápido (Ej: 1, 2, 3...)</i>";
-            $this->telegram->sendMessage($chatId, $message);
         }
+
+        // El texto numerado se queda: quien ya aprendió a escribir "1" para
+        // vender no tiene que aprender nada nuevo por los botones.
+        $message = $result['message'] . "\n\n";
+        $message .= "<b>Opciones:</b>\n";
+        $message .= "1️⃣ Vender\n";
+        $message .= "2️⃣ Buscar otro producto";
+
+        $this->sendProductCard($chatId, $result, $message, $this->botonesDeFicha($result, $recuerdos));
+    }
+
+    /**
+     * La lista de coincidencias, de a una pantalla.
+     *
+     * @param array<int, array<string, mixed>> $results
+     * @param array<string, mixed> $recuerdos
+     */
+    protected function mostrarLista(string $chatId, array $results, array $recuerdos = [], int $yaMostrados = 0): void
+    {
+        $texto  = (string) ($recuerdos['busqueda'] ?? '');
+        $desde  = max(0, $yaMostrados);
+        $hasta  = min(count($results), $desde + self::RESULTADOS_POR_PAGINA);
+        $quedan = count($results) - $hasta;
+
+        $conversation = TelegramConversation::getOrCreate($chatId);
+        $conversation->update([
+            'step'       => 'busqueda:multiple',
+            'data'       => array_merge($recuerdos, [
+                'results'   => $results,
+                'mostrados' => $hasta,
+                'busqueda'  => $texto,
+            ]),
+            'expires_at' => now()->addMinutes(5),
+        ]);
+
+        $message = $desde === 0
+            ? "📦 <b>Encontré " . count($results) . " productos para: {$texto}</b>\n\n"
+            : "📦 <b>Sigue la lista de: {$texto}</b>\n\n";
+
+        $teclado = TelegramKeyboard::make();
+        $fila = [];
+
+        for ($i = $desde; $i < $hasta; $i++) {
+            $numero = $i + 1;
+            $item   = $results[$i];
+            $codigo = $item['sku'] ?? '';
+
+            // Código y precio en la misma línea: dos productos que se llaman
+            // igual se tienen que poder distinguir sin abrir ninguno.
+            $message .= "{$numero}. <b>{$item['name']}</b>\n";
+            $message .= "    Código {$codigo} · Precio {$item['price']}\n";
+
+            $fila[(string) $numero] = 'buscar:elegir:' . $numero;
+
+            if (count($fila) === 4) {
+                $teclado->row($fila);
+                $fila = [];
+            }
+        }
+
+        if ($fila !== []) {
+            $teclado->row($fila);
+        }
+
+        $salidas = [];
+        if ($quedan > 0) {
+            $message .= "\n<i>Quedan {$quedan} más.</i>\n";
+            $salidas["📋 Ver más ({$quedan})"] = 'buscar:mas';
+        }
+        $salidas['🔍 Buscar otro'] = 'buscar:otro';
+        $teclado->row($salidas);
+
+        $message .= "\n<i>Tocá el número del producto, o escribilo (ej: 1).</i>";
+
+        $this->telegram->sendMessage($chatId, $message, 'HTML', $teclado->toArray());
+    }
+
+    /** ¿Está pidiendo el resto de la lista? */
+    protected function pideMas(string $text): bool
+    {
+        $sinTildes = (string) iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', mb_strtolower(trim($text)));
+        $limpio    = preg_replace('/[^a-z0-9\s]/', '', $sinTildes) ?? '';
+        $limpio    = trim(preg_replace('/\s+/', ' ', $limpio) ?? '');
+
+        return in_array($limpio, self::PEDIR_MAS, true);
+    }
+
+    /** Devuelve el tramo siguiente de la última lista de resultados. */
+    protected function verMas(string $chatId, TelegramConversation $conversation): void
+    {
+        $data    = $conversation->data ?? [];
+        $results = $data['results'] ?? [];
+
+        if (empty($results)) {
+            $this->telegram->sendMessage($chatId, "No tengo una lista abierta. Escribí el nombre o el código del producto.");
+            return;
+        }
+
+        $mostrados = (int) ($data['mostrados'] ?? 0);
+
+        if ($mostrados >= count($results)) {
+            $this->telegram->sendMessage($chatId, "Ya te mostré todo lo que encontré. Escribí otro nombre para buscar de nuevo.");
+            return;
+        }
+
+        unset($data['results'], $data['mostrados']);
+        $this->mostrarLista($chatId, $results, $data, $mostrados);
+    }
+
+    /**
+     * Botones de la ficha. Vender y Editar llevan el producto que se está
+     * mirando; el de editar usa el dato que espera el flujo de edición.
+     *
+     * @param array<string, mixed> $result
+     * @param array<string, mixed> $recuerdos
+     * @return array<int, array<int, array{text: string, callback_data: string}>>
+     */
+    protected function botonesDeFicha(array $result, array $recuerdos): array
+    {
+        $teclado = TelegramKeyboard::make()->row([
+            '💵 Vender' => 'buscar:vender',
+            '✏️ Editar' => 'edit:abrir:' . (int) ($result['id'] ?? 0),
+        ]);
+
+        $salidas = [];
+        $quedan = count($recuerdos['results'] ?? []) - (int) ($recuerdos['mostrados'] ?? 0);
+        if ($quedan > 0) {
+            $salidas["📋 Ver más ({$quedan})"] = 'buscar:mas';
+        }
+        $salidas['🔍 Buscar otro'] = 'buscar:otro';
+        $teclado->row($salidas);
+
+        if (! empty($recuerdos['foto_file_id'])) {
+            $teclado->button('🆕 Ninguno: crear producto nuevo', 'buscar:nuevo');
+        }
+
+        return $teclado->toArray();
+    }
+
+    /**
+     * Cuando no hay coincidencias y la búsqueda salió de una foto, la salida es
+     * dar de alta el producto con esa misma foto.
+     *
+     * @param array<string, mixed> $recuerdos
+     * @return array<int, array<int, array{text: string, callback_data: string}>>|null
+     */
+    protected function botonesSinResultado(array $recuerdos): ?array
+    {
+        if (empty($recuerdos['foto_file_id'])) {
+            return null;
+        }
+
+        return TelegramKeyboard::make()
+            ->button('🆕 Ninguno: crear producto nuevo', 'buscar:nuevo')
+            ->toArray();
     }
 
     protected function handleMultipleResultSelection(string $chatId, TelegramConversation $conversation, string $input): void
     {
-        $results = $conversation->data['results'] ?? [];
+        $data    = $conversation->data ?? [];
+        $results = $data['results'] ?? [];
         $trimmed = trim($input);
 
         // Si input no es entero puro, tratarlo como nueva búsqueda
@@ -373,44 +570,33 @@ class BotHandler
             return;
         }
 
-        // Copiar vision_key si la búsqueda vino de visión (para confirmed-save al vender).
-        $visionKey = $conversation->data['vision_key'] ?? null;
-
-        $conversation->update([
-            'step'       => 'busqueda:resultado',
-            'data'       => array_filter(['product_id' => $productId, 'vision_key' => $visionKey]),
-            'expires_at' => now()->addMinutes(5),
-        ]);
-
-        $message = $selectedResult['message'] . "\n\n";
-        $message .= "<b>Opciones:</b>\n";
-        $message .= "1️⃣ Vender\n";
-        $message .= "2️⃣ Buscar otro producto";
-        $this->sendProductCard($chatId, $selectedResult, $message);
+        // La lista entera viaja con la ficha: así "ver más" sigue valiendo
+        // después de abrir uno, y de qué foto salió no se pierde.
+        $this->mostrarFicha($chatId, $selectedResult, $data);
     }
 
     /**
      * Send product card with image if available, fallback to text-only message.
      * Telegram photo caption limit: 1024 chars. If exceeds, splits photo + follow-up text.
      */
-    protected function sendProductCard(string $chatId, array $product, string $message): void
+    protected function sendProductCard(string $chatId, array $product, string $message, ?array $keyboard = null): void
     {
         $imagePath = $product['image_path'] ?? null;
 
         // No image → plain text
         if (!$imagePath || !Storage::disk('public')->exists($imagePath)) {
-            $this->telegram->sendMessage($chatId, $message);
+            $this->telegram->sendMessage($chatId, $message, 'HTML', $keyboard);
             return;
         }
 
         try {
             // Telegram photo caption max 1024 chars
             if (mb_strlen($message) <= 1024) {
-                $this->telegram->sendPhoto($chatId, $imagePath, $message);
+                $this->telegram->sendPhoto($chatId, $imagePath, $message, $keyboard);
             } else {
                 // Photo with truncated caption + full text follow-up
                 $this->telegram->sendPhoto($chatId, $imagePath, $product['name'] ?? '');
-                $this->telegram->sendMessage($chatId, $message);
+                $this->telegram->sendMessage($chatId, $message, 'HTML', $keyboard);
             }
         } catch (\Throwable $e) {
             Log::warning('Failed to send product photo, fallback to text', [
@@ -418,8 +604,32 @@ class BotHandler
                 'image_path' => $imagePath,
                 'error' => $e->getMessage(),
             ]);
-            $this->telegram->sendMessage($chatId, $message);
+            $this->telegram->sendMessage($chatId, $message, 'HTML', $keyboard);
         }
+    }
+
+    /**
+     * Vender el producto que la persona está mirando.
+     *
+     * Si esa ficha salió de una foto, elegir vender es la confirmación de que
+     * la foto era ese producto: se guarda como aprendido para no volver a
+     * gastar visión la próxima vez.
+     */
+    protected function venderDesdeFicha(string $chatId): void
+    {
+        $conversation = TelegramConversation::where('chat_id', $chatId)
+            ->where('step', 'busqueda:resultado')
+            ->first();
+
+        $data      = $conversation->data ?? [];
+        $visionKey = $data['vision_key'] ?? null;
+        $productId = $data['product_id'] ?? null;
+
+        if ($visionKey && $productId) {
+            BotKnowledge::rememberVision($visionKey, (int) $productId, confirmed: true);
+        }
+
+        $this->handleQuickSaleFromSearch($chatId);
     }
 
     protected function handleQuickSaleFromSearch(string $chatId): void
@@ -739,6 +949,12 @@ class BotHandler
             $filePath = $this->telegram->getFile($fileId);
             $imageBinary = $this->telegram->downloadFile($filePath);
 
+            // De qué foto salió esta búsqueda viaja con todo lo que se muestre:
+            // si al final ninguno era el producto, el alta la reusa y la persona
+            // no tiene que sacar la foto otra vez.
+            $recuerdos = ['foto_file_id' => $fileId];
+            $this->recordarFotoBuscada($chatId, $fileId);
+
             $description = $this->visionService->describeProductImage(
                 $imageBinary,
                 mimeType: null,
@@ -758,7 +974,7 @@ class BotHandler
                     );
                     $results = $this->searchService->search($caption);
                     if (! empty($results)) {
-                        $this->handleSearch($chatId, $caption, $results);
+                        $this->handleSearch($chatId, $caption, $results, $recuerdos);
                         return;
                     }
                 }
@@ -766,7 +982,9 @@ class BotHandler
                 $this->telegram->sendMessage(
                     $chatId,
                     "❌ No pude identificar el producto en la imagen.\n\n" .
-                    "✏️ Escribe el <b>nombre del producto</b> para buscarlo directamente."
+                    "✏️ Escribe el <b>nombre del producto</b> para buscarlo directamente.",
+                    'HTML',
+                    $this->botonesSinResultado($recuerdos)
                 );
                 return;
             }
@@ -803,7 +1021,9 @@ class BotHandler
                         'key'        => $focusedQuery,
                         'product_id' => $cachedProductId,
                     ]);
-                    $this->handleSearch($chatId, $description, $cachedResults);
+                    $this->handleSearch($chatId, $description, $cachedResults, array_merge($recuerdos, [
+                        'vision_key' => $focusedQuery,
+                    ]));
                     return;
                 }
                 // Producto en cache ya no existe (borrado) — continuar búsqueda normal
@@ -847,27 +1067,19 @@ class BotHandler
                     'caption'     => $caption,
                     'matches'     => count($results),
                 ]);
-                $this->handleSearch($chatId, $description, $results);
-
-                // Etiquetar conversación con vision_key SIEMPRE (1 o múltiples resultados).
-                // Con 1 resultado → conversation step = busqueda:resultado
-                // Con múltiples → step = busqueda:multiple
-                // En ambos casos el vision_key viaja en data para que al final
-                // (vender) se guarde como user_confirmed en BotKnowledge.
-                $conv = TelegramConversation::where('chat_id', $chatId)
-                    ->whereIn('step', ['busqueda:resultado', 'busqueda:multiple'])
-                    ->first();
-                if ($conv) {
-                    $conv->update([
-                        'data' => array_merge($conv->data ?? [], ['vision_key' => $focusedQuery]),
-                    ]);
-                }
+                // El vision_key viaja con los resultados (uno o varios): al
+                // vender, eso es lo que se guarda como aprendido.
+                $this->handleSearch($chatId, $description, $results, array_merge($recuerdos, [
+                    'vision_key' => $focusedQuery,
+                ]));
             } else {
                 $this->telegram->sendMessage(
                     $chatId,
                     "❌ Identifiqué: \"<i>" . htmlspecialchars($description, ENT_QUOTES) . "</i>\" " .
                     "pero no hay coincidencias en el inventario.\n\n" .
-                    "✏️ Escribe el <b>nombre exacto</b> del producto o /listar para ver el catálogo."
+                    "✏️ Escribe el <b>nombre exacto</b> del producto, o tocá el botón para darlo de alta.",
+                    'HTML',
+                    $this->botonesSinResultado($recuerdos)
                 );
             }
         } catch (\Throwable $e) {
@@ -877,6 +1089,21 @@ class BotHandler
             ]);
             $this->telegram->sendMessage($chatId, "❌ Error al procesar la imagen. Intenta con otra foto o escribe el nombre del producto.");
         }
+    }
+
+    /**
+     * Guarda de qué foto vino la búsqueda, para que el botón de dar de alta la
+     * encuentre aunque no se haya mostrado ningún resultado.
+     */
+    protected function recordarFotoBuscada(string $chatId, string $fileId): void
+    {
+        $conversation = TelegramConversation::getOrCreate($chatId);
+
+        $conversation->update([
+            'step'       => 'busqueda:foto',
+            'data'       => array_merge($conversation->data ?? [], ['foto_file_id' => $fileId]),
+            'expires_at' => now()->addMinutes(10),
+        ]);
     }
 
     /**
@@ -940,9 +1167,132 @@ class BotHandler
         [$flow, $action] = array_pad(explode(':', $payload, 2), 2, '');
 
         match ($flow) {
-            'prod'  => $this->productHandler->handleButton($actorChatId, $action, $messageId),
-            default => Log::warning('Botón de Telegram de un flujo desconocido', ['data' => $payload]),
+            'prod'   => $this->productHandler->handleButton($actorChatId, $action, $messageId),
+            'edit'   => $this->productEditHandler->handleButton($actorChatId, $action, $messageId),
+            'buscar' => $this->botonDeBusqueda($actorChatId, $action),
+            default  => Log::warning('Botón de Telegram de un flujo desconocido', ['data' => $payload]),
         };
+    }
+
+    /**
+     * Botones de una búsqueda: vender, elegir uno de la lista, ver el resto,
+     * buscar otra cosa, o dar de alta lo que no está.
+     */
+    protected function botonDeBusqueda(string $chatId, string $action): void
+    {
+        [$que, $detalle] = array_pad(explode(':', $action, 2), 2, '');
+
+        $conversation = TelegramConversation::where('chat_id', $chatId)->first();
+        $data = $conversation->data ?? [];
+
+        match ($que) {
+            'vender' => $this->venderDesdeFicha($chatId),
+            'elegir' => $this->elegirDeLaLista($chatId, $conversation, $detalle),
+            'mas'    => $conversation
+                ? $this->verMas($chatId, $conversation)
+                : $this->telegram->sendMessage($chatId, "Esa lista ya se cerró. Escribí el nombre del producto otra vez."),
+            'otro'   => $this->pedirOtraBusqueda($chatId, $conversation),
+            'nuevo'  => $this->altaConLaFotoBuscada($chatId, $data['foto_file_id'] ?? null),
+            default  => Log::warning('Botón de búsqueda desconocido', ['accion' => $action]),
+        };
+    }
+
+    protected function elegirDeLaLista(string $chatId, ?TelegramConversation $conversation, string $numero): void
+    {
+        if (! $conversation || empty($conversation->data['results'] ?? [])) {
+            $this->telegram->sendMessage($chatId, "Esa lista ya se cerró. Escribí el nombre del producto otra vez.");
+            return;
+        }
+
+        $this->handleMultipleResultSelection($chatId, $conversation, $numero);
+    }
+
+    protected function pedirOtraBusqueda(string $chatId, ?TelegramConversation $conversation): void
+    {
+        $conversation?->delete();
+
+        $this->telegram->sendMessage(
+            $chatId,
+            "🔍 ¿Qué producto buscamos? Escribí el <b>nombre</b> o el <b>código</b>."
+        );
+    }
+
+    /**
+     * Arranca el alta con la foto que la persona ya mandó, para no pedírsela de
+     * nuevo cuando la búsqueda por imagen no encontró el producto.
+     */
+    protected function altaConLaFotoBuscada(string $chatId, ?string $fileId): void
+    {
+        $ruta = $fileId ? $this->guardarFotoDeTelegram($fileId) : null;
+
+        if ($ruta !== null) {
+            $this->telegram->sendMessage($chatId, "📷 Uso la foto que me mandaste para este producto.");
+        } elseif ($fileId !== null) {
+            $this->telegram->sendMessage($chatId, "No pude recuperar esa foto, así que te la voy a pedir más adelante.");
+        }
+
+        $this->productHandler->start($chatId);
+
+        if ($ruta === null) {
+            return;
+        }
+
+        // Se deja con la misma forma que usa el paso de fotos del alta, para que
+        // el resumen y el guardado la encuentren sin saber de dónde salió.
+        $conversation = TelegramConversation::getOrCreate($chatId);
+        $data = $conversation->data ?? [];
+        $data['fotos']     = [$ruta];
+        $data['foto_path'] = $ruta;
+
+        $conversation->update([
+            'data'       => $data,
+            'expires_at' => now()->addMinutes(30),
+        ]);
+    }
+
+    /**
+     * Baja una foto de Telegram al disco público, con el mismo nombre y lugar
+     * que las del alta. Devuelve la ruta guardada, o null si no se pudo.
+     */
+    protected function guardarFotoDeTelegram(string $fileId): ?string
+    {
+        try {
+            $contenido = $this->telegram->downloadFile($this->telegram->getFile($fileId));
+
+            if (empty($contenido)) {
+                return null;
+            }
+
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $tipo  = finfo_buffer($finfo, $contenido);
+            finfo_close($finfo);
+
+            // Lo que no sea imagen no sirve: el procesamiento posterior (las
+            // variantes para la tienda) solo entiende imágenes.
+            $extension = match ($tipo) {
+                'image/jpeg' => 'jpg',
+                'image/png'  => 'png',
+                'image/webp' => 'webp',
+                default      => null,
+            };
+
+            if ($extension === null) {
+                return null;
+            }
+
+            Storage::disk('public')->makeDirectory('products');
+            $ruta = 'products/' . Str::uuid() . '.' . $extension;
+            Storage::disk('public')->put($ruta, $contenido);
+
+            return $ruta;
+        } catch (\Throwable $e) {
+            Log::warning('No se pudo guardar la foto de la búsqueda', [
+                'file_id' => $fileId,
+                'error'   => $e->getMessage(),
+            ]);
+
+            return null;
+        }
     }
 
     protected function handleVoiceMessage(string $chatId, array $message): void
@@ -988,6 +1338,12 @@ class BotHandler
                     return;
                 }
 
+                // Lo mismo que por texto: dictar una orden nueva mientras se
+                // charla con la IA no puede quedar tapado por la charla.
+                if ($this->atiendeOrdenNueva($chatId, $activeConv, $transcript)) {
+                    return;
+                }
+
                 $step    = $activeConv->step;
                 $fakeMsg = array_merge($message, ['text' => $transcript]);
                 if (str_starts_with($step, 'venta_rapida:')) {
@@ -996,6 +1352,10 @@ class BotHandler
                 }
                 if (str_starts_with($step, 'nuevo:')) {
                     $this->productHandler->handle($chatId, $fakeMsg);
+                    return;
+                }
+                if (str_starts_with($step, 'editar:')) {
+                    $this->productEditHandler->handle($chatId, $fakeMsg);
                     return;
                 }
                 if (str_starts_with($step, 'devolver:')) {
@@ -1026,7 +1386,7 @@ class BotHandler
             }
 
             // Same routing as text — product search first, agent only for conversational queries
-            if ($this->isConversationalQuery($transcript)) {
+            if ($this->esPregunta($transcript)) {
                 $this->agentHandler->handleVoice($chatId, $transcript);
             } else {
                 $searchResults = $this->searchService->search($transcript);
@@ -1053,13 +1413,57 @@ class BotHandler
     {
         $intencion = $this->intents->detect($text);
 
-        if (! $intencion || $intencion['intent'] !== IntentDetector::ALTA_PRODUCTO) {
+        if (! $intencion) {
             return false;
         }
 
-        $this->startProductCreation($chatId, $text, $intencion['resto']);
+        if ($intencion['intent'] === IntentDetector::EDICION_PRODUCTO) {
+            $this->abrirEdicion($chatId, $intencion['resto']);
 
-        return true;
+            return true;
+        }
+
+        if ($intencion['intent'] === IntentDetector::ALTA_PRODUCTO) {
+            $this->startProductCreation($chatId, $text, $intencion['resto']);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Mientras el estado en el que está la persona no sea un formulario,
+     * cualquier cosa que escriba puede ser una orden nueva. Se escucha en el
+     * mismo orden que en el texto libre: vender, dar de alta, corregir.
+     *
+     * Antes de esto, abrir una charla con el asistente tapaba todo lo demás: la
+     * persona escribía "Crear producto" y le contestaba la IA, una y otra vez.
+     */
+    protected function atiendeOrdenNueva(string $chatId, TelegramConversation $conversation, string $text): bool
+    {
+        if (! in_array($conversation->step, self::PASOS_SIN_FORMULARIO, true)) {
+            return false;
+        }
+
+        if ($this->saleHandler->tryQuickSell($chatId, $text)) {
+            return true;
+        }
+
+        return $this->tryIntent($chatId, $text);
+    }
+
+    /**
+     * Pasa el pedido de corregir un producto al flujo de edición.
+     *
+     * El flujo vive en otra clase; mientras no esté, se dice con palabras lo
+     * que todavía no se puede hacer, en vez de dejar a la persona esperando.
+     */
+    protected function abrirEdicion(string $chatId, string $resto): void
+    {
+        Log::info('Intención de editar un producto', ['chatId' => $chatId, 'resto' => $resto]);
+
+        $this->productEditHandler->start($chatId, $resto);
     }
 
     /**
@@ -1069,7 +1473,7 @@ class BotHandler
      */
     protected function startProductCreation(string $chatId, string $textoOriginal, string $resto): void
     {
-        $traeDatos = $resto !== '' && str_word_count($resto) >= 2;
+        $traeDatos = $resto !== '' && Palabras::contar($resto) >= 2;
 
         if ($traeDatos && Setting::get('ai_chatbot_enabled') === '1') {
             Log::info('Intención de alta con datos → agente', ['chatId' => $chatId]);
@@ -1091,6 +1495,7 @@ class BotHandler
     {
         $step = $conv->step;
         $structured = str_starts_with($step, 'nuevo:')
+            || str_starts_with($step, 'editar:')
             || str_starts_with($step, 'venta_rapida:')
             || str_starts_with($step, 'devolver:');
 
@@ -1103,7 +1508,13 @@ class BotHandler
         // 1. Pidió empezar de nuevo → se cancela lo anterior y se arranca lo pedido.
         //    La intención sale del mismo detector que usa el ruteo principal: una
         //    sola lista de frases, no dos que hay que acordarse de sincronizar.
+        //
+        //    A propósito solo el alta corta el proceso en curso: dentro del alta,
+        //    "cambiá el nombre" o "corregí el precio" se refieren a lo que se
+        //    está cargando ahora, no a un producto que ya existe, y cortarlo
+        //    para irse a otra pantalla le borraría a la persona lo que ya dictó.
         $intencion = $this->intents->detect($text);
+        $pideUnAlta = $intencion !== null && $intencion['intent'] === IntentDetector::ALTA_PRODUCTO;
         $frasesDeSalida = ['empezar de nuevo', 'cancelar todo', 'salir del proceso'];
         $quiereSalir = false;
 
@@ -1114,11 +1525,11 @@ class BotHandler
             }
         }
 
-        if ($intencion || $quiereSalir) {
+        if ($pideUnAlta || $quiereSalir) {
             $conv->delete();
             $this->telegram->sendMessage($chatId, "🔄 Proceso anterior cancelado.");
 
-            if ($intencion && $intencion['intent'] === IntentDetector::ALTA_PRODUCTO) {
+            if ($pideUnAlta) {
                 $this->startProductCreation($chatId, $text, $intencion['resto']);
             } elseif (Setting::get('ai_chatbot_enabled') === '1') {
                 $this->agentHandler->handle($chatId, $text);
@@ -1135,7 +1546,7 @@ class BotHandler
         // 2. Only block clearly out-of-context input (very long sentences, > 15 words).
         // Short voice replies like "no quiero descuento", "efectivo por favor", "40 cajas" pass through
         // to handlers (NumberParser, keyword matching) which now tolerate natural language.
-        $wordCount = str_word_count($text);
+        $wordCount = Palabras::contar($text);
         if ($wordCount <= 15) {
             return false;
         }
@@ -1191,13 +1602,29 @@ class BotHandler
      */
     protected function isConversationalQuery(string $text): bool
     {
-        // Question mark = definitely a question
-        if (str_contains($text, '?')) {
+        if ($this->esPregunta($text)) {
             return true;
         }
 
-        // More than 4 words = likely a sentence, not a product name
-        if (str_word_count($text) > 4) {
+        // Varias palabras y ningún arranque de pregunta: probablemente sea una
+        // frase. Se cuenta con Palabras y no con str_word_count porque esa
+        // función parte "chaqueño" en dos y le sumaba una palabra de más.
+        return Palabras::contar($text) > 4;
+    }
+
+    /**
+     * ¿Está preguntando algo?
+     *
+     * Esto es lo único que manda un mensaje al asistente sin pasar por el
+     * catálogo. El largo de la frase NO alcanza para decidirlo: "sombrero
+     * chaqueño costura a mano" es el nombre de un producto, y mandarlo a la IA
+     * por tener cinco palabras es lo que hacía parecer que el bot no encontraba
+     * medio catálogo.
+     */
+    protected function esPregunta(string $text): bool
+    {
+        // Question mark = definitely a question
+        if (str_contains($text, '?')) {
             return true;
         }
 

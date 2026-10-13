@@ -69,6 +69,11 @@ class BotAgentHandler
             $botFlowOwned = $step !== $stepBefore && (
                 in_array($step, ['busqueda:resultado', 'busqueda:multiple', 'venta_rapida:cantidad'], true)
                 || str_starts_with($step, 'nuevo:')
+                // La edición de un producto también se contesta tocando: la tool
+                // ya mandó el resumen con "260 → 300" y el botón Guardar. Sin
+                // esto, el modelo agregaba abajo su propio texto diciendo que el
+                // cambio estaba hecho, cuando todavía falta confirmar.
+                || str_starts_with($step, 'editar:')
                 || str_starts_with($step, 'venta_rapida:')
                 || str_starts_with($step, 'devolver:')
             );
