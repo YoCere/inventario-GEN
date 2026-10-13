@@ -211,6 +211,9 @@ class BotProductPhotosTest extends TestCase
             'purchase_price' => 350,
             'selling_price' => 450,
             'quantity' => 30,
+            // El dictado también trae con cuántas avisar, así el alta llega a las
+            // fotos sin pasos de por medio (este test es sobre las fotos).
+            'min_stock' => 5,
         ];
 
         $this->app->bind(AgentService::class, function ($app, $params) use ($campos) {

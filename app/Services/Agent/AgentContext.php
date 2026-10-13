@@ -22,5 +22,12 @@ class AgentContext
          * cualquier dato mal escrito, así que conviene hacerlo revisar.
          */
         public readonly string $source = 'texto',
+        /**
+         * Lo que la persona dijo, tal cual. Las herramientas lo miran cuando un
+         * dato se puede sacar sin depender de que el modelo lo haya extraído:
+         * "marcalo como destacado" tiene que funcionar siempre, no solo cuando
+         * el modelo se acuerda de pasar el campo.
+         */
+        public readonly ?string $mensaje = null,
     ) {}
 }

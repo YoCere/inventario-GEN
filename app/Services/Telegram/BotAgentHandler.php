@@ -35,6 +35,7 @@ class BotAgentHandler
                 chatId: $chatId,
                 channel: 'telegram',
                 source: $source,
+                mensaje: $userText,
             );
 
             // Load conversation memory (last N turns)

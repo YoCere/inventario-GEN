@@ -7,10 +7,25 @@ use App\Models\TelegramConversation;
 use App\Services\Agent\AgentContext;
 use App\Services\Agent\BaseTool;
 use App\Services\Messaging\TelegramService;
+use App\Services\Telegram\BotProductHandler;
+use App\Services\Telegram\PasosDelAlta;
+use App\Services\Telegram\UnidadDeVenta;
 
 class StartProductCreationTool extends BaseTool
 {
-    public function __construct(private TelegramService $telegram) {}
+    /**
+     * Pedir que el producto quede destacado. Se busca en lo que la persona dijo,
+     * sin depender de que el modelo haya pasado el campo: la dueña decidió que
+     * si lo dice en el audio, el producto queda destacado, y eso no puede
+     * quedar colgado de cuánto se acuerde el modelo de extraer.
+     */
+    private const DICE_DESTACADO = '/\b(destacad[oa]s?|destacar|resaltad[oa]|resaltar|favorit[oa])\b/u';
+
+    public function __construct(
+        private TelegramService $telegram,
+        private UnidadDeVenta $unidades,
+        private PasosDelAlta $pasos,
+    ) {}
 
     public function webExposed(): bool
     {
@@ -62,9 +77,12 @@ DESC;
             'properties' => [
                 'name'           => ['type' => 'string',  'description' => 'Nombre del producto'],
                 'category'       => ['type' => 'string',  'description' => 'Categoría (puede ser parcial)'],
+                'unit'           => ['type' => 'string',  'description' => 'Cómo se vende: "caja", "unidad", "par", "docena", "kilo". Solo si lo dice ("se vende por caja", "viene en cajas").'],
                 'purchase_price' => ['type' => 'number',  'description' => 'Precio de compra en bolivianos'],
                 'selling_price'  => ['type' => 'number',  'description' => 'Precio de venta en bolivianos'],
                 'quantity'       => ['type' => 'integer', 'description' => 'Stock inicial'],
+                'min_stock'      => ['type' => 'integer', 'description' => 'Con cuántas unidades avisar para reponer ("avisame cuando queden 5" → 5). 0 si pide no ser avisado.'],
+                'featured'       => ['type' => 'boolean', 'description' => 'true si pide destacar el producto en la tienda ("marcalo como destacado").'],
             ],
         ];
     }
@@ -119,19 +137,56 @@ DESC;
             $data['cantidad'] = (int) $input['quantity'];
         }
 
+        // Si el audio ya dijo cómo se vende ("se vende por caja"), el flujo no
+        // vuelve a preguntarlo. Lo que se dijo se busca entre las unidades que
+        // existen; si no corresponde a ninguna, se pregunta igual.
+        if (!empty($input['unit'])) {
+            $unidad = $this->unidades->buscar((string) $input['unit']);
+
+            if ($unidad) {
+                $data['unidad_id']     = $unidad->id;
+                $data['unidad_nombre'] = $unidad->name;
+            }
+        }
+
+        if (isset($input['min_stock']) && (int) $input['min_stock'] >= 0) {
+            $data['stock_minimo'] = (int) $input['min_stock'];
+        }
+
+        if (!empty($input['featured']) || $this->pidioDestacado($context->mensaje)) {
+            $data['destacado'] = true;
+        }
+
         // ── Determinar siguiente paso basado en lo que SIGUE faltando ────────
-        $nextStep = match (true) {
-            empty($data['nombre'])           => 'nuevo:nombre',
-            $categoryStatus === 'pending'    => 'nuevo:categoria', // user must confirm sí/no
-            empty($data['categoria_id'])     => 'nuevo:categoria',
-            empty($data['precio_compra'])    => 'nuevo:precio_compra',
-            empty($data['precio_venta'])     => 'nuevo:precio_venta',
-            !isset($data['cantidad'])        => 'nuevo:cantidad',
-            default                          => 'nuevo:foto',
-        };
+        // La lista de pasos es una sola para todo el alta (PasosDelAlta): cuando
+        // cada entrada tenía la suya, el audio preguntaba cosas que el flujo
+        // escrito ya no preguntaba.
+        if ($categoryStatus !== 'pending') {
+            $data = $this->pasos->conDefectos($data);
+        }
+
+        $nextStep = $categoryStatus === 'pending'
+            ? 'nuevo:categoria' // user must confirm sí/no
+            : $this->pasos->siguiente($data);
 
         // ── Build summary of what was registered ─────────────────────────────
         $summary = $this->buildSummary($data, $categoryStatus);
+
+        // Los pasos que se contestan tocando (y el resumen final) los arma el
+        // handler: los teclados viven ahí y no conviene tener dos versiones.
+        if (in_array($nextStep, ['nuevo:unidad', 'nuevo:stock_minimo', 'nuevo:revisar'], true)) {
+            if ($summary !== '') {
+                $this->telegram->sendMessage($context->chatId, $summary);
+            }
+
+            app(BotProductHandler::class)->continuar($context->chatId, $conversation, $data);
+
+            return [
+                'status'    => 'ok',
+                'next_step' => $nextStep,
+                'prefilled' => array_keys($data),
+            ];
+        }
 
         // ── Build prompt for next missing field ──────────────────────────────
         $prompt = $this->buildPrompt($nextStep, $data, $categoryStatus);
@@ -156,6 +211,13 @@ DESC;
         ];
     }
 
+    /** "marcalo como destacado" en lo que se dictó, sin pasar por el modelo. */
+    private function pidioDestacado(?string $mensaje): bool
+    {
+        return $mensaje !== null && $mensaje !== ''
+            && preg_match(self::DICE_DESTACADO, mb_strtolower($mensaje)) === 1;
+    }
+
     private function buildSummary(array $data, ?string $categoryStatus): string
     {
         $lines = [];
@@ -165,6 +227,9 @@ DESC;
         if (!empty($data['categoria_id'])) {
             $lines[] = "• Categoría: <b>{$data['categoria_nombre']}</b>";
         }
+        if (!empty($data['unidad_nombre'])) {
+            $lines[] = "• Se vende por: <b>{$data['unidad_nombre']}</b>";
+        }
         if (!empty($data['precio_compra'])) {
             $lines[] = "• Precio compra: <b>" . number_format($data['precio_compra'] / 100, 2) . "</b>";
         }
@@ -173,6 +238,14 @@ DESC;
         }
         if (isset($data['cantidad'])) {
             $lines[] = "• Stock inicial: <b>{$data['cantidad']}</b>";
+        }
+        if (isset($data['stock_minimo'])) {
+            $lines[] = (int) $data['stock_minimo'] === 0
+                ? "• Avisar cuando queden: <b>no avisar</b>"
+                : "• Avisar cuando queden: <b>{$data['stock_minimo']}</b>";
+        }
+        if (!empty($data['destacado'])) {
+            $lines[] = "• ⭐ Destacado en la tienda";
         }
 
         if (empty($lines)) {
