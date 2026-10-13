@@ -18,6 +18,7 @@ use App\Services\Agent\Tools\GetLowStockTool;
 use App\Services\Agent\Tools\ListProductsTool;
 use App\Services\Agent\Tools\StartSaleTool;
 use App\Services\Agent\Tools\StartProductCreationTool;
+use App\Services\Agent\Tools\UpdateProductTool;
 use App\Services\Agent\Tools\GetFinancialStatusTool;
 use App\Services\Agent\Tools\GetIncomeAndExpensesTool;
 use App\Services\Agent\Tools\GetBalanceSheetTool;
@@ -43,6 +44,7 @@ class AppServiceProvider extends ServiceProvider
             $registry->register($app->make(ListLocationsTool::class));
             $registry->register($app->make(StartSaleTool::class));
             $registry->register($app->make(StartProductCreationTool::class));
+            $registry->register($app->make(UpdateProductTool::class));
             $registry->register($app->make(GetLowStockTool::class));
             $registry->register($app->make(ListProductsTool::class));
             $registry->register($app->make(GetFinancialStatusTool::class));

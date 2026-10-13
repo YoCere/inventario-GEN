@@ -108,7 +108,7 @@ class TelegramService
         }
     }
 
-    public function sendPhoto(string $chatId, string $filePath, string $caption = ''): array
+    public function sendPhoto(string $chatId, string $filePath, string $caption = '', ?array $inlineKeyboard = null): array
     {
         if (!$this->botToken) {
             throw new \Exception('Telegram bot token not configured');
@@ -116,15 +116,23 @@ class TelegramService
 
         $fileContent = Storage::disk('public')->get($filePath);
 
+        $payload = [
+            'chat_id' => $chatId,
+            'caption' => $caption,
+            'parse_mode' => 'HTML',
+        ];
+
+        // La ficha de un producto con foto lleva los mismos botones que la de
+        // texto: si no, tener imagen dejaría a la persona sin las salidas.
+        if (!empty($inlineKeyboard)) {
+            $payload['reply_markup'] = json_encode(['inline_keyboard' => $inlineKeyboard]);
+        }
+
         $response = Http::attach(
             'photo',
             $fileContent,
             basename($filePath)
-        )->post("{$this->apiUrl}{$this->botToken}/sendPhoto", [
-            'chat_id' => $chatId,
-            'caption' => $caption,
-            'parse_mode' => 'HTML',
-        ]);
+        )->post("{$this->apiUrl}{$this->botToken}/sendPhoto", $payload);
 
         return $response->json();
     }

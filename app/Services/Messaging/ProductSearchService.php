@@ -3,12 +3,23 @@
 namespace App\Services\Messaging;
 
 use App\Models\Product;
+use App\Support\Palabras;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class ProductSearchService
 {
+    /**
+     * Cuántas coincidencias se devuelven como máximo.
+     *
+     * Antes eran 5 y sin aviso: con un catálogo de variantes ("sombrero
+     * chaqueño" en seis costuras) la dueña veía cinco y concluía que el bot no
+     * encontraba el resto. Quien muestra la lista pagina; acá solo se corta
+     * para no cargar el catálogo entero en memoria.
+     */
+    public const MAX_RESULTADOS = 20;
+
     /** Si true, restringir todas las capas al scope público (Shop module). */
     private bool $publicOnly = false;
 
@@ -107,13 +118,24 @@ class ProductSearchService
 
     private function searchExact(string $query): Collection
     {
-        return $this->applyScope(Product::query())
-            ->where(function ($q) use ($query) {
-                $q->where('sku', $query)
-                    ->orWhereRaw("LOWER(name) = LOWER(?)", [$query]);
+        $buscado = mb_strtolower(trim($query));
+
+        $encontrados = $this->applyScope(Product::query())
+            ->where(function ($q) use ($buscado) {
+                // El código se compara en minúsculas: quien lo dicta o lo copia
+                // del cartel rara vez respeta las mayúsculas, y antes esa
+                // búsqueda caía al parecido y devolvía otro producto.
+                $q->whereRaw('LOWER(sku) = ?', [$buscado])
+                    ->orWhereRaw('LOWER(name) = ?', [$buscado]);
             })
             ->with(['unit', 'category', 'stocks.location.warehouse', 'primaryImage'])
             ->get();
+
+        // El código es único e inequívoco: si alguno coincide, va primero,
+        // antes que cualquier producto que solo se llame parecido.
+        return $encontrados
+            ->sortByDesc(fn (Product $producto) => mb_strtolower((string) $producto->sku) === $buscado ? 1 : 0)
+            ->values();
     }
 
     private function searchFuzzy(string $query): Collection
@@ -229,7 +251,7 @@ class ProductSearchService
         })
         ->filter(fn ($item) => $item['score'] > 0)
         ->sortByDesc('score')
-        ->take(5)
+        ->take(self::MAX_RESULTADOS)
         ->pluck('product');
 
         return $scored;
@@ -238,7 +260,7 @@ class ProductSearchService
     private function searchWithAi(string $query): Collection
     {
         // Skip AI for queries that are clearly questions, not product names
-        if (str_contains($query, '?') || str_word_count($query) > 3) {
+        if (str_contains($query, '?') || Palabras::contar($query) > 3) {
             return collect();
         }
 
