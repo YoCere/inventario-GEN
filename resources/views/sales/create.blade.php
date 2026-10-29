@@ -791,6 +791,14 @@
                         this.cart = [];
                         this.selectedCustomer = null;
                         this.payment = { method: 'cash', cash_received: 0, notes: '' };
+                        // El texto que se VE en el campo de efectivo vive aparte del
+                        // número. Sin esta línea, la venta siguiente arrancaba
+                        // mostrando el monto de la anterior (se cobraban 350, se
+                        // empezaba la próxima venta y el campo seguía diciendo 350)
+                        // mientras por dentro el valor era 0: el vendedor veía un
+                        // monto pagado que el sistema no tenía, y al cobrar le
+                        // aparecía "pago insuficiente" sin entender por qué.
+                        this.cashInputDraft = '';
                         this.globalDiscount = 0;
                         this.wantsInvoice = false;
                         this.customerTs && this.customerTs.clear();
