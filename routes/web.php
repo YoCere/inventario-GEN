@@ -94,6 +94,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // =========================================================================
     Route::prefix('reports')->name('reports.')->group(function () {
         Route::view('stock-by-location', 'reports.stock-by-location')->name('stock-by-location');
+        // Tiempos de carga de productos y de cobro de ventas. Permiso propio:
+        // son tiempos de trabajo de personas con nombre, no un informe de stock.
+        Route::view('tiempos', 'reports.work-timings')
+            ->middleware('can:metrics.view')
+            ->name('work-timings');
     });
 
     Route::prefix('finance')->name('finance.')->group(function () {

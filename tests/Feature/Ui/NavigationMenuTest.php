@@ -61,7 +61,7 @@ class NavigationMenuTest extends TestCase
             'Ventas' => ['-' => ['Vender', 'Ventas', 'Clientes']],
             'Compras' => ['-' => ['Compras', 'Proveedores']],
             'Productos' => [
-                '-' => ['Productos', 'Informe de productos', 'Kardex valorizado', 'Transferencias', 'Stock por ubicación'],
+                '-' => ['Productos', 'Informe de productos', 'Tiempos de carga y venta', 'Kardex valorizado', 'Transferencias', 'Stock por ubicación'],
                 'Datos maestros' => ['Categorías', 'Unidades', 'Almacenes', 'Ubicaciones'],
             ],
             'Finanzas' => ['-' => ['Resumen financiero', 'Tesorería', 'Contabilidad', 'Activos y operaciones']],
@@ -83,7 +83,7 @@ class NavigationMenuTest extends TestCase
             'Ventas' => ['-' => ['Vender', 'Ventas', 'Clientes']],
             'Compras' => ['-' => ['Compras', 'Proveedores']],
             'Productos' => [
-                '-' => ['Productos', 'Informe de productos', 'Kardex valorizado', 'Transferencias', 'Stock por ubicación'],
+                '-' => ['Productos', 'Informe de productos', 'Tiempos de carga y venta', 'Kardex valorizado', 'Transferencias', 'Stock por ubicación'],
                 'Datos maestros' => ['Categorías', 'Unidades', 'Almacenes', 'Ubicaciones'],
             ],
             'Finanzas' => ['-' => ['Resumen financiero', 'Tesorería', 'Contabilidad', 'Activos y operaciones']],
@@ -99,7 +99,7 @@ class NavigationMenuTest extends TestCase
             'Ventas' => ['-' => ['Vender', 'Ventas', 'Clientes']],
             'Compras' => ['-' => ['Compras', 'Proveedores']],
             'Productos' => [
-                '-' => ['Productos', 'Informe de productos'],
+                '-' => ['Productos', 'Informe de productos', 'Tiempos de carga y venta'],
                 'Datos maestros' => ['Categorías', 'Unidades'],
             ],
             'Ajustes' => ['-' => ['Ajustes del sistema', 'Página de la tienda']],

@@ -10,6 +10,8 @@ use App\Services\Messaging\TelegramService;
 use App\Services\Telegram\BotProductHandler;
 use App\Services\Telegram\PasosDelAlta;
 use App\Services\Telegram\UnidadDeVenta;
+use App\Support\Metrics\IntakeClock;
+use App\Support\Metrics\TimedActivity;
 
 class StartProductCreationTool extends BaseTool
 {
@@ -103,6 +105,15 @@ DESC;
             $data['origen_audio'] = true;
         }
 
+        // El reloj del alta arranca acá, en el primer turno: por voz la persona
+        // ya dictó varios datos antes de que el bot pregunte nada, y medir desde
+        // la primera pregunta regalaría justo la parte que hace que dictar sea
+        // más rápido. Si el alta ya venía andando, arrancar() no la reinicia.
+        $data = IntakeClock::arrancar(
+            $data,
+            $context->source === 'audio' ? TimedActivity::CANAL_BOT_VOZ : TimedActivity::CANAL_BOT,
+        );
+
         // ── Extracción INDEPENDIENTE por campo (sin cascade). Cualquier campo
         //    detectado por la IA se persiste, aunque otros no estén presentes. ─
 
@@ -184,7 +195,7 @@ DESC;
             return [
                 'status'    => 'ok',
                 'next_step' => $nextStep,
-                'prefilled' => array_keys($data),
+                'prefilled' => array_values(array_diff(array_keys($data), [IntakeClock::CLAVE])),
             ];
         }
 
@@ -207,7 +218,7 @@ DESC;
         return [
             'status'    => 'ok',
             'next_step' => $nextStep,
-            'prefilled' => array_keys($data),
+            'prefilled' => array_values(array_diff(array_keys($data), [IntakeClock::CLAVE])),
         ];
     }
 

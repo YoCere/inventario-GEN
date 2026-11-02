@@ -65,6 +65,9 @@ class RolesAndPermissionsSeeder extends Seeder
         // Auditoría
         'audit.view' => 'Ver bitácora de auditoría',
 
+        // Productividad: cuánto se tarda en cargar un producto y en cobrar
+        'metrics.view' => 'Ver tiempos de carga y de venta',
+
         // Ajustes
         'settings.view' => 'Ver ajustes del sistema',
         'settings.edit-business' => 'Editar ajustes de negocio (empresa, moneda, impuestos, tienda, nómina)',
@@ -94,7 +97,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'purchases.view', 'purchases.manage',
             'finance.view', 'finance.accounting', 'users.payroll', 'products.kardex',
             'assets.manage', 'loans.manage', 'budgets.manage', 'production.manage',
-            'audit.view',
+            'audit.view', 'metrics.view',
             'settings.view', 'settings.edit-business',
             'shop.admin', 'shop.landing.manage',
             'users.manage',
@@ -114,6 +117,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'sales.view', 'sales.create', 'sales.complete', 'sales.cancel',
             'shop.admin', 'shop.landing.manage',
             'settings.view', 'settings.edit-business',
+            'metrics.view',
             // NO incluye: contabilidad/finanzas, auditoría, ni gestión de usuarios/roles
         ],
     ];

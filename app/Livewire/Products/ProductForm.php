@@ -10,8 +10,10 @@ use App\Models\Product;
 use App\Models\Unit;
 use App\Models\Warehouse;
 use App\Services\CategoryService;
+use App\Services\Metrics\TimingRecorder;
 use App\Services\ProductService;
 use App\Settings\ProductIntakeFields;
+use App\Support\Metrics\TimedActivity;
 use App\Shop\Models\ProductImage;
 use App\Shop\Services\ImageProcessor;
 use Illuminate\Support\Facades\Storage;
@@ -44,6 +46,19 @@ class ProductForm extends Component
     public string $notes = '';
     public ?int $location_id = null;
     public bool $hasMultiLocationStock = false;
+
+    /**
+     * Cuándo se abrió el formulario para cargar un producto nuevo (ISO 8601).
+     *
+     * El reloj de la métrica arranca acá, al abrir, no al guardar: lo que se
+     * quiere saber es cuánto le lleva a la persona completar el alta.
+     *
+     * Viaja al navegador como cualquier propiedad pública de Livewire, así que
+     * se puede manipular desde ahí. No importa: un valor absurdo cae en el tope
+     * de App\Support\Metrics\TimedActivity y la medición queda descartada. Lo
+     * que no se arriesga es el producto, que se crea antes de medir nada.
+     */
+    public ?string $openedAt = null;
 
     // Legacy single photo (backward compat) — UI nueva usa $gallery.
     public $photo = null;
@@ -96,6 +111,7 @@ class ProductForm extends Component
         // productos, el mismo valor que usa el bot. Antes arrancaba en 0, así que
         // según por dónde se cargara el producto el aviso quedaba distinto.
         $this->min_stock = (int) ProductIntakeFields::porDefecto('stock_minimo');
+        $this->openedAt = now()->toIso8601String();
         $this->is_active = true;
         // Default público=true: queremos que productos creados aparezcan en el
         // catálogo /tienda sin acción extra del admin. Si no quiere mostrarlo,
@@ -112,6 +128,8 @@ class ProductForm extends Component
     {
         abort_if(! auth()->user()->can('products.manage'), 403);
         $this->product = $product->load('images');
+        // Editar no es dar de alta: no hay nada que medir acá.
+        $this->openedAt = null;
         $this->sku = $product->sku;
         $this->sin_code = $product->sin_code ?? '';
         $this->name = $product->name;
@@ -352,6 +370,16 @@ class ProductForm extends Component
             } else {
                 $product = $service->createProduct($data);
                 $message = 'Producto creado correctamente.';
+
+                // El producto ya está creado: medir no puede perderlo. El
+                // registrador se come cualquier error que venga de la medición.
+                app(TimingRecorder::class)->registrar(
+                    TimedActivity::ALTA_PRODUCTO,
+                    TimedActivity::CANAL_WEB,
+                    auth()->id(),
+                    $this->openedAt,
+                );
+                $this->openedAt = null;
             }
 
             // === Gallery management ===

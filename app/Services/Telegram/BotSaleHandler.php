@@ -4,9 +4,11 @@ namespace App\Services\Telegram;
 
 use App\Models\TelegramConversation;
 use App\Models\Product;
+use App\Services\Metrics\TimingRecorder;
 use App\Services\Messaging\TelegramService;
 use App\Services\SaleService;
 use App\Support\BusinessTime;
+use App\Support\Metrics\TimedActivity;
 use App\Support\NumberParser;
 use App\DTOs\SaleData;
 use App\DTOs\SaleItemData;
@@ -53,6 +55,9 @@ class BotSaleHandler
                 'product_name' => $product->name,
                 'product_price' => $product->selling_price,
                 'disponible' => $product->quantity,
+                // El reloj de la venta por chat arranca con la primera pregunta
+                // del bot, que es cuando la persona empieza a contestar.
+                'atendiendo_desde' => now()->toIso8601String(),
             ],
             'expires_at' => now()->addMinutes(15),
         ]);
@@ -287,6 +292,10 @@ class BotSaleHandler
 
             $sale = $this->saleService->createSale($saleData);
 
+            // La venta ya existe: recién ahora se mide, y medir no puede
+            // romperla (ver anotarTiempoDeLaVenta).
+            $this->anotarTiempoDeLaVenta($chatId, $data);
+
             $conversation->delete();
 
             $totalFormated = number_format(($data['subtotal'] - $data['descuento']) / 100, 2);
@@ -309,6 +318,28 @@ class BotSaleHandler
                 $chatId,
                 "❌ Error al registrar la venta. Verifica el stock y vuelve a intentarlo."
             );
+        }
+    }
+
+    /**
+     * Anota cuánto se tardó la venta por chat, sin poder romperla.
+     *
+     * Se llama con la venta YA guardada y todo el bloque va en un try/catch: es
+     * plata real. Si la medición falla, la venta sigue cobrada.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function anotarTiempoDeLaVenta(string $chatId, array $data): void
+    {
+        try {
+            app(TimingRecorder::class)->registrar(
+                TimedActivity::VENTA,
+                TimedActivity::CANAL_BOT,
+                $this->authHandler->getAuthenticatedUser($chatId)?->id,
+                $data['atendiendo_desde'] ?? null,
+            );
+        } catch (\Throwable $e) {
+            Log::warning('No se pudo anotar el tiempo de la venta por el bot', ['error' => $e->getMessage()]);
         }
     }
 
