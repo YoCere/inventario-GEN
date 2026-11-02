@@ -287,206 +287,237 @@
                  x-transition:enter-start="translate-y-full sm:translate-y-0 sm:scale-95 sm:opacity-0"
                  x-transition:enter-end="translate-y-0 sm:scale-100 sm:opacity-100">
 
-                <header class="px-5 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10 rounded-t-2xl">
-                    <div>
-                        <h2 class="text-lg font-bold text-gray-900">Finalizar venta</h2>
-                        <p class="text-xs text-gray-500"><span x-text="cart.reduce((s,i)=>s+i.quantity,0)"></span> ítems · <span x-text="formatCurrency(total)" class="font-semibold text-indigo-600"></span></p>
-                    </div>
-                    <button @click="paymentSheetOpen = false" class="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center">
+                {{-- ── Cabecera: lo mínimo para saber dónde estás ───────────────── --}}
+                <header class="px-5 py-3 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10 rounded-t-2xl">
+                    <h2 class="text-base font-bold text-gray-900">
+                        Cobrar
+                        <span class="ml-1 text-sm font-normal text-gray-500">
+                            <span x-text="cart.reduce((s,i)=>s+i.quantity,0)"></span> ítems
+                        </span>
+                    </h2>
+                    <button @click="paymentSheetOpen = false" class="w-10 h-10 -mr-2 rounded-full hover:bg-gray-100 flex items-center justify-center" aria-label="Volver al carrito">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </header>
 
-                <div class="flex-1 overflow-y-auto p-5 space-y-5">
+                <div class="flex-1 overflow-y-auto px-5 py-4 space-y-5">
 
-                    {{-- Cliente --}}
-                    <section>
-                        <div class="flex items-center justify-between mb-2">
-                            <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wide">Cliente</h3>
-                            <button @click="openCustomerModal()" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800">+ Nuevo (F4)</button>
-                        </div>
-                        <div class="bg-indigo-50 border border-indigo-100 rounded-lg p-3">
-                            <template x-if="selectedCustomer">
-                                <div class="flex justify-between items-center">
-                                    <div class="min-w-0">
-                                        <h4 class="font-bold text-base text-gray-900 truncate" x-text="selectedCustomer.name"></h4>
-                                        <p class="text-sm text-gray-600 truncate" x-text="selectedCustomer.phone || 'Sin teléfono'"></p>
-                                    </div>
-                                    <button @click="resetCustomer()" class="text-gray-400 hover:text-red-500 shrink-0 ml-2">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                    </button>
-                                </div>
-                            </template>
-                            <div x-show="!selectedCustomer">
-                                <select x-ref="customerSelect" placeholder="Buscar cliente [F2]…" autocomplete="off"></select>
-                            </div>
-                        </div>
-
-                        @if(\App\Models\Setting::get('facturacion_activada','0') === '1')
-                            <label class="mt-2 flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
-                                <input type="checkbox" x-model="wantsInvoice"
-                                       class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
-                                ¿Factura? (NIT/CI)
-                            </label>
-                            <p class="mt-1 text-xs text-amber-600" x-show="wantsInvoice && !selectedCustomer">
-                                Elegí un cliente con NIT para facturar.
-                            </p>
-                        @endif
+                    {{-- ── Lo único que importa siempre: cuánto se cobra ───────────── --}}
+                    <section class="text-center">
+                        <p class="text-xs font-bold text-gray-500 uppercase tracking-wide">Total a pagar</p>
+                        <p class="mt-1 text-5xl font-extrabold text-gray-900 tabular-nums leading-none" x-text="formatCurrency(total)"></p>
+                        <p class="mt-1 text-xs text-red-500" x-show="totalDiscount + globalDiscount > 0">
+                            Descuentos: <span x-text="'−' + formatCurrency(totalDiscount + globalDiscount)"></span>
+                        </p>
                     </section>
 
-                    {{-- Resumen de ítems (compacto) --}}
+                    {{-- ── Forma de pago: una fila, sin ocupar media pantalla ──────── --}}
                     <section>
-                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Resumen</h3>
-                        <div class="bg-gray-50 rounded-lg divide-y divide-gray-200 max-h-44 overflow-y-auto">
-                            <template x-for="item in cart" :key="'sum-'+item.id">
-                                <div class="px-3 py-2 flex items-center gap-2">
-                                    <span class="text-xs font-bold text-indigo-600 bg-indigo-100 rounded-full w-6 h-6 flex items-center justify-center shrink-0" x-text="item.quantity"></span>
-                                    <span class="flex-1 text-sm text-gray-700 truncate" x-text="item.name"></span>
-                                    <span class="text-sm font-semibold text-gray-900" x-text="formatCurrency((item.price - item.discount) * item.quantity)"></span>
-                                </div>
+                        <div class="grid grid-cols-4 gap-2">
+                            <template x-for="forma in formasDePago" :key="forma.id">
+                                <button type="button" @click="payment.method = forma.id"
+                                        class="py-2.5 px-1 rounded-xl border-2 transition-colors flex flex-col items-center gap-1"
+                                        :class="payment.method === forma.id ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200'">
+                                    <span class="text-lg leading-none" x-text="forma.icono"></span>
+                                    <span class="text-[11px] font-bold leading-none" x-text="forma.nombre"></span>
+                                </button>
                             </template>
                         </div>
                     </section>
 
-                    {{-- Totales detallados --}}
-                    <section class="space-y-2">
-                        <div class="flex justify-between text-sm text-gray-600">
-                            <span>Subtotal</span>
-                            <span class="font-medium" x-text="formatCurrency(subtotal)"></span>
-                        </div>
-                        <div class="flex justify-between items-center text-sm">
-                            <span class="text-gray-500">Descuento global</span>
-                            <div class="relative w-32">
-                                <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs" x-text="window.currencySymbol"></span>
-                                <input type="text" :value="formatNumber(globalDiscount)"
-                                       @input="globalDiscount = unformatNumber($event.target.value)"
-                                       class="block w-full pl-7 pr-2 py-1.5 text-sm text-right border-gray-300 rounded-md" placeholder="0">
-                            </div>
-                        </div>
-                        <div class="flex justify-between text-sm text-red-500" x-show="totalDiscount > 0">
-                            <span>Descuento ítems</span>
-                            <span x-text="'−' + formatCurrency(totalDiscount)"></span>
-                        </div>
-                        <div class="flex justify-between items-center pt-3 border-t border-gray-200">
-                            <span class="text-base font-bold text-gray-800">Total a pagar</span>
-                            <span class="text-3xl font-extrabold text-indigo-600" x-text="formatCurrency(total)"></span>
-                        </div>
-                    </section>
-
-                    {{-- Forma de pago --}}
-                    <section>
-                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Forma de pago</h3>
+                    {{-- ── Efectivo: pagar con un toque ────────────────────────────── --}}
+                    {{-- x-show y no x-if: así el campo conserva su estado al cambiar
+                         de forma de pago y volver. --}}
+                    <section x-show="payment.method === 'cash'" class="space-y-3">
                         <div class="grid grid-cols-2 gap-2">
-                            <button @click="payment.method = 'cash'"
-                                    class="py-3 px-4 text-sm font-bold rounded-lg border-2 transition-all flex items-center justify-center gap-2"
-                                    :class="payment.method === 'cash' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                EFECTIVO
+                            {{-- "Exacto" primero: es lo más frecuente de lejos. --}}
+                            <button type="button"
+                                    @click="payment.cash_received = total; cashInputDraft = formatNumber(total)"
+                                    class="py-4 rounded-xl border-2 font-bold transition-colors"
+                                    :class="payment.cash_received === total && total > 0
+                                        ? 'bg-emerald-600 text-white border-emerald-600'
+                                        : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:border-emerald-400'">
+                                <span class="block text-xs font-semibold uppercase tracking-wide opacity-80">Justo</span>
+                                <span class="block text-lg tabular-nums" x-text="formatCurrency(total)"></span>
                             </button>
-                            <button @click="payment.method = 'transfer'"
-                                    class="py-3 px-4 text-sm font-bold rounded-lg border-2 transition-all flex items-center justify-center gap-2"
-                                    :class="payment.method === 'transfer' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-                                TRANSFERENCIA
-                            </button>
-                            <button @click="payment.method = 'qr'"
-                                    class="py-3 px-4 text-sm font-bold rounded-lg border-2 transition-all flex items-center justify-center gap-2"
-                                    :class="payment.method === 'qr' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4h6v6H4V4zM14 4h6v6h-6V4zM4 14h6v6H4v-6zM14 14h3v3M20 14v3h-3M14 20h3M20 17v3"/></svg>
-                                QR
-                            </button>
-                            <button @click="payment.method = 'card'"
-                                    class="py-3 px-4 text-sm font-bold rounded-lg border-2 transition-all flex items-center justify-center gap-2"
-                                    :class="payment.method === 'card' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 6h18a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V7a1 1 0 011-1zM7 15h4"/></svg>
-                                TARJETA
-                            </button>
-                        </div>
-                    </section>
 
-                    <template x-if="payment.method === 'cash'">
-                        <section>
-                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Efectivo recibido</label>
+                            {{-- Los billetes salen del total, no de una lista fija: para
+                                 350 sirve 400 y 500, no "50". --}}
+                            <template x-for="monto in montosSugeridos" :key="'sug-'+monto">
+                                <button type="button"
+                                        @click="payment.cash_received = monto; cashInputDraft = formatNumber(monto)"
+                                        class="py-4 rounded-xl border-2 font-bold text-lg tabular-nums transition-colors"
+                                        :class="payment.cash_received === monto
+                                            ? 'bg-indigo-600 text-white border-indigo-600'
+                                            : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'"
+                                        x-text="formatCurrency(monto)"></button>
+                            </template>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">
+                                Otro monto
+                            </label>
                             <div class="relative">
-                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-bold text-gray-500" x-text="window.currencySymbol"></span>
-                                {{-- Input "draft": user escribe libre (sin reformateo en cada keystroke).
-                                     Solo al perder foco (blur) se aplica formato lindo con miles + decimales. --}}
+                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-bold text-gray-400" x-text="window.currencySymbol"></span>
                                 <input type="text"
                                        inputmode="decimal"
                                        x-model="cashInputDraft"
                                        @focus="onCashFocus($event)"
                                        @input="payment.cash_received = unformatNumber(cashInputDraft)"
                                        @blur="onCashBlur()"
-                                       class="block w-full py-3.5 pl-12 pr-3 text-2xl font-bold text-right border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="0">
+                                       class="block w-full py-3 pl-12 pr-3 text-2xl font-bold text-right tabular-nums text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                       placeholder="0">
                             </div>
+                        </div>
 
-                            <div class="mt-3 p-3 rounded-lg flex justify-between items-center"
-                                 :class="change < 0 ? 'bg-red-50 border border-red-200' : 'bg-green-50 border border-green-200'">
-                                <span class="text-sm font-bold uppercase"
-                                      :class="change < 0 ? 'text-red-700' : 'text-green-700'"
-                                      x-text="change < 0 ? 'Falta por pagar' : 'Cambio a entregar'"></span>
-                                <span class="text-2xl font-extrabold"
-                                      :class="change < 0 ? 'text-red-700' : 'text-green-700'"
-                                      x-text="formatCurrency(Math.abs(change))"></span>
-                            </div>
-
-                            {{-- Atajos billetes comunes --}}
-                            <div class="mt-3 grid grid-cols-4 gap-2">
-                                {{-- Exacto: asigna el total exacto en centavos, sin redondeo --}}
-                                <button type="button"
-                                        @click="payment.cash_received = total; cashInputDraft = formatNumber(total)"
-                                        class="py-2 text-xs font-bold border border-gray-200 rounded-lg hover:bg-indigo-50 hover:border-indigo-300 transition-colors">
-                                    Exacto
-                                </button>
-                                <template x-for="amount in [50, 100, 200]" :key="amount">
-                                    <button type="button"
-                                            @click="setCashFromShortcut(amount)"
-                                            class="py-2 text-xs font-bold border border-gray-200 rounded-lg hover:bg-indigo-50 hover:border-indigo-300 transition-colors"
-                                            x-text="window.currencySymbol + ' ' + amount"></button>
-                                </template>
-                            </div>
-                        </section>
-                    </template>
-
-                    <section>
-                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Notas (opcional)</label>
-                        <textarea x-model="payment.notes" rows="2"
-                                  class="block w-full text-sm border-gray-300 rounded-lg p-2.5"
-                                  placeholder="Dirección de entrega, observaciones…"></textarea>
+                        {{-- El vuelto es lo que la persona necesita leer de lejos y
+                             rápido, con el cliente esperando. --}}
                     </section>
 
-                    {{-- Estado venta --}}
+                    {{-- ── Todo lo demás, guardado hasta que haga falta ────────────── --}}
                     <section>
-                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Estado</h3>
-                        <div class="grid grid-cols-2 gap-2">
-                            <button @click="saleStatus = 'completed'"
-                                    class="py-2 px-3 text-xs font-bold rounded-lg border transition-all"
-                                    :class="saleStatus === 'completed' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-700 border-gray-200'">
-                                ✓ COMPLETAR AHORA
-                            </button>
-                            <button @click="saleStatus = 'pending'"
-                                    class="py-2 px-3 text-xs font-bold rounded-lg border transition-all"
-                                    :class="saleStatus === 'pending' ? 'bg-yellow-500 text-white border-yellow-500' : 'bg-white text-gray-700 border-gray-200'">
-                                ⏱ RESERVAR
-                            </button>
+                        <button type="button" @click="masOpciones = !masOpciones"
+                                class="w-full flex items-center justify-between py-3 text-sm font-semibold text-gray-600 border-t border-gray-200">
+                            <span>
+                                Más opciones
+                                {{-- Si algo de lo plegado está en uso, se avisa: nada
+                                     que afecte la venta puede quedar escondido. --}}
+                                <span x-show="selectedCustomer || globalDiscount > 0 || payment.notes || saleStatus !== 'completed' || wantsInvoice"
+                                      class="ml-1 inline-block w-2 h-2 rounded-full bg-indigo-500 align-middle"></span>
+                            </span>
+                            <svg class="w-5 h-5 transition-transform" :class="masOpciones && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+
+                        {{-- x-show (no x-if): el selector de cliente se inicializa una
+                             sola vez al cargar la pantalla; sacarlo del DOM lo rompería. --}}
+                        <div x-show="masOpciones" x-transition class="space-y-5 pb-1">
+
+                            {{-- Cliente --}}
+                            <div>
+                                <div class="flex items-center justify-between mb-2">
+                                    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wide">Cliente</h3>
+                                    <button @click="openCustomerModal()" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800">+ Nuevo (F4)</button>
+                                </div>
+                                <div class="bg-gray-50 border border-gray-200 rounded-xl p-3">
+                                    <template x-if="selectedCustomer">
+                                        <div class="flex justify-between items-center">
+                                            <div class="min-w-0">
+                                                <h4 class="font-bold text-base text-gray-900 truncate" x-text="selectedCustomer.name"></h4>
+                                                <p class="text-sm text-gray-600 truncate" x-text="selectedCustomer.phone || 'Sin teléfono'"></p>
+                                            </div>
+                                            <button @click="resetCustomer()" class="text-gray-400 hover:text-red-500 shrink-0 ml-2" aria-label="Quitar cliente">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            </button>
+                                        </div>
+                                    </template>
+                                    <div x-show="!selectedCustomer">
+                                        <select x-ref="customerSelect" placeholder="Buscar cliente [F2]…" autocomplete="off"></select>
+                                    </div>
+                                </div>
+
+                                @if(\App\Models\Setting::get('facturacion_activada','0') === '1')
+                                    <label class="mt-2 flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+                                        <input type="checkbox" x-model="wantsInvoice"
+                                               class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                        ¿Factura? (NIT/CI)
+                                    </label>
+                                    <p class="mt-1 text-xs text-amber-600" x-show="wantsInvoice && !selectedCustomer">
+                                        Elegí un cliente con NIT para facturar.
+                                    </p>
+                                @endif
+                            </div>
+
+                            {{-- Qué se está cobrando --}}
+                            <div>
+                                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Qué se lleva</h3>
+                                <div class="bg-gray-50 rounded-xl divide-y divide-gray-200 max-h-44 overflow-y-auto">
+                                    <template x-for="item in cart" :key="'sum-'+item.id">
+                                        <div class="px-3 py-2 flex items-center gap-2">
+                                            <span class="text-xs font-bold text-indigo-600 bg-indigo-100 rounded-full w-6 h-6 flex items-center justify-center shrink-0" x-text="item.quantity"></span>
+                                            <span class="flex-1 text-sm text-gray-700 truncate" x-text="item.name"></span>
+                                            <span class="text-sm font-semibold text-gray-900 tabular-nums" x-text="formatCurrency((item.price - item.discount) * item.quantity)"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                                <div class="flex justify-between text-sm text-gray-600 mt-2">
+                                    <span>Subtotal</span>
+                                    <span class="font-medium tabular-nums" x-text="formatCurrency(subtotal)"></span>
+                                </div>
+                            </div>
+
+                            {{-- Descuento sobre el total --}}
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">Descuento</span>
+                                <div class="relative w-32">
+                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" x-text="window.currencySymbol"></span>
+                                    <input type="text" :value="formatNumber(globalDiscount)"
+                                           @input="globalDiscount = unformatNumber($event.target.value)"
+                                           inputmode="decimal"
+                                           class="block w-full pl-8 pr-2 py-2 text-sm text-right tabular-nums text-gray-900 bg-white border-gray-300 rounded-lg" placeholder="0">
+                                </div>
+                            </div>
+
+                            {{-- Notas --}}
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">Notas</label>
+                                <textarea x-model="payment.notes" rows="2"
+                                          class="block w-full text-sm text-gray-900 bg-white border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+                                          placeholder="Dirección de entrega, observaciones…"></textarea>
+                            </div>
+
+                            {{-- Reservar en vez de cobrar --}}
+                            <div>
+                                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">¿Se lleva ahora?</h3>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button @click="saleStatus = 'completed'"
+                                            class="py-2.5 px-3 text-xs font-bold rounded-lg border-2 transition-colors"
+                                            :class="saleStatus === 'completed' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-700 border-gray-200'">
+                                        Sí, venta hecha
+                                    </button>
+                                    <button @click="saleStatus = 'pending'"
+                                            class="py-2.5 px-3 text-xs font-bold rounded-lg border-2 transition-colors"
+                                            :class="saleStatus === 'pending' ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-700 border-gray-200'">
+                                        No, es un pedido
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </section>
                 </div>
 
-                {{-- Footer modal con acciones --}}
-                <footer class="border-t border-gray-200 bg-gray-50 p-4 flex gap-2 sticky bottom-0 rounded-b-2xl">
-                    <button @click="paymentSheetOpen = false"
-                            class="px-5 py-3 text-sm font-bold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100">
-                        Atrás
-                    </button>
+                {{-- ── Un solo botón, y que diga siempre qué pasa ──────────────── --}}
+                <footer class="border-t border-gray-200 bg-gray-50 p-4 sticky bottom-0 rounded-b-2xl space-y-3">
+                    {{-- El vuelto va acá, pegado al botón: es lo que se lee con el
+                         cliente esperando, y en el cuerpo scrolleable quedaba
+                         cortado contra el borde de la pantalla. --}}
+                    <div x-show="change > 0"
+                         x-transition.opacity
+                         class="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-2.5 flex items-center justify-between">
+                        <span class="text-sm font-bold text-emerald-800 uppercase tracking-wide">Vuelto</span>
+                        <span class="text-3xl font-extrabold text-emerald-700 tabular-nums" x-text="formatCurrency(change)"></span>
+                    </div>
+
                     <button @click="submitSale()"
-                            :disabled="isSubmitting || (payment.method === 'cash' && payment.cash_received < total)"
-                            class="flex-1 py-3 text-base font-extrabold text-white rounded-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                            :class="saleStatus === 'completed' ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700' : 'bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600'">
+                            :disabled="isSubmitting || faltante > 0"
+                            class="w-full py-4 text-lg font-extrabold text-white rounded-xl shadow-sm disabled:cursor-not-allowed transition-colors"
+                            :class="faltante > 0
+                                ? 'bg-gray-400'
+                                : (saleStatus === 'completed' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-amber-500 hover:bg-amber-600')">
                         <template x-if="isSubmitting">
                             <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
                         </template>
-                        <span x-text="isSubmitting ? 'Procesando…' : (saleStatus === 'completed' ? 'PROCESAR VENTA' : 'RESERVAR PEDIDO')"></span>
+                        {{-- Un botón apagado y mudo era el "no se entiende qué falta":
+                             ahora dice cuánto falta en vez de solo ponerse gris. --}}
+                        <span x-text="isSubmitting
+                                ? 'Procesando…'
+                                : (faltante > 0
+                                    ? 'Faltan ' + formatCurrency(faltante)
+                                    : (saleStatus === 'completed'
+                                        ? 'Cobrar ' + formatCurrency(total)
+                                        : 'Guardar pedido'))"></span>
                     </button>
                 </footer>
             </div>
@@ -497,6 +528,12 @@
             function pos() {
                 return {
                     cart: [],
+
+                    // Cuándo empezó ESTA venta: el momento en que entra el primer
+                    // producto al carrito. Sin esto el servidor mide desde que la
+                    // pantalla quedó libre, y un mostrador vacío de veinte minutos
+                    // se anotaría como una venta lenta de veinte minutos.
+                    atendidoDesde: null,
                     selectedCustomer: null,
                     payment: { method: 'cash', cash_received: 0, notes: '' },
                     globalDiscount: 0,
@@ -511,6 +548,18 @@
                     viewMode: 'grid',
                     cartDrawerOpen: false,
                     paymentSheetOpen: false,
+
+                    // Lo que casi nunca se toca (cliente, descuento, notas, pedido)
+                    // arranca plegado: cobrar en efectivo no debería obligar a pasar
+                    // por siete bloques.
+                    masOpciones: false,
+
+                    formasDePago: [
+                        { id: 'cash',     nombre: 'EFECTIVO',  icono: '💵' },
+                        { id: 'transfer', nombre: 'TRANSF.',   icono: '🏦' },
+                        { id: 'qr',       nombre: 'QR',        icono: '📱' },
+                        { id: 'card',     nombre: 'TARJETA',   icono: '💳' },
+                    ],
 
                     // Draft del input de efectivo: string libre que muestra exactamente
                     // lo que el usuario tipea. Sin reformateo en cada keystroke = el
@@ -655,6 +704,7 @@
                     },
 
                     addToCart(product) {
+                        if (this.cart.length === 0) this.atendidoDesde = new Date().toISOString();
                         const existing = this.cart.find(item => item.id === product.id);
                         if (existing) {
                             if (existing.quantity < product.quantity) {
@@ -717,6 +767,42 @@
                     get total() { return this.subtotal - this.totalDiscount - this.globalDiscount; },
                     get change() { return this.payment.method !== 'cash' ? 0 : this.payment.cash_received - this.total; },
 
+                    /** Cuánto falta para poder cobrar. Cero cuando ya se puede. */
+                    get faltante() {
+                        if (this.payment.method !== 'cash') return 0;
+                        return Math.max(0, this.total - this.payment.cash_received);
+                    },
+
+                    /**
+                     * Con qué billete es probable que paguen, calculado a partir del
+                     * total. Antes eran 50, 100 y 200 fijos: para un total de 350
+                     * ninguno de los tres servía, que es justo cuando más falta hace.
+                     */
+                    get montosSugeridos() {
+                        const total = this.total;
+                        if (total <= 0) return [];
+
+                        // OJO: acá todo viaja en CENTAVOS (un total de Bs 50,50 es
+                        // 5050). Calcular los billetes como si fueran bolivianos
+                        // ofrecía "Bs 51" para un total de Bs 50,50: un botón inútil.
+                        const BS = 100;
+                        const aLaProxima = (escalon) => Math.ceil(total / (escalon * BS)) * escalon * BS;
+
+                        const candidatos = [
+                            aLaProxima(10),   // la próxima decena de bolivianos
+                            aLaProxima(50),
+                            aLaProxima(100),
+                            ...[10, 20, 50, 100, 200, 500]
+                                .map(billete => billete * BS)
+                                .filter(billete => billete > total),
+                        ];
+
+                        return [...new Set(candidatos)]
+                            .filter(monto => monto > total)
+                            .sort((a, b) => a - b)
+                            .slice(0, 3);
+                    },
+
                     formatCurrency(value) { return window.formatMoney(value); },
                     unformatNumber(value) {
                         if (typeof value !== 'string') return value || 0;
@@ -759,6 +845,7 @@
                                 status: this.saleStatus,
                                 _token: '{{ csrf_token() }}',
                                 wants_invoice: this.wantsInvoice,
+                                atendido_desde: this.atendidoDesde,
                             };
                             const res = await fetch('{{ route("sales.store") }}', {
                                 method: 'POST',
@@ -799,6 +886,7 @@
                         // monto pagado que el sistema no tenía, y al cobrar le
                         // aparecía "pago insuficiente" sin entender por qué.
                         this.cashInputDraft = '';
+                        this.atendidoDesde = null;
                         this.globalDiscount = 0;
                         this.wantsInvoice = false;
                         this.customerTs && this.customerTs.clear();

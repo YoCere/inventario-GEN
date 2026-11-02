@@ -148,6 +148,13 @@ final class Navigation
                             'match' => ['products.report', 'products.report.print'],
                         ],
                         [
+                            'label' => 'Tiempos de carga y venta',
+                            'route' => 'reports.work-timings',
+                            'icon' => 'clock',
+                            'can' => ['metrics.view'],
+                            'match' => ['reports.work-timings'],
+                        ],
+                        [
                             'label' => 'Kardex valorizado',
                             'route' => 'products.kardex.index',
                             'icon' => 'archive-box',

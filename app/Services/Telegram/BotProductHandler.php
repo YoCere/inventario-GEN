@@ -4,8 +4,12 @@ namespace App\Services\Telegram;
 
 use App\Models\Product;
 use App\Models\TelegramConversation;
+use App\Models\TelegramUser;
 use App\Models\Unit;
+use App\Services\Metrics\TimingRecorder;
 use App\Settings\ProductIntakeFields;
+use App\Support\Metrics\IntakeClock;
+use App\Support\Metrics\TimedActivity;
 use App\Shop\Models\ProductImage;
 use App\Shop\Services\ImageProcessor;
 use App\Models\Category;
@@ -96,7 +100,10 @@ class BotProductHandler
         $conversation = TelegramConversation::getOrCreate($chatId);
         $conversation->update([
             'step' => 'nuevo:nombre',
-            'data' => [],
+            // El reloj del alta arranca con la primera pregunta, no al guardar:
+            // lo que se quiere saber es cuánto le lleva a la persona, no cuánto
+            // tarda el servidor en escribir la fila.
+            'data' => IntakeClock::arrancar([], TimedActivity::CANAL_BOT),
             'expires_at' => now()->addMinutes(30),
         ]);
 
@@ -479,6 +486,11 @@ class BotProductHandler
      */
     private function advanceToNextMissingStep(string $chatId, TelegramConversation $conversation, array $data): void
     {
+        // Único camino entre pasos = único lugar donde se cierra el reloj del
+        // paso que se está dejando. Si esto estuviera repartido en cada askX(),
+        // el primero que se olvidara dejaría un paso sin tiempo.
+        $data = IntakeClock::cerrarPaso($data, $conversation->step);
+
         // Lo que no se pregunta se completa ACÁ, con el valor por defecto que la
         // dueña ve en Ajustes. Así nunca queda un dato a medio llenar que después
         // alguien complete con una cuenta inventada al momento de guardar.
@@ -963,6 +975,12 @@ class BotProductHandler
         $data['fotos'] = $fotos;
         $data['foto_path'] = $fotos[0] ?? null;
 
+        // Las fotos son el único paso que salta directo al resumen sin pasar por
+        // advanceToNextMissingStep, así que su reloj se cierra acá. Sin esto, el
+        // tiempo de mandar fotos quedaba en el total pero sin paso que lo explique
+        // (y mandar fotos es, de lejos, el paso más lento del alta).
+        $data = IntakeClock::cerrarPaso($data, $conversation->step);
+
         $this->showConfirm($chatId, $conversation, $data);
     }
     private function showConfirm(string $chatId, TelegramConversation $conversation, array $data): void
@@ -1060,6 +1078,9 @@ class BotProductHandler
 
             $this->guardarGaleria($product, $this->fotosDe($data));
 
+            // El producto ya existe. Recién ahora se anota cuánto se tardó.
+            $this->anotarTiempoDelAlta($chatId, $conversation->step, $data);
+
             $conversation->delete();
             $this->telegram->sendMessage(
                 $chatId,
@@ -1077,6 +1098,33 @@ class BotProductHandler
             if (!empty($data['origen_audio'])) {
                 $this->showReview($chatId, $conversation, $data);
             }
+        }
+    }
+
+    /**
+     * Anota cuánto se tardó el alta, sin poder arruinarla.
+     *
+     * Se llama con el producto YA creado. El try/catch de acá cubre todo el
+     * bloque (incluido buscar de quién es el chat), no solo la escritura de la
+     * medición: una estadística no puede hacer que el alta termine en un
+     * mensaje de error cuando el producto ya está en el inventario.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function anotarTiempoDelAlta(string $chatId, ?string $ultimoPaso, array $data): void
+    {
+        try {
+            $data = IntakeClock::cerrarPaso($data, $ultimoPaso);
+
+            app(TimingRecorder::class)->registrar(
+                TimedActivity::ALTA_PRODUCTO,
+                IntakeClock::canal($data),
+                TelegramUser::find($chatId)?->user_id,
+                IntakeClock::inicio($data),
+                IntakeClock::pasos($data),
+            );
+        } catch (\Throwable $e) {
+            Log::warning('No se pudo anotar el tiempo del alta por el bot', ['error' => $e->getMessage()]);
         }
     }
 
