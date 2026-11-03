@@ -69,6 +69,11 @@ Usuario: "Crear producto mouse gamer, vale 50 la compra y 80 la venta"
 Usuario: "Nuevo producto cable USB de la categoría electrónica, 30 unidades"
 → name="cable USB", category="electrónica", quantity=30
    (sin precios — los pedirá el flujo)
+
+Usuario: "Faja para adulto, categoría ropa de campo, 80 de compra, 140 de venta,
+4 de stock, avisame cuando queden 2, se la venderá por unidad"
+→ name="Faja para adulto", category="ropa de campo", purchase_price=80,
+   selling_price=140, quantity=4, min_stock=2, unit="unidad"
 DESC;
     }
 
@@ -148,11 +153,18 @@ DESC;
             $data['cantidad'] = (int) $input['quantity'];
         }
 
-        // Si el audio ya dijo cómo se vende ("se vende por caja"), el flujo no
-        // vuelve a preguntarlo. Lo que se dijo se busca entre las unidades que
-        // existen; si no corresponde a ninguna, se pregunta igual.
-        if (!empty($input['unit'])) {
-            $unidad = $this->unidades->buscar((string) $input['unit']);
+        // Si el audio ya dijo cómo se vende ("se vende por caja", "se lo
+        // venderá por unidad"), el flujo no vuelve a preguntarlo: contestar dos
+        // veces lo mismo era lo que hacía lento cargar por voz.
+        //
+        // Se mira el campo del modelo primero y lo dictado despues, igual que
+        // con "destacado": si la persona lo dijo, el dato no puede quedar
+        // colgado de cuanto se acuerde el modelo de extraerlo. Lo que se
+        // entienda se busca entre las unidades que existen; si no corresponde a
+        // ninguna, se pregunta igual.
+        if (empty($data['unidad_id'])) {
+            $unidad = (!empty($input['unit']) ? $this->unidades->buscar((string) $input['unit']) : null)
+                ?? $this->unidades->enLoDicho($context->mensaje);
 
             if ($unidad) {
                 $data['unidad_id']     = $unidad->id;
