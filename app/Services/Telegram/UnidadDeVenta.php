@@ -79,6 +79,21 @@ class UnidadDeVenta
         'tarima'    => ['Pallet'],
     ];
 
+    /**
+     * Cómo suena, en un audio, decir cómo se vende. El verbo primero y la unidad
+     * después: es lo que separa "se lo venderá por unidad" del "de 2 metros de
+     * largo" que viene en el nombre del mismo producto.
+     *
+     * `vend\p{L}*` cubre las conjugaciones sin listarlas (vende, venden, vendo,
+     * venderá, vender, vendemos), y el artículo intermedio es opcional porque
+     * tanto "por unidad" como "por la unidad" se dicen igual de seguido.
+     */
+    private const DICE_COMO_SE_VENDE = [
+        '/\bvend\p{L}*\s+(?:por|en|como|a|de)\s+(?:el|la|los|las|un|una|cada)?\s*(?<unidad>\p{L}+)/iu',
+        '/\b(?:viene|vienen|van|va)\s+(?:en|por)\s+(?:el|la|los|las|un|una)?\s*(?<unidad>\p{L}+)/iu',
+        '/\b(?:se\s+cobra|cobro|cobra)\s+(?:por|en)\s+(?:el|la|los|las|un|una|cada)?\s*(?<unidad>\p{L}+)/iu',
+    ];
+
     public function __construct(private RespuestaNatural $respuesta) {}
 
     /**
@@ -110,14 +125,21 @@ class UnidadDeVenta
     {
         $limpio = $this->respuesta->valor($texto, self::MULETILLAS);
 
-        if ($limpio === '') {
+        $candidatos = array_merge(
+            $limpio !== '' ? [$limpio] : [],
+            $this->palabras($limpio),
+            // Las palabras tal como se dijeron, al final de la cola. Hacen falta
+            // porque "unidad" es a la vez muletilla de este paso ("la unidad es
+            // caja") y la respuesta más común del catálogo. Con la limpieza sola,
+            // "unidad" y "se vende por unidad" quedaban en nada y el bot volvía a
+            // preguntar lo que la persona ya había contestado. Van después de lo
+            // limpio para que "la unidad es caja" siga dando Caja y no Unidad.
+            $this->palabras($texto),
+        );
+
+        if ($candidatos === []) {
             return null;
         }
-
-        $candidatos = array_merge(
-            [$limpio],
-            preg_split('/\s+/u', $limpio, -1, PREG_SPLIT_NO_EMPTY) ?: []
-        );
 
         foreach ($candidatos as $candidato) {
             $unidad = $this->porNombreOSimbolo($candidato) ?? $this->porSinonimo($candidato);
@@ -127,13 +149,54 @@ class UnidadDeVenta
             }
         }
 
-        foreach ($candidatos as $candidato) {
+        // El parecido parcial es el que más se equivoca, así que solo se le dan
+        // los candidatos ya limpios: con las palabras crudas, un "por" o un
+        // "para" terminaría eligiendo cualquier unidad que los contenga.
+        foreach (array_merge($limpio !== '' ? [$limpio] : [], $this->palabras($limpio)) as $candidato) {
             if ($unidad = $this->porParecido($candidato)) {
                 return $unidad;
             }
         }
 
         return null;
+    }
+
+    /**
+     * Lo que se dictó, cuando dice cómo se vende.
+     *
+     * Esto NO es `buscar()` sobre el audio entero. El audio trae el nombre del
+     * producto, y el nombre dice cosas como "de 2 metros y medio de largo":
+     * buscar una palabra de unidad suelta ahí dejaría esa faja vendiéndose por
+     * metro. Así que la palabra tiene que venir colgada de un verbo de vender o
+     * de venir — "se lo venderá por unidad", "viene en cajas" — y lo que se
+     * agarre se verifica igual contra las unidades que existen.
+     *
+     * Vive acá, y no en el modelo, por lo mismo que "destacado": si lo dijo, el
+     * dato no puede quedar colgado de cuánto se acuerde el modelo de extraerlo.
+     */
+    public function enLoDicho(?string $frase): ?Unit
+    {
+        if ($frase === null || trim($frase) === '') {
+            return null;
+        }
+
+        foreach (self::DICE_COMO_SE_VENDE as $patron) {
+            if (preg_match($patron, $frase, $coincidencia) !== 1) {
+                continue;
+            }
+
+            if ($unidad = $this->buscar($coincidencia['unidad'])) {
+                return $unidad;
+            }
+        }
+
+        return null;
+    }
+
+    /** @return array<int, string> */
+    private function palabras(string $texto): array
+    {
+        return preg_split('/\s+/u', trim($texto), -1, PREG_SPLIT_NO_EMPTY) ?: [];
     }
 
     /**
