@@ -27,6 +27,7 @@ class Setting extends Model
         'telegram_webhook_secret',
         'siat_api_token',
         'siat_credential',
+        'falmus_api_key',
     ];
 
     /**
