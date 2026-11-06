@@ -21,6 +21,7 @@ class Product extends Model
         'unit_id',
         'sku',
         'sin_code',
+        'economic_activity',
         'name',
         'slug',
         'purchase_price',
