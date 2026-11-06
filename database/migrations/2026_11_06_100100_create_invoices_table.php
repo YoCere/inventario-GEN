@@ -10,7 +10,8 @@ return new class extends Migration
     {
         Schema::create('invoices', function (Blueprint $t) {
             $t->id();
-            $t->foreignId('sale_id')->unique()->constrained()->restrictOnDelete();
+            // Varias facturas por venta (anular y reemitir). La regla 'como máximo una que bloquee' se aplica en la app (Fase C, bajo lock).
+            $t->foreignId('sale_id')->index()->constrained()->restrictOnDelete();
             $t->string('provider', 20);                       // falmus | simulator
             $t->string('status', 20)->index();
             $t->string('provider_status', 40)->nullable();    // texto crudo del proveedor

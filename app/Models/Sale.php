@@ -54,10 +54,16 @@ class Sale extends Model
         'change' => 'integer',
     ];
 
-    /** Factura fiscal derivada (0..1). La venta no depende de ella. */
+    /** Todas las facturas de la venta (historial: anuladas y reemitidas). */
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    /** Factura vigente = la más reciente. La venta no depende de ella. */
     public function invoice(): HasOne
     {
-        return $this->hasOne(Invoice::class);
+        return $this->hasOne(Invoice::class)->latestOfMany();
     }
 
     public function items(): HasMany
