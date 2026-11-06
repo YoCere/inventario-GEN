@@ -20,11 +20,12 @@ class FiscalReadiness
         ));
 
         $products = Product::query()
+            ->where('is_active', true)
             ->where(fn ($q) => $q->whereNull('sin_code')->orWhere('sin_code', ''))
             ->orderBy('id')->pluck('id')->all();
 
         $units = Unit::query()
-            ->whereIn('id', Product::query()->whereNotNull('unit_id')->select('unit_id'))
+            ->whereIn('id', Product::query()->where('is_active', true)->whereNotNull('unit_id')->select('unit_id'))
             ->where(fn ($q) => $q->whereNull('sin_code')->orWhere('sin_code', ''))
             ->orderBy('id')->pluck('id')->all();
 

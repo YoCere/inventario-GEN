@@ -41,4 +41,15 @@ class FiscalReadinessTest extends TestCase
         $this->assertTrue(app(FiscalReadiness::class)->report()['ready']);
         $this->artisan('fiscal:readiness')->assertSuccessful();
     }
+
+    public function test_ignores_inactive_products(): void
+    {
+        $unitNo = Unit::factory()->create(['sin_code' => null]);
+        Product::factory()->create(['sin_code' => null, 'unit_id' => $unitNo->id, 'is_active' => false]);
+
+        $r = app(FiscalReadiness::class)->report();
+
+        $this->assertSame([], $r['products_missing_sin_code']);
+        $this->assertSame([], $r['units_missing_sin_code']);
+    }
 }
