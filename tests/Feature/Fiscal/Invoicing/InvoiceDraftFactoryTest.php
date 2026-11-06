@@ -67,14 +67,83 @@ class InvoiceDraftFactoryTest extends TestCase
         $this->assertSame($sale->total, $draft->total);
     }
 
-    public function test_global_discount_remainder_goes_to_last_line(): void
+    public function test_global_discount_split_is_exact(): void
     {
         $p = Product::factory()->create();
         $sale = $this->saleWith([[$p, 1, 1000, 0], [$p, 1, 1000, 0], [$p, 1, 1000, 0]], 100); // 100/3
 
         $draft = app(InvoiceDraftFactory::class)->fromSale($sale);
 
-        $this->assertSame([33, 33, 34], array_map(fn ($l) => $l->discount, $draft->lines));
+        $this->assertSame([34, 33, 33], array_map(fn ($l) => $l->discount, $draft->lines));
+    }
+
+    public function test_free_last_line_never_goes_negative(): void
+    {
+        $p = Product::factory()->create();
+        $sale = $this->saleWith([[$p, 1, 1000, 0], [$p, 1, 2000, 0], [$p, 1, 0, 0]], 100);
+
+        $draft = app(InvoiceDraftFactory::class)->fromSale($sale);
+
+        foreach ($draft->lines as $l) {
+            $this->assertGreaterThanOrEqual(0, $l->unitPrice * $l->quantity - $l->discount);
+        }
+        $this->assertSame(0, $draft->lines[2]->discount);
+        $this->assertSame($sale->total, array_sum(array_map(fn ($l) => $l->unitPrice * $l->quantity - $l->discount, $draft->lines)));
+    }
+
+    public function test_single_line_with_item_and_global_discount(): void
+    {
+        $p = Product::factory()->create();
+        $sale = $this->saleWith([[$p, 3, 1000, 100]], 250);
+
+        $draft = app(InvoiceDraftFactory::class)->fromSale($sale);
+
+        $this->assertSame(550, $draft->lines[0]->discount);
+        $this->assertSame($sale->total, 3000 - $draft->lines[0]->discount);
+    }
+
+    public function test_throws_when_total_does_not_match_items(): void
+    {
+        $p = Product::factory()->create();
+        $sale = $this->saleWith([[$p, 1, 1000, 0]]);
+        $sale->update(['total' => 999]);
+
+        $this->expectException(\DomainException::class);
+        app(InvoiceDraftFactory::class)->fromSale($sale->fresh());
+    }
+
+    public function test_throws_for_cancelled_sale(): void
+    {
+        $p = Product::factory()->create();
+        $sale = $this->saleWith([[$p, 1, 1000, 0]]);
+        $sale->update(['status' => \App\Enums\SaleStatus::CANCELLED]);
+
+        $this->expectException(\DomainException::class);
+        app(InvoiceDraftFactory::class)->fromSale($sale->fresh());
+    }
+
+    public function test_soft_deleted_product_still_yields_its_data(): void
+    {
+        $p = Product::factory()->create(['name' => 'Viejo', 'sin_code' => '7777']);
+        $sale = $this->saleWith([[$p, 1, 1000, 0]]);
+        $p->delete();
+
+        $draft = app(InvoiceDraftFactory::class)->fromSale(Sale::find($sale->id));
+
+        $this->assertSame('7777', $draft->lines[0]->sinProductCode);
+        $this->assertSame('Viejo', $draft->lines[0]->description);
+    }
+
+    public function test_soft_deleted_customer_still_yields_buyer(): void
+    {
+        $c = Customer::factory()->create(['name' => 'Juan', 'doc_type' => '1', 'doc_number' => '1234567', 'business_name' => 'JUAN']);
+        $p = Product::factory()->create();
+        $sale = $this->saleWith([[$p, 1, 1000, 0]], 0, $c);
+        $c->delete();
+
+        $draft = app(InvoiceDraftFactory::class)->fromSale(Sale::find($sale->id));
+
+        $this->assertSame('1234567', $draft->buyer->docNumber);
     }
 
     public function test_buyer_snapshot_from_customer_identity(): void

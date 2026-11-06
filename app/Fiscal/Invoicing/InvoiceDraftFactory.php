@@ -2,6 +2,7 @@
 
 namespace App\Fiscal\Invoicing;
 
+use App\Enums\SaleStatus;
 use App\Models\Sale;
 use App\Models\Setting;
 
@@ -9,7 +10,14 @@ class InvoiceDraftFactory
 {
     public function fromSale(Sale $sale): InvoiceDraft
     {
-        $sale->loadMissing('items.product.unit', 'customer');
+        if ($sale->status !== SaleStatus::COMPLETED) {
+            throw new \DomainException("La venta #{$sale->id} no está completada; no se puede facturar.");
+        }
+        $sale->load([
+            'items.product' => fn ($q) => $q->withTrashed(),
+            'items.product.unit',
+            'customer' => fn ($q) => $q->withTrashed(),
+        ]);
         $defaultActivity = Setting::get('fiscal_default_activity') ?: null;
 
         $items = $sale->items->values();
@@ -31,6 +39,15 @@ class InvoiceDraftFactory
             );
         }
 
+        foreach ($lines as $line) {
+            if ($line->net() < 0) {
+                throw new \DomainException("La venta #{$sale->id} produce una línea con importe negativo.");
+            }
+        }
+        if (array_sum(array_map(fn ($l) => $l->net(), $lines)) !== (int) $sale->total) {
+            throw new \DomainException("La venta #{$sale->id}: el total no coincide con la suma de sus líneas.");
+        }
+
         return new InvoiceDraft(
             saleId: $sale->id,
             documentSector: 1,
@@ -42,7 +59,8 @@ class InvoiceDraftFactory
     }
 
     /**
-     * Reparte $amount proporcional a $weights; el sobrante por redondeo va a la última línea.
+     * Reparte $amount proporcional a $weights (método del mayor resto, solo enteros).
+     * Con amount <= suma de pesos, ninguna parte supera su peso.
      *
      * @param list<int> $weights
      * @return list<int>
@@ -55,11 +73,16 @@ class InvoiceDraftFactory
             return array_fill(0, $n, 0);
         }
         $shares = [];
-        $assigned = 0;
+        $remainders = [];
         foreach ($weights as $i => $w) {
-            $share = $i === $n - 1 ? $amount - $assigned : intdiv($amount * $w, $sum);
-            $shares[] = $share;
-            $assigned += $share;
+            $shares[$i] = intdiv($amount * $w, $sum);
+            $remainders[$i] = ($amount * $w) % $sum;
+        }
+        $left = $amount - array_sum($shares);
+        $order = array_keys($remainders);
+        usort($order, fn ($a, $b) => $remainders[$b] <=> $remainders[$a] ?: $a <=> $b);
+        foreach (array_slice($order, 0, $left) as $i) {
+            $shares[$i]++;
         }
 
         return $shares;
