@@ -6,6 +6,7 @@ use App\Enums\SaleStatus;
 use App\Enums\PaymentMethod;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -52,6 +53,12 @@ class Sale extends Model
         'cash_received' => 'integer',
         'change' => 'integer',
     ];
+
+    /** Factura fiscal derivada (0..1). La venta no depende de ella. */
+    public function invoice(): HasOne
+    {
+        return $this->hasOne(Invoice::class);
+    }
 
     public function items(): HasMany
     {
