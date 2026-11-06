@@ -13,6 +13,7 @@ return new class extends Migration
             $t->foreignId('sale_id')->unique()->constrained()->restrictOnDelete();
             $t->string('provider', 20);                       // falmus | simulator
             $t->string('status', 20)->index();
+            $t->string('provider_status', 40)->nullable();    // texto crudo del proveedor
             $t->unsignedSmallInteger('document_sector')->default(1);
             $t->string('point_of_sale_ref')->nullable();      // puntoVentaId (UUID) usado
             // Respuesta del proveedor
