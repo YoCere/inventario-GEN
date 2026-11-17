@@ -7,7 +7,6 @@ use App\Services\Messaging\TelegramService;
 use App\Services\Telegram\BotHandler;
 use App\Models\TelegramConversation;
 use App\Models\Setting;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class TelegramPollingCommand extends Command
@@ -44,8 +43,12 @@ class TelegramPollingCommand extends Command
      */
     private function botConfigurado(): bool
     {
-        Cache::forget('settings.telegram_enabled');
-        Cache::forget('settings.telegram_bot_token');
+        // Setting::forget y no Cache::forget: el token es una clave cifrada y su
+        // valor descifrado ya no vive en el cache compartido sino en memoria de
+        // este proceso, que es largo. Cache::forget solo no lo soltaria y el bot
+        // seguiria usando el token viejo hasta reiniciar.
+        Setting::forget('telegram_enabled');
+        Setting::forget('telegram_bot_token');
 
         return Setting::get('telegram_enabled', '0') === '1'
             && trim((string) Setting::get('telegram_bot_token', '')) !== '';

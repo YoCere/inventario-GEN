@@ -108,6 +108,29 @@ class TelegramService
         }
     }
 
+    /**
+     * Borra un mensaje del chat. Se usa con la contraseña que la persona teclea
+     * al entrar: mientras ese mensaje exista queda en los servidores de Telegram
+     * y en el historial del teléfono, visible para cualquiera que lo levante.
+     *
+     * No atrapa errores a propósito: quien llama decide qué hacer si falla, y en
+     * el login eso es registrarlo y seguir, nunca dejar a la persona afuera.
+     * Telegram solo permite borrar mensajes de menos de 48 horas.
+     */
+    public function deleteMessage(string $chatId, int $messageId): array
+    {
+        if (!$this->botToken) {
+            return [];
+        }
+
+        $response = Http::post("{$this->apiUrl}{$this->botToken}/deleteMessage", [
+            'chat_id' => $chatId,
+            'message_id' => $messageId,
+        ]);
+
+        return $response->json() ?? [];
+    }
+
     public function sendPhoto(string $chatId, string $filePath, string $caption = '', ?array $inlineKeyboard = null): array
     {
         if (!$this->botToken) {

@@ -49,10 +49,14 @@ Retención distinta: `RETENTION_DAYS=180 ./ops/provision-client-backup.sh acme`.
 4. Verificar (consola del contenedor del cliente):
    ```bash
    php artisan tinker --execute="\Storage::disk('backups_offsite')->put('smoke.txt','ok'); echo \Storage::disk('backups_offsite')->get('smoke.txt');"
-   php artisan backup:run
+   php artisan backup:safe-run
    ```
    El zip debe aparecer en el bucket B2 del cliente. Alerta: poné una `B2_APPLICATION_KEY` errónea, corré
-   `backup:run` → el backup local igual queda + llega un Telegram nombrando `backups_offsite`. Revertir.
+   `backup:safe-run` → el backup local igual queda + llega un Telegram nombrando `backups_offsite`. Revertir.
+
+   Siempre `backup:safe-run`, nunca `backup:run` a secas: la guardia se niega a correr si el off-site está
+   activo y falta `BACKUP_ARCHIVE_PASSWORD` (el zip saldría sin cifrar). Ver
+   `docs/seguridad/recuperacion-respaldos.md`.
 5. Borrar el `.env` local una vez cargado: `rm ops/provisioned/<slug>.env` (ya está en el gestor + Coolify).
 
 ## Desprovisionar un cliente (baja)
@@ -220,7 +224,7 @@ ops/provision-client-backup.sh <slug-del-cliente>
 Cargar las variables que imprime en Coolify y redesplegar. Después, verificar en el contenedor:
 
 ```bash
-php artisan backup:run        # debe terminar sin errores
+php artisan backup:safe-run   # debe terminar sin errores (si falta la password de cifrado, se niega y avisa)
 php artisan backup:list       # Healthy en los dos discos (local y off-site)
 ```
 

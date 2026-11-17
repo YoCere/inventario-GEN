@@ -16,8 +16,11 @@ Schedule::command('shop:cancel-expired-reservations')
     ->withoutOverlapping()
     ->onOneServer();
 
-// Backup automático diario a las 2am — configurable via backup_schedule_enabled setting
-Schedule::command('backup:run')
+// Backup automático diario a las 2am — configurable via backup_schedule_enabled setting.
+// Pasa por backup:safe-run, no por backup:run: si el off-site está activo y falta
+// BACKUP_ARCHIVE_PASSWORD, el zip viajaría sin cifrar a un tercero. La guardia corta
+// y avisa por Telegram (ver App\Console\Commands\BackupSafeRunCommand).
+Schedule::command('backup:safe-run')
     ->dailyAt('02:00')
     ->when(fn () => \App\Models\Setting::get('backup_schedule_enabled', '1') === '1')
     ->withoutOverlapping()

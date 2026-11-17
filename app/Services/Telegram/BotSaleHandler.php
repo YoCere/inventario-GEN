@@ -25,6 +25,7 @@ class BotSaleHandler
         protected \App\Services\Sales\SaleCommandParser $saleParser,
         protected \App\Services\Messaging\ProductSearchService $productSearch,
         protected \App\Services\QuickSaleService $quickSale,
+        protected PermisosDelBot $permisos,
     ) {}
 
     public function handle(string $chatId, array $message): void
@@ -358,6 +359,14 @@ class BotSaleHandler
         $user = $this->authHandler->getAuthenticatedUser($chatId);
         if (! $user) {
             $this->telegram->sendMessage($chatId, "❌ Sesión no válida.");
+            return true;
+        }
+
+        // La compuerta va acá y no en cada punto de llamada: a tryQuickSell se
+        // entra por texto, por voz y desde media docena de pasos distintos, y
+        // cualquiera de esos caminos que quedara sin control alcanzaría para
+        // vender. Se devuelve true (atendido) porque el mensaje ya se contestó.
+        if (! $this->permisos->permite(PermisosDelBot::VENTA_DIRECTA, $user, $chatId)) {
             return true;
         }
 

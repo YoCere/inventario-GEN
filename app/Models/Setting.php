@@ -17,7 +17,8 @@ class Setting extends Model
 
     /**
      * Keys cuyo valor se almacena cifrado en DB.
-     * Cache guarda siempre el valor ya descifrado.
+     *
+     * Su valor descifrado NUNCA va al cache compartido (ver get()).
      */
     private const ENCRYPTED_KEYS = [
         'anthropic_api_key',
@@ -29,12 +30,35 @@ class Setting extends Model
     ];
 
     /**
+     * Store de memoria del proceso, el unico lugar donde se guarda un secreto ya
+     * descifrado: muere con la peticion y no se escribe en ningun disco ni tabla.
+     *
+     * POR QUE no `Cache::rememberForever()` para estas claves: CACHE_STORE es
+     * `database`, asi que el valor descifrado quedaba en la tabla `cache`, en texto
+     * plano y para siempre. Cifrar `settings.value` no servia contra nadie que
+     * pudiera leer la base —y el volcado de la base viaja dentro del zip del
+     * respaldo—. El coste de sacarlas del cache compartido es una consulta por
+     * peticion y por clave: son seis claves y se leen pocas veces.
+     */
+    private static function memoria(): \Illuminate\Contracts\Cache\Repository
+    {
+        return Cache::store('array');
+    }
+
+    /**
      * Get a setting value by key.
      * Sensitive keys are decrypted transparently.
      */
     public static function get(string $key, ?string $default = null): ?string
     {
-        return Cache::rememberForever("settings.{$key}", function () use ($key, $default) {
+        $esSecreto = in_array($key, self::ENCRYPTED_KEYS, true);
+
+        // Misma lectura de siempre; lo unico que cambia es DONDE se memoriza.
+        // Los ajustes normales son muchos y se leen todo el tiempo: siguen en el
+        // cache compartido. Los secretos, solo en memoria del proceso.
+        $store = $esSecreto ? self::memoria() : Cache::store();
+
+        return $store->rememberForever("settings.{$key}", function () use ($key, $default, $esSecreto) {
             $setting = self::find($key);
             if (! $setting) {
                 return $default;
@@ -42,7 +66,7 @@ class Setting extends Model
 
             $value = $setting->value;
 
-            if (in_array($key, self::ENCRYPTED_KEYS, true) && $value !== null) {
+            if ($esSecreto && $value !== null) {
                 $value = self::safeDecrypt($value);
             }
 
@@ -67,7 +91,25 @@ class Setting extends Model
             ['value' => $toStore]
         );
 
+        self::forget($key);
+    }
+
+    /**
+     * Olvida un ajuste en los DOS lados: el cache compartido y la memoria del proceso.
+     *
+     * Hace falta que sea publico por los procesos largos: el bot de Telegram escucha
+     * durante horas y relee su token para tomarlo sin redeploy
+     * (TelegramPollingCommand::botConfigurado). Como los secretos ya no viven en el
+     * cache compartido, un `Cache::forget()` solo no los suelta.
+     *
+     * Se olvida en ambos lados a proposito, no solo en el que corresponde: en una
+     * instancia ya desplegada puede haber quedado el valor descifrado en la tabla
+     * `cache`, escrito por el codigo anterior, y asi se limpia al primer guardado.
+     */
+    public static function forget(string $key): void
+    {
         Cache::forget("settings.{$key}");
+        self::memoria()->forget("settings.{$key}");
     }
 
     /**

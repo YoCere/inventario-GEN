@@ -57,6 +57,7 @@ class BotHandler
         protected ReminderHandler $reminderHandler,
         protected \App\Services\QuickSaleService $quickSale,
         protected IntentDetector $intents,
+        protected PermisosDelBot $permisos,
     ) {}
 
     public function dispatch(array $update): void
@@ -676,6 +677,13 @@ class BotHandler
         $command = strtolower($parts[0]);
         $args = $parts[1] ?? '';
 
+        // Una sola compuerta para los 19 comandos. Antes cada uno decidía por su
+        // cuenta (y casi ninguno decidía nada), así que un comando nuevo nacía
+        // sin control sin que nadie lo notara.
+        if (! $this->permisos->permite($command, $this->authHandler->getAuthenticatedUser($chatId), $chatId)) {
+            return;
+        }
+
         match ($command) {
             '/ayuda', '/help', '/start' => $this->cmdHelp($chatId),
             '/stock' => $this->cmdStock($chatId),
@@ -1158,6 +1166,13 @@ class BotHandler
         }
 
         $this->telegram->answerCallbackQuery($touchId);
+
+        // Los botones son el mismo poder que el comando que los abrió: el alta
+        // de producto se puede terminar entera a botonazos, sin volver a escribir
+        // /nuevo. Si solo se cuidara el comando, el botón sería la puerta de atrás.
+        if (! $this->permisos->permiteBoton($payload, $this->authHandler->getAuthenticatedUser($actorChatId), $actorChatId)) {
+            return;
+        }
 
         $messageId = isset($callbackQuery['message']['message_id'])
             ? (int) $callbackQuery['message']['message_id']

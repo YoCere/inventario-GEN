@@ -249,6 +249,10 @@ final class SettingsCatalog
                     ['key' => 'telegram_bot_token', 'label' => 'Token del bot', 'type' => 'secret', 'default' => '', 'group' => 'Telegram'],
                     ['key' => 'telegram_admin_chat_id', 'label' => 'Chat ID del administrador', 'type' => 'text', 'default' => '', 'group' => 'Telegram'],
                     ['key' => 'telegram_webhook_secret', 'label' => 'Secreto del webhook', 'type' => 'secret', 'default' => '', 'group' => 'Telegram'],
+                    // Arranca apagado: con esto prendido, un empleado que hoy carga
+                    // productos por el bot sin tener el permiso deja de poder hacerlo.
+                    // Primero se mira un día de uso real en el log y después se prende.
+                    ['key' => 'bot_permisos_estrictos', 'label' => 'Exigir permisos en el bot', 'type' => 'toggle', 'default' => '0', 'group' => 'Telegram', 'wide' => true, 'help' => 'Cada empleado solo puede hacer por Telegram lo que puede hacer en el sistema. Apagado, el bot deja pasar y solo anota en la bitácora lo que habría bloqueado.'],
 
                     ['key' => 'ai_chatbot_enabled', 'label' => 'Asistente conversacional', 'type' => 'toggle', 'default' => '0', 'group' => 'Asistente IA', 'wide' => true],
                     ['key' => 'ai_search_enabled', 'label' => 'Búsqueda inteligente en Telegram', 'type' => 'toggle', 'default' => '0', 'group' => 'Asistente IA', 'wide' => true],

@@ -29,6 +29,39 @@ return [
                     base_path('node_modules'),
                     base_path('.git'),
                     storage_path('app/backups'),
+
+                    /*
+                     * Secretos: el zip sale del servidor y se guarda en un tercero
+                     * (bucket B2). El .env lleva el APP_KEY —que es justo la clave que
+                     * descifra las API keys de la tabla `settings`—, el usuario y
+                     * contraseña de MySQL y las credenciales del propio bucket. Con el
+                     * volcado de la base adentro del mismo zip, un solo archivo
+                     * entregaria todo: acceso a la base y las claves de IA, Telegram y
+                     * SIAT ya descifrables. Fuera del zip.
+                     *
+                     * Cada variante necesita su propia linea: spatie compara archivo por
+                     * archivo (FileSelection::shouldExclude descarta la coincidencia por
+                     * prefijo cuando lo excluido es un archivo), asi que `.env` NO tapa a
+                     * `.env.backup`. El comodin cubre las que aparezcan despues
+                     * (.env.old, .env.local…). Las rutas que no existen se descartan
+                     * solas (sanitize() las filtra con realpath), no molestan.
+                     *
+                     * auth.json guarda los tokens de Composer / repos privados.
+                     */
+                    base_path('.env'),
+                    base_path('.env.backup'),
+                    base_path('.env.production'),
+                    base_path('.env.*'),
+                    base_path('auth.json'),
+
+                    /*
+                     * ops/provisioned/<cliente>.env: lo genera provision-client-backup.sh
+                     * y lleva las llaves de B2 y el BACKUP_ARCHIVE_PASSWORD de cada
+                     * cliente. Normalmente no existe en el servidor (se arma en la
+                     * maquina del operador), pero si alguna vez se copia ahi, seria el
+                     * peor archivo posible dentro del zip: la clave que lo descifra.
+                     */
+                    base_path('ops/provisioned'),
                 ],
 
                 /*
