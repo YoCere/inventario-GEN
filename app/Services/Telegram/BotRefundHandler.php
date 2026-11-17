@@ -14,6 +14,7 @@ class BotRefundHandler
     public function __construct(
         protected TelegramService $telegram,
         protected SaleService $saleService,
+        protected BotAuthHandler $authHandler,
     ) {}
 
     public function handle(string $chatId, array $message): void
@@ -35,19 +36,34 @@ class BotRefundHandler
 
     public function start(string $chatId): void
     {
+        $usuario = $this->authHandler->getAuthenticatedUser($chatId);
+
         // created_at es un instante UTC real, así que el "hoy" local se traduce a un
         // rango UTC; whereDate() compararía el día UTC y de noche perdería las ventas.
-        $sales = Sale::whereBetween('created_at', BusinessTime::dayRangeUtc())
+        $query = Sale::whereBetween('created_at', BusinessTime::dayRangeUtc())
             ->where('status', 'completed')
             ->orderBy('created_at', 'desc')
             ->with(['items.product'])
-            ->limit(10)
-            ->get();
+            ->limit(10);
+
+        // Esta lista era de TODOS los vendedores: cualquiera podía anular la venta
+        // de un compañero, y la pantalla de confirmación mostraba además lo que
+        // ese compañero había vendido. Se filtra siempre, con ajuste o sin él:
+        // no es una comodidad que se pueda dejar prendida un día más.
+        if (! PermisosDelBot::alcanzaVentasAjenas($usuario)) {
+            $query->where('created_by', $usuario?->id);
+        }
+
+        $sales = $query->get();
 
         if ($sales->isEmpty()) {
+            // El texto dice "tuyas" solo a quien está viendo una lista filtrada,
+            // para que no parezca que el negocio no vendió nada en todo el día.
             $this->telegram->sendMessage(
                 $chatId,
-                "❌ No hay ventas registradas hoy para devolver."
+                PermisosDelBot::alcanzaVentasAjenas($usuario)
+                    ? "❌ No hay ventas registradas hoy para devolver."
+                    : "❌ No hay ventas tuyas registradas hoy para devolver."
             );
             return;
         }
