@@ -40,3 +40,7 @@ android.keystore
 
 # Secretos de provisioning por cliente (generados por ops/provision-client-backup.sh)
 ops/provisioned/
+
+# Volcados de datos de negocio: nunca al repositorio (es publico)
+/storage/backups/*
+!/storage/backups/.gitignore

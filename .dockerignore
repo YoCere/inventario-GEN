@@ -12,3 +12,6 @@ storage/framework/views/*
 tests/
 .github/
 docker-compose*.yml
+
+# Volcados de datos: no tienen por que viajar en la imagen
+storage/backups/
