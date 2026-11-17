@@ -6,6 +6,7 @@ use App\Enums\SaleStatus;
 use App\Enums\PaymentMethod;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -52,6 +53,18 @@ class Sale extends Model
         'cash_received' => 'integer',
         'change' => 'integer',
     ];
+
+    /** Todas las facturas de la venta (historial: anuladas y reemitidas). */
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    /** Factura vigente = la más reciente. La venta no depende de ella. */
+    public function invoice(): HasOne
+    {
+        return $this->hasOne(Invoice::class)->latestOfMany();
+    }
 
     public function items(): HasMany
     {
